@@ -1,0 +1,17 @@
+{
+  "name": "family-hub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api":    "pnpm --filter @family-hub/api dev",
+    "dev:web":    "pnpm --filter @family-hub/web dev",
+    "dev:mobile": "pnpm --filter @family-hub/mobile start",
+    "build:api":  "pnpm --filter @family-hub/api build",
+    "build:web":  "pnpm --filter @family-hub/web build",
+    "db:migrate": "pnpm --filter @family-hub/api db:migrate",
+    "db:seed":    "pnpm --filter @family-hub/api db:seed",
+    "db:studio":  "pnpm --filter @family-hub/api db:studio"
+  },
+  "workspaces": ["packages/*"],
+  "engines": { "node": ">=18.0.0", "pnpm": ">=8.0.0" }
+}

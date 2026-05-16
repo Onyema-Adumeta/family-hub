@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Family Hub",
+    "slug": "family-hub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "familyhub",
+    "userInterfaceStyle": "dark",
+    "splash": { "backgroundColor": "#0f0f13" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.familyhub.app" },
+    "android": { "adaptiveIcon": { "backgroundColor": "#0f0f13" }, "package": "com.familyhub.app" },
+    "plugins": ["expo-router", "expo-secure-store", ["expo-notifications", { "sounds": [] }]],
+    "extra": { "router": { "origin": false }, "eas": { "projectId": "your-eas-project-id" } }
+  }
+}
