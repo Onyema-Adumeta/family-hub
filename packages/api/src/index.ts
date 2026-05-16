@@ -26,7 +26,13 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://family-hub-web-omega.vercel.app',
+  process.env.CLIENT_URL,
+].filter(Boolean) as string[];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
