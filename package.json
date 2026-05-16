@@ -16,3 +16,11 @@
   "workspaces": ["packages/*"],
   "engines": { "node": ">=18.0.0", "pnpm": ">=8.0.0" }
 }
+
+{
+  "name": "family-hub",
+  "packageManager": "pnpm@9.15.4",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "prisma", "@prisma/client"]
+  }
+}
