@@ -1,8 +1,8 @@
 {
   "name": "family-hub",
-  "packageManager": "pnpm@9.15.4",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev:api":    "pnpm --filter @family-hub/api dev",
     "dev:web":    "pnpm --filter @family-hub/web dev",
@@ -14,12 +14,7 @@
     "db:studio":  "pnpm --filter @family-hub/api db:studio"
   },
   "workspaces": ["packages/*"],
-  "engines": { "node": ">=18.0.0", "pnpm": ">=8.0.0" }
-}
-
-{
-  "name": "family-hub",
-  "packageManager": "pnpm@9.15.4",
+  "engines": { "node": ">=18.0.0", "pnpm": ">=9.0.0" },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "prisma", "@prisma/client"]
   }
