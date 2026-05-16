@@ -1,4 +1,4 @@
-Set-Content packages/api/package.json '{
+{
   "name": "@family-hub/api",
   "version": "1.0.0",
   "scripts": {
@@ -38,4 +38,4 @@ Set-Content packages/api/package.json '{
     "tsx": "^4.22.0",
     "typescript": "^5.0.0"
   }
-}'
+}
