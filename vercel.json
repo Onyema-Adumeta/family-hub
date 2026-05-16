@@ -1,5 +1,1 @@
-﻿{
-  "buildCommand": "pnpm --filter @family-hub/web build",
-  "outputDirectory": "packages/web/dist",
-  "installCommand": "pnpm install"
-}
+{"buildCommand":"pnpm --filter @family-hub/web build","outputDirectory":"packages/web/dist","installCommand":"pnpm install"}
