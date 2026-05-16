@@ -30,7 +30,7 @@ router.post('/:id/complete', async (req: AuthRequest, res) => {
       prisma.member.update({
         where: { id: req.memberId },
         data: {
-          stars: { increment: quest.stars },
+          stars: { increment: quest.reward },
           totalChoresDone: { increment: 1 },
         },
       }),
