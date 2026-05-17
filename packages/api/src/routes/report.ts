@@ -12,7 +12,7 @@ router.get('/weekly', async (req: AuthRequest, res) => {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const [completedChores, members, quests] = await Promise.all([
-      prisma.chore.findMany({ where: { familyId: req.familyId, done: true, completedAt: { gte: oneWeekAgo } }, include: { completedBy: true } }),
+      prisma.chore.findMany({ where: { familyId: req.familyId, status: 'done', completedAt: { gte: oneWeekAgo } }, include: { completedBy: true } }),
       prisma.member.findMany({ where: { familyId: req.familyId }, select: { id: true, name: true, emoji: true, color: true, role: true, stars: true } }),
       prisma.quest.findMany({ where: { familyId: req.familyId, completed: true, completedAt: { gte: oneWeekAgo } } })
     ]);

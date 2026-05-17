@@ -19,7 +19,7 @@ import membersRoutes from './routes/members';
 import questsRoutes from './routes/quests';
 import uploadRoutes from './routes/upload';
 import groceryRoutes from './routes/grocery';
-import groceryRoutes from './routes/grocery';
+
 
 import { setupWebSocket } from './services/websocket';
 import { setupCron } from './services/cron';
@@ -54,7 +54,7 @@ app.use('/api/members',       authMiddleware, membersRoutes);
 app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
-app.use('/api/grocery',       authMiddleware, groceryRoutes);
+
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
