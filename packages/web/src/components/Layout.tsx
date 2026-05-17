@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useNotifications } from '../hooks/useApi';
@@ -13,15 +13,16 @@ function avatarSrc(url?: string | null): string | null {
 }
 
 const NAV = [
-  { path: '/', icon: '🏠', label: 'Home' },
-  { path: '/chores', icon: '✅', label: 'Chores' },
-  { path: '/meals', icon: '🍽️', label: 'Meals' },
-  { path: '/schedule', icon: '📅', label: 'Schedule' },
-  { path: '/rewards', icon: '⭐', label: 'Rewards' },
-  { path: '/chat', icon: '💬', label: 'Chat' },
-  { path: '/quests', icon: '⚔️', label: 'Quests' },
-  { path: '/report', icon: '📊', label: 'Report' },
-  { path: '/settings', icon: '⚙️', label: 'Settings' },
+  { path: '/', icon: 'ðŸ ', label: 'Home' },
+  { path: '/chores', icon: 'âœ…', label: 'Chores' },
+  { path: '/meals', icon: 'ðŸ½ï¸', label: 'Meals' },
+  { path: '/schedule', icon: 'ðŸ“…', label: 'Schedule' },
+  { path: '/rewards', icon: 'â­', label: 'Rewards' },
+  { path: '/chat', icon: 'ðŸ’¬', label: 'Chat' },
+  { path: '/quests', icon: 'âš”ï¸', label: 'Quests' },
+  { path: '/report', icon: 'ðŸ“Š', label: 'Report' },
+  { path: '/grocery', label: 'Grocery', icon: '🛒' },
+  { path: '/settings', icon: 'âš™ï¸', label: 'Settings' },
 ];
 
 export default function Layout() {
@@ -63,22 +64,22 @@ export default function Layout() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
 
-      {/* ── Mobile hamburger toggle ──────────────────────────────────────── */}
+      {/* â”€â”€ Mobile hamburger toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <button
         className="sidebar-toggle"
         onClick={() => setSidebarOpen(o => !o)}
         aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
       >
-        {sidebarOpen ? '✕' : '☰'}
+        {sidebarOpen ? 'âœ•' : 'â˜°'}
       </button>
 
-      {/* ── Backdrop (mobile only) ───────────────────────────────────────── */}
+      {/* â”€â”€ Backdrop (mobile only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div
         className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <aside
         className={`sidebar${sidebarOpen ? ' open' : ''}`}
         style={{
@@ -126,7 +127,7 @@ export default function Layout() {
                 {member?.name}
               </div>
               <div style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 700 }}>
-                ⭐ {member?.stars} stars
+                â­ {member?.stars} stars
               </div>
             </div>
 
@@ -177,7 +178,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* ── Main content ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <main style={{
         flex: 1,
         minWidth: 0,

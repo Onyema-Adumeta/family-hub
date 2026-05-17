@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react';
+﻿import { useState, useRef } from 'react';
 import { useChores, useMembers, useCreateChore, useUpdateChore, useDeleteChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { MediaProof } from '../components/MediaProof';
 
-const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','🗑️','🪣','🧽','📚','🛒','🚗','🧴','💧'];
+const CHORE_EMOJIS = ['ðŸ§¹','ðŸ½ï¸','ðŸ›ï¸','ðŸ¶','ðŸŒ¿','ðŸ§º','ðŸš¿','ðŸ—‘ï¸','ðŸª£','ðŸ§½','ðŸ“š','ðŸ›’','ðŸš—','ðŸ§´','ðŸ’§'];
 const FREQS = ['daily','weekly','once'] as const;
 
 function MemberAvatar({ member, size = 22 }: { member: any; size?: number }) {
@@ -35,7 +35,7 @@ export default function ChoresPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [proofChoreId, setProofChoreId] = useState<string | null>(null);
   const [newChore, setNewChore] = useState({
-    title: '', emoji: '🧹', assignedToId: '', frequency: 'daily' as const,
+    title: '', emoji: 'ðŸ§¹', assignedToId: '', frequency: 'daily' as const,
     stars: 5, proofRequired: false, dueDate: ''
   });
 
@@ -66,7 +66,7 @@ export default function ChoresPage() {
       assignedToId: newChore.assignedToId || undefined,
       dueDate: newChore.dueDate || undefined
     });
-    setNewChore({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false, dueDate: '' });
+    setNewChore({ title: '', emoji: 'ðŸ§¹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false, dueDate: '' });
     setShowAdd(false);
   }
 
@@ -80,7 +80,7 @@ export default function ChoresPage() {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>✅ Chores</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 900 }}>âœ… Chores</h1>
         <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize: 13 }}>+ Add chore</button>
       </div>
 
@@ -92,7 +92,7 @@ export default function ChoresPage() {
             background: filter === f ? 'var(--primary)' : 'transparent',
             color: filter === f ? '#fff' : 'var(--text-secondary)', border: 'none'
           }}>
-            {f === 'pending' ? '⏳ Pending' : f === 'done' ? '✅ Done' : '📋 All'}
+            {f === 'pending' ? 'â³ Pending' : f === 'done' ? 'âœ… Done' : 'ðŸ“‹ All'}
           </button>
         ))}
       </div>
@@ -100,7 +100,7 @@ export default function ChoresPage() {
       {/* Chore list */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontWeight: 700 }}>
-          {filter === 'pending' ? '🎉 All caught up!' : 'No chores here yet.'}
+          {filter === 'pending' ? 'ðŸŽ‰ All caught up!' : 'No chores here yet.'}
         </div>
       ) : filtered.map((chore: any) => {
         const assignee = (members as any[]).find(m => m.id === chore.assignedToId);
@@ -116,7 +116,7 @@ export default function ChoresPage() {
                 border: `2px solid ${chore.done ? 'var(--success)' : 'var(--border)'}`,
                 background: chore.done ? 'var(--success)' : 'transparent',
                 color: '#fff', fontSize: 14, cursor: 'pointer', flexShrink: 0
-              }}>{chore.done ? '✓' : ''}</button>
+              }}>{chore.done ? 'âœ“' : ''}</button>
 
               <span style={{ fontSize: 20 }}>{chore.emoji}</span>
 
@@ -132,7 +132,7 @@ export default function ChoresPage() {
                       <span style={{ fontSize: 11, fontWeight: 700, color: assignee.color }}>{assignee.name}</span>
                     </span>
                   ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>👥 Anyone</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>ðŸ‘¥ Anyone</span>
                   )}
 
                   <span style={{
@@ -141,24 +141,24 @@ export default function ChoresPage() {
                   }}>{chore.frequency}</span>
 
                   {chore.proofRequired && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>📸 proof</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>ðŸ“¸ proof</span>
                   )}
                   {chore.proofUrl && (
                     <a href={chore.proofUrl} target="_blank" rel="noreferrer"
                       style={{ fontSize: 10, fontWeight: 700, color: 'var(--sky)' }}>
-                      {chore.proofType === 'video' ? '🎥 view' : '📷 view'}
+                      {chore.proofType === 'video' ? 'ðŸŽ¥ view' : 'ðŸ“· view'}
                     </a>
                   )}
                 </div>
               </div>
 
-              <span style={{ fontWeight: 900, fontSize: 12, color: 'var(--warning)', flexShrink: 0 }}>⭐{chore.stars}</span>
+              <span style={{ fontWeight: 900, fontSize: 12, color: 'var(--warning)', flexShrink: 0 }}>â­{chore.stars}</span>
 
               {member?.role === 'parent' && (
                 <button
                   onClick={() => { if (confirm('Delete this chore?')) deleteChore.mutate(chore.id); }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: 4, flexShrink: 0 }}
-                >🗑</button>
+                >ðŸ—‘</button>
               )}
             </div>
 
@@ -176,7 +176,7 @@ export default function ChoresPage() {
       {showAdd && (
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>➕ New Chore</div>
+            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>âž• New Chore</div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Emoji picker */}
@@ -205,13 +205,13 @@ export default function ChoresPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 4 }}>⭐ Stars</label>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 4 }}>â­ Stars</label>
                   <input type="number" className="input" min={1} max={50} value={newChore.stars}
                     onChange={e => setNewChore(p => ({ ...p, stars: +e.target.value }))} />
                 </div>
               </div>
 
-              {/* Assign to — with color previews */}
+              {/* Assign to â€” with color previews */}
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Assign to</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -227,7 +227,7 @@ export default function ChoresPage() {
                       fontWeight: 700, fontSize: 12, color: !newChore.assignedToId ? 'var(--primary)' : 'var(--text-secondary)'
                     }}
                   >
-                    👥 Anyone
+                    ðŸ‘¥ Anyone
                   </button>
 
                   {/* Member buttons */}
@@ -257,7 +257,7 @@ export default function ChoresPage() {
                   onChange={e => setNewChore(p => ({ ...p, proofRequired: e.target.checked }))}
                   style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13 }}>📸 Require photo/video proof</div>
+                  <div style={{ fontWeight: 800, fontSize: 13 }}>ðŸ“¸ Require photo/video proof</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Kids must submit proof to mark done</div>
                 </div>
               </label>

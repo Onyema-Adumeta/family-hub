@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useEvents, useCreateEvent, useDeleteEvent, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 
@@ -31,7 +31,7 @@ export default function SchedulePage() {
 
   const eventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return (events as any[]).filter((e: any) => e.date?.startsWith(dateStr));
+    return (events as any[]).filter((e: any) => e.date?.startsWith(dateStr) || e.startsAt?.startsWith(dateStr));
   };
 
   const selectedEvents = selectedDay ? eventsForDay(selectedDay) : [];
@@ -47,7 +47,7 @@ export default function SchedulePage() {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>📅 Schedule</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 900 }}>ðŸ“… Schedule</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* View toggle */}
           <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1.5px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -57,7 +57,7 @@ export default function SchedulePage() {
                 background: view === v ? 'var(--primary)' : 'transparent',
                 color: view === v ? '#fff' : 'var(--text-secondary)',
               }}>
-                {v === 'month' ? '🗓 Month' : '📋 Agenda'}
+                {v === 'month' ? 'ðŸ—“ Month' : 'ðŸ“‹ Agenda'}
               </button>
             ))}
           </div>
@@ -76,9 +76,9 @@ export default function SchedulePage() {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {/* Month nav */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
-              <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)', padding: '4px 8px' }}>‹</button>
+              <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)', padding: '4px 8px' }}>â€¹</button>
               <span style={{ fontWeight: 900, fontSize: 15 }}>{MONTHS[month]} {year}</span>
-              <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)', padding: '4px 8px' }}>›</button>
+              <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-secondary)', padding: '4px 8px' }}>â€º</button>
             </div>
             {/* Day headers */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', textAlign: 'center', padding: '8px 8px 0' }}>
@@ -131,12 +131,12 @@ export default function SchedulePage() {
                   <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: e.color || 'var(--primary)', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                    {e.time && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>🕐 {e.time}</div>}
+                    {e.time && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>ðŸ• {e.time}</div>}
                     {e.member && <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700 }}>{e.member.emoji} {e.member.name}</div>}
                   </div>
                   {isParent && (
                     <button onClick={() => { if (confirm('Delete event?')) deleteEvent.mutate(e.id); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4, color: 'var(--text-muted)' }}>🗑</button>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4, color: 'var(--text-muted)' }}>ðŸ—‘</button>
                   )}
                 </div>
               ))}
@@ -149,8 +149,8 @@ export default function SchedulePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <span style={{ fontWeight: 900, fontSize: 15 }}>{MONTHS[month]} {year}</span>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={prevMonth} className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>‹ Prev</button>
-              <button onClick={nextMonth} className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>Next ›</button>
+              <button onClick={prevMonth} className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>â€¹ Prev</button>
+              <button onClick={nextMonth} className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>Next â€º</button>
             </div>
           </div>
           {allEvents.length === 0 ? (
@@ -169,12 +169,12 @@ export default function SchedulePage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>
-                    {e.time ? `🕐 ${e.time}` : ''} {e.member ? `· ${e.member.emoji} ${e.member.name}` : ''}
+                    {e.time ? `ðŸ• ${e.time}` : ''} {e.member ? `Â· ${e.member.emoji} ${e.member.name}` : ''}
                   </div>
                 </div>
                 {isParent && (
                   <button onClick={() => { if (confirm('Delete event?')) deleteEvent.mutate(e.id); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4, color: 'var(--text-muted)' }}>🗑</button>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: 4, color: 'var(--text-muted)' }}>ðŸ—‘</button>
                 )}
               </div>
             );
@@ -186,7 +186,7 @@ export default function SchedulePage() {
       {showAdd && (
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>📅 Add Event</div>
+            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>ðŸ“… Add Event</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <input className="input" placeholder="Event title" value={newEvent.title}
                 onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} autoFocus />

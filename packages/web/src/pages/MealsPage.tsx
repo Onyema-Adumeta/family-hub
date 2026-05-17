@@ -1,10 +1,10 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useMeals, useCreateMeal, useUpdateMeal, useDeleteMeal, useMembers } from '../hooks/useApi';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const SLOTS = ['breakfast','lunch','dinner','snack'] as const;
-const SLOT_EMOJI = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
-const MEAL_EMOJIS = ['🍕','🌮','🥘','🍝','🥩','🍣','🥗','🍜','🌯','🍔','🍛','🥞','🍗','🥑','🍱'];
+const SLOT_EMOJI = { breakfast: 'ðŸŒ…', lunch: 'â˜€ï¸', dinner: 'ðŸŒ™', snack: 'ðŸŽ' };
+const MEAL_EMOJIS = ['ðŸ•','ðŸŒ®','ðŸ¥˜','ðŸ','ðŸ¥©','ðŸ£','ðŸ¥—','ðŸœ','ðŸŒ¯','ðŸ”','ðŸ›','ðŸ¥ž','ðŸ—','ðŸ¥‘','ðŸ±'];
 
 function getWeekStart() {
   const d = new Date();
@@ -23,7 +23,7 @@ export default function MealsPage() {
   const deleteMeal = useDeleteMeal();
 
   const [showAdd, setShowAdd] = useState(false);
-  const [newMeal, setNewMeal] = useState({ day: 'Monday', slot: 'dinner' as const, name: '', emoji: '🍕', notes: '', assignedToId: '' });
+  const [newMeal, setNewMeal] = useState({ day: 'Monday', slot: 'dinner' as const, name: '', emoji: 'ðŸ•', notes: '', assignedToId: '' });
   const [viewSlot, setViewSlot] = useState<string>('dinner');
 
   const mealGrid: Record<string, Record<string, any>> = {};
@@ -35,7 +35,7 @@ export default function MealsPage() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>🍽️ Meals</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 900 }}>ðŸ½ï¸ Meals</h1>
         <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize: 13 }}>+ Add meal</button>
       </div>
 
@@ -71,9 +71,9 @@ export default function MealsPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 800, fontSize: 14 }}>{meal.name}</div>
                     {meal.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{meal.notes}</div>}
-                    {meal.assignedTo && <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700 }}>👨‍🍳 {meal.assignedTo.emoji} {meal.assignedTo.name}</div>}
+                    {meal.assignedTo && <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700 }}>ðŸ‘¨â€ðŸ³ {meal.assignedTo.emoji} {meal.assignedTo.name}</div>}
                   </div>
-                  <button onClick={() => { if (confirm('Remove meal?')) deleteMeal.mutate(meal.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14 }}>✕</button>
+                  <button onClick={() => { if (confirm('Remove meal?')) deleteMeal.mutate(meal.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14 }}>âœ•</button>
                 </div>
               ) : (
                 <button onClick={() => { setNewMeal(p => ({ ...p, day, slot: viewSlot as any })); setShowAdd(true); }} style={{
@@ -90,7 +90,7 @@ export default function MealsPage() {
       {showAdd && (
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>➕ Add Meal</div>
+            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>âž• Add Meal</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {MEAL_EMOJIS.map(e => (
@@ -104,13 +104,13 @@ export default function MealsPage() {
               <div className="grid-2">
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>Day</label>
-                  <select className="input" value={newMeal.day} onChange={e => setNewMeal(p => ({ ...p, day: e.target.value }))}>
+                  <select className="input" style={{ background: "#1E1A2E", color: "#EEEAF8" }} value={newMeal.day} onChange={e => setNewMeal(p => ({ ...p, day: e.target.value }))}>
                     {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>Meal</label>
-                  <select className="input" value={newMeal.slot} onChange={e => setNewMeal(p => ({ ...p, slot: e.target.value as any }))}>
+                  <select className="input" style={{ background: "#1E1A2E", color: "#EEEAF8" }} value={newMeal.slot} onChange={e => setNewMeal(p => ({ ...p, slot: e.target.value as any }))}>
                     {SLOTS.map(s => <option key={s} value={s}>{SLOT_EMOJI[s]} {s}</option>)}
                   </select>
                 </div>
@@ -121,7 +121,7 @@ export default function MealsPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 4 }}>Who's cooking?</label>
-                <select className="input" value={newMeal.assignedToId} onChange={e => setNewMeal(p => ({ ...p, assignedToId: e.target.value }))}>
+                <select className="input" style={{ background: "#1E1A2E", color: "#EEEAF8" }} value={newMeal.assignedToId} onChange={e => setNewMeal(p => ({ ...p, assignedToId: e.target.value }))}>
                   <option value="">Anyone</option>
                   {(members as any[]).map((m: any) => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
                 </select>
@@ -141,3 +141,4 @@ export default function MealsPage() {
     </div>
   );
 }
+
