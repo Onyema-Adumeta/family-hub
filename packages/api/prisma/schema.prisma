@@ -29,6 +29,7 @@ model Family {
   notifications Notification[]
   automations   Automation[]
   memories      Memory[]
+  groceryItems  GroceryItem[]
 }
 
 model Member {
@@ -47,10 +48,10 @@ model Member {
   createdAt       DateTime     @default(now())
 
   // ── Gamification ──────────────────────────────────────────────────────────
-  streakDays      Int          @default(0)            // current daily chore streak
-  streakUpdatedAt DateTime?                           // last day streak was incremented
-  totalChoresDone Int          @default(0)            // all-time completions
-  badges          String[]     @default([])           // e.g. ["first_chore","streak_7"]
+  streakDays      Int          @default(0)
+  streakUpdatedAt DateTime?
+  totalChoresDone Int          @default(0)
+  badges          String[]     @default([])
 
   // ── Location / safety ─────────────────────────────────────────────────────
   lastLat         Float?
@@ -63,6 +64,7 @@ model Member {
   events          Event[]
   messages        Message[]
   redemptions     Redemption[]
+  groceryAdded    GroceryItem[] @relation("GroceryAdded")
 }
 
 model Chore {
@@ -73,12 +75,12 @@ model Chore {
   emoji         String    @default("✅")
   assignedToId  String?
   assignedTo    Member?   @relation("AssignedChores", fields: [assignedToId], references: [id])
-  frequency     String    @default("daily")           // "daily" | "weekly" | "once"
+  frequency     String    @default("daily")
   stars         Int       @default(5)
   done          Boolean   @default(false)
   proofRequired Boolean   @default(false)
   proofUrl      String?
-  proofType     String?   // "image" | "video"
+  proofType     String?
   dueDate       DateTime?
   completedAt   DateTime?
   completedById String?
@@ -91,13 +93,13 @@ model Meal {
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   day          String
-  slot         String   @default("dinner")            // "breakfast"|"lunch"|"dinner"|"snack"
+  slot         String   @default("dinner")
   name         String
   emoji        String   @default("🍽️")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
-  week         String                                 // ISO date of Monday e.g. "2026-05-12"
+  week         String
   createdAt    DateTime @default(now())
 }
 
@@ -161,7 +163,7 @@ model Quest {
   title       String
   description String?
   emoji       String    @default("⚔️")
-  type        String    @default("family")            // "family" | "individual"
+  type        String    @default("family")
   goal        Int       @default(5)
   progress    Int       @default(0)
   reward      Int       @default(10)
@@ -182,22 +184,19 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
-// ── Smart automations (Pro tier) ──────────────────────────────────────────────
-// e.g. "if chore not done by 7pm → notify assignee"
 model Automation {
   id         String   @id @default(cuid())
   familyId   String
   family     Family   @relation(fields: [familyId], references: [id])
   name       String
-  trigger    String                                   // "chore_overdue" | "stars_milestone" | "schedule"
-  conditions Json     @default("{}")                  // { choreId?, memberId?, time?, threshold? }
-  actions    Json     @default("[]")                  // [{ type: "notify", to: "assignee", message: "..." }]
+  trigger    String
+  conditions Json     @default("{}")
+  actions    Json     @default("[]")
   active     Boolean  @default(true)
   lastRanAt  DateTime?
   createdAt  DateTime @default(now())
 }
 
-// ── Family memory timeline (Pro tier) ─────────────────────────────────────────
 model Memory {
   id        String   @id @default(cuid())
   familyId  String
@@ -205,7 +204,20 @@ model Memory {
   title     String
   body      String?
   mediaUrl  String?
-  mediaType String?                                   // "image" | "video"
+  mediaType String?
   date      DateTime @default(now())
   createdAt DateTime @default(now())
+}
+
+model GroceryItem {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id])
+  addedById   String
+  addedBy     Member   @relation("GroceryAdded", fields: [addedById], references: [id])
+  name        String
+  qty         String?
+  category    String   @default("General")
+  checked     Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }

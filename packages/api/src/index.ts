@@ -18,6 +18,8 @@ import aiRoutes from './routes/ai';
 import membersRoutes from './routes/members';
 import questsRoutes from './routes/quests';
 import uploadRoutes from './routes/upload';
+import groceryRoutes from './routes/grocery';
+import groceryRoutes from './routes/grocery';
 
 import { setupWebSocket } from './services/websocket';
 import { setupCron } from './services/cron';
@@ -51,6 +53,8 @@ app.use('/api/ai',            authMiddleware, aiRoutes);
 app.use('/api/members',       authMiddleware, membersRoutes);
 app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
+app.use('/api/grocery',       authMiddleware, groceryRoutes);
+app.use('/api/grocery',       authMiddleware, groceryRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
@@ -59,3 +63,6 @@ setupCron();
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`🚀 Family Hub API running on port ${PORT}`));
+
+
+
