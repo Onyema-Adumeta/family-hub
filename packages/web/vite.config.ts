@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'] },
       manifest: {
         name: 'Family Hub',
         short_name: 'FamilyHub',
@@ -23,3 +24,4 @@ export default defineConfig({
   ],
   server: { proxy: { '/api': 'http://localhost:3001', '/uploads': 'http://localhost:3001' } }
 });
+
