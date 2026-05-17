@@ -78,6 +78,7 @@ model Chore {
   frequency     String    @default("daily")
   stars         Int       @default(5)
   done          Boolean   @default(false)
+  status        String    @default("pending")   // "pending" | "in_progress" | "done"
   proofRequired Boolean   @default(false)
   proofUrl      String?
   proofType     String?

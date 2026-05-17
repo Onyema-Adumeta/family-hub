@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useNotifications } from '../hooks/useApi';
@@ -33,63 +33,47 @@ export default function Layout() {
   useRealtime();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const unread = (notifications as any[]).filter(n => !n.read).length;
 
-  // Close sidebar whenever the route changes (mobile nav tap)
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSidebarOpen(false);
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
-
-  // Lock body scroll when sidebar is open on mobile
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [sidebarOpen]);
 
-  function handleLogout() {
-    logout();
-    navigate('/login');
-  }
+  function handleLogout() { logout(); navigate('/login'); }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
 
-      {/* â”€â”€ Mobile hamburger toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Mobile hamburger */}
       <button
         className="sidebar-toggle"
         onClick={() => setSidebarOpen(o => !o)}
         aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
       >
-        {sidebarOpen ? 'âœ•' : 'â˜°'}
+        {sidebarOpen ? '✕' : '☰'}
       </button>
 
-      {/* â”€â”€ Backdrop (mobile only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Backdrop */}
       <div
         className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`}
         onClick={() => setSidebarOpen(false)}
       />
 
-      {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Sidebar */}
       <aside
         className={`sidebar${sidebarOpen ? ' open' : ''}`}
         style={{
-          width: 220,
-          flexShrink: 0,
+          width: 220, flexShrink: 0,
           background: 'rgba(15,15,19,0.98)',
           borderRight: '1.5px solid var(--border)',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '16px 0',
+          display: 'flex', flexDirection: 'column', padding: '16px 0',
         }}
       >
         {/* Logo */}
@@ -98,9 +82,7 @@ export default function Layout() {
             fontFamily: 'Fredoka One, cursive', fontSize: 24,
             background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>
-            Family Hub
-          </div>
+          }}>Family Hub</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>
             {family?.name}
           </div>
@@ -121,36 +103,30 @@ export default function Layout() {
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : member?.emoji}
             </div>
-
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {member?.name}
               </div>
               <div style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 700 }}>
-                â­ {member?.stars} stars
+                ⭐ {member?.stars} stars
               </div>
             </div>
-
             {unread > 0 && (
               <div style={{
                 minWidth: 20, height: 20, borderRadius: 10,
                 background: 'var(--danger)', color: '#fff',
                 fontSize: 10, fontWeight: 900, padding: '0 4px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                {unread}
-              </div>
+              }}>{unread}</div>
             )}
           </div>
         </div>
 
-        {/* Nav links */}
+        {/* Nav */}
         <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
           {NAV.map(({ path, icon, label }) => (
             <NavLink
-              key={path}
-              to={path}
-              end={path === '/'}
+              key={path} to={path} end={path === '/'}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 12px', borderRadius: 10, marginBottom: 2,
@@ -172,23 +148,15 @@ export default function Layout() {
             width: '100%', padding: '9px', borderRadius: 10,
             background: 'transparent', border: '1.5px solid rgba(248,113,113,0.3)',
             color: 'var(--danger)', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-          }}>
-            Sign out
-          </button>
+          }}>Sign out</button>
         </div>
       </aside>
 
-      {/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <main style={{
-        flex: 1,
-        minWidth: 0,
-        overflowY: 'auto',
-        padding: '28px 32px',
-      }}>
+      {/* Main content */}
+      <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '28px 32px' }}>
         <Outlet />
       </main>
 
     </div>
   );
 }
-
