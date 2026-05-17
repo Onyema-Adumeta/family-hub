@@ -136,3 +136,29 @@ export function useChat() {
     refetchInterval: 5000,
   });
 }
+
+// ── Grocery ──────────────────────────────────────────────────────────────────
+export function useGrocery() {
+  return useQuery({ queryKey: ['grocery'], queryFn: () => api.get('/grocery') });
+}
+export function useCreateGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => api.post('/grocery', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+export function useUpdateGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/grocery/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}
+export function useDeleteGroceryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/grocery/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
+  });
+}

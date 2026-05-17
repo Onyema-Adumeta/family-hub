@@ -1,21 +1,180 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
+
 const router = Router();
 const prisma = new PrismaClient();
 
+// ─── Read notifications ───────────────────────────────────────────────────────
+
 router.get('/', async (req: AuthRequest, res) => {
-  const notifications = await prisma.notification.findMany({ where: { familyId: req.familyId, OR: [{ memberId: req.memberId }, { memberId: null }] }, orderBy: { createdAt: 'desc' }, take: 30 });
-  res.json(notifications);
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        familyId: req.familyId,
+        OR: [{ memberId: req.memberId }, { memberId: null }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+    res.json(notifications);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
 });
 
 router.patch('/:id/read', async (req: AuthRequest, res) => {
-  await prisma.notification.update({ where: { id: req.params.id }, data: { read: true } });
-  res.json({ ok: true });
+  try {
+    await prisma.notification.update({
+      where: { id: req.params.id },
+      data: { read: true },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to mark read' });
+  }
 });
 
 router.patch('/read-all', async (req: AuthRequest, res) => {
-  await prisma.notification.updateMany({ where: { familyId: req.familyId, memberId: req.memberId }, data: { read: true } });
-  res.json({ ok: true });
+  try {
+    await prisma.notification.updateMany({
+      where: { familyId: req.familyId, memberId: req.memberId },
+      data: { read: true },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to mark all read' });
+  }
 });
+
+// ─── Push token registration ──────────────────────────────────────────────────
+
+// POST /api/notifications/register-push
+// Called from the web/mobile app after the user grants notification permission.
+// Stores the Expo push token on the member row so cron jobs can reach them.
+router.post('/register-push', async (req: AuthRequest, res) => {
+  const { token } = req.body as { token?: string };
+  if (!token) return res.status(400).json({ error: 'token is required' });
+
+  try {
+    await prisma.member.update({
+      where: { id: req.memberId },
+      data: { pushToken: token },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to save push token' });
+  }
+});
+
+// DELETE /api/notifications/register-push  — unsubscribe (e.g. on sign-out)
+router.delete('/register-push', async (req: AuthRequest, res) => {
+  try {
+    await prisma.member.update({
+      where: { id: req.memberId },
+      data: { pushToken: null },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to remove push token' });
+  }
+});
+
+// ─── Send a push notification ─────────────────────────────────────────────────
+
+// Shared helper — used by the route below AND importable by cron jobs / other routes
+export async function sendPushToMember(memberId: string, title: string, body: string) {
+  const member = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!member?.pushToken) return { sent: false, reason: 'no token' };
+
+  const payload = {
+    to: member.pushToken,
+    title,
+    body,
+    sound: 'default',
+    data: { memberId },
+  };
+
+  const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json() as { data?: { status: string; message?: string } };
+  const status = result?.data?.status;
+
+  // Expo returns 'DeviceNotRegistered' when the token is stale — clean it up
+  if (status === 'error' && result?.data?.message === 'DeviceNotRegistered') {
+    await prisma.member.update({ where: { id: memberId }, data: { pushToken: null } });
+    return { sent: false, reason: 'DeviceNotRegistered — token cleared' };
+  }
+
+  return { sent: status === 'ok', status };
+}
+
+// POST /api/notifications/send
+// Body: { memberId, title, body }
+// Also saves a DB notification record so it shows up in the bell/list.
+router.post('/send', async (req: AuthRequest, res) => {
+  const { memberId, title, body } = req.body as { memberId?: string; title?: string; body?: string };
+  if (!memberId || !title || !body) {
+    return res.status(400).json({ error: 'memberId, title, and body are required' });
+  }
+
+  try {
+    // Save to DB so it shows in the notification list regardless of push delivery
+    await prisma.notification.create({
+      data: {
+        familyId: req.familyId!,
+        memberId,
+        title,
+        body,
+        read: false,
+      },
+    });
+
+    const pushResult = await sendPushToMember(memberId, title, body);
+    res.json({ ok: true, push: pushResult });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+// POST /api/notifications/broadcast
+// Sends to every member in the family who has a push token
+router.post('/broadcast', async (req: AuthRequest, res) => {
+  const { title, body } = req.body as { title?: string; body?: string };
+  if (!title || !body) return res.status(400).json({ error: 'title and body are required' });
+
+  try {
+    const members = await prisma.member.findMany({
+      where: { familyId: req.familyId },
+    });
+
+    // Save one DB notification per member
+    await prisma.notification.createMany({
+      data: members.map(m => ({
+        familyId: req.familyId!,
+        memberId: m.id,
+        title,
+        body,
+        read: false,
+      })),
+    });
+
+    // Fire push notifications concurrently
+    const results = await Promise.allSettled(
+      members.filter(m => m.pushToken).map(m => sendPushToMember(m.id, title, body))
+    );
+
+    res.json({ ok: true, sent: results.filter(r => r.status === 'fulfilled').length });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to broadcast notification' });
+  }
+});
+
 export default router;

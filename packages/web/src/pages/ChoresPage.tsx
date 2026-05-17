@@ -1,338 +1,204 @@
 ﻿import { useState } from 'react';
 import { useChores, useMembers, useCreateChore, useUpdateChore, useDeleteChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
-import { MediaProof } from '../components/MediaProof';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','🗑️','🪣','🧽','📚','🛒','🚗','🧴','💧'];
+const CHORE_EMOJIS = ['\u{1F9F9}','\u{1F37D}','\u{1F6CF}','\u{1F436}','\u{1F331}','\u{1F9FA}','\u{1F6BF}','\u{1F5D1}','\u{1FAA3}','\u{1F9FD}','\u{1F4DA}','\u{1F6D2}','\u{1F697}','\u{1F9F4}','\u{1F4A7}'];
 const FREQS = ['daily','weekly','once'] as const;
 
-type Status = 'pending' | 'in_progress' | 'done';
-
-const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string; next: Status | null; nextLabel: string }> = {
-  pending:     { label: 'Pending',     color: '#94a3b8', bg: 'transparent',          next: 'in_progress', nextLabel: 'Start' },
-  in_progress: { label: 'In Progress', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', next: 'done',        nextLabel: 'Mark Done' },
-  done:        { label: 'Done',        color: '#4ADE80', bg: 'rgba(74,222,128,0.15)', next: 'pending',     nextLabel: 'Undo' },
+const STATUS_CONFIG = {
+  pending:     { label: 'Pending',     icon: '\u23F3', color: 'var(--text-muted)',   bg: 'rgba(255,255,255,0.06)' },
+  in_progress: { label: 'In Progress', icon: '\u{1F525}', color: '#FBBF24',          bg: 'rgba(251,191,36,0.1)'  },
+  done:        { label: 'Done',        icon: '\u2705', color: 'var(--success)',       bg: 'rgba(74,222,128,0.1)'  },
 };
 
-function avatarSrc(url?: string | null): string | null {
+function nextStatus(current: string): string {
+  if (current === 'pending') return 'in_progress';
+  if (current === 'in_progress') return 'done';
+  return 'pending';
+}
+
+function avatarSrc(url?: string | null) {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url}`;
-}
-
-function MemberAvatar({ member, size = 22 }: { member: any; size?: number }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: member.color,
-      border: `2px solid ${member.color}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.5, overflow: 'hidden', flexShrink: 0,
-    }}>
-      {member.avatarUrl
-        ? <img src={avatarSrc(member.avatarUrl)!} alt={member.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : member.emoji}
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: Status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 20,
-      background: cfg.bg, color: cfg.color,
-      border: `1px solid ${cfg.color}44`,
-    }}>{cfg.label}</span>
-  );
-}
-
-function StatusButton({ status, onClick }: { status: Status; onClick: () => void }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  const icon = status === 'pending' ? '▷' : status === 'in_progress' ? '✓' : '↩';
-  return (
-    <button onClick={onClick} title={cfg.nextLabel} style={{
-      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-      border: `2px solid ${cfg.color}`,
-      background: cfg.bg,
-      color: cfg.color,
-      fontSize: 13, cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      transition: 'all 0.15s',
-    }}>{icon}</button>
-  );
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
 }
 
 export default function ChoresPage() {
-  const { member } = useAuthStore();
   const { data: chores = [], isLoading } = useChores();
   const { data: members = [] } = useMembers();
   const createChore = useCreateChore();
   const updateChore = useUpdateChore();
   const deleteChore = useDeleteChore();
 
-  const [filter, setFilter] = useState<'pending' | 'in_progress' | 'done' | 'all'>('pending');
+  const [filter, setFilter] = useState<'pending'|'in_progress'|'done'|'all'>('pending');
   const [showAdd, setShowAdd] = useState(false);
-  const [proofChoreId, setProofChoreId] = useState<string | null>(null);
   const [newChore, setNewChore] = useState({
-    title: '', emoji: '🧹', assignedToId: '',
-    frequency: 'daily' as const, stars: 5, proofRequired: false, dueDate: '',
+    title: '', emoji: '\u{1F9F9}', assignedToId: '', frequency: 'daily' as const, stars: 5, proofRequired: false,
   });
 
-  function getStatus(chore: any): Status {
-    // Support both old boolean `done` field and new `status` field
-    if (chore.status) return chore.status as Status;
-    return chore.done ? 'done' : 'pending';
-  }
-
   const filtered = (chores as any[]).filter(c =>
-    filter === 'all' ? true : getStatus(c) === filter
+    filter === 'all' ? true : c.status === filter
   );
 
-  async function handleAdvanceStatus(chore: any) {
-    const current = getStatus(chore);
-    const cfg = STATUS_CONFIG[current];
-    if (!cfg.next) return;
-
-    // If needs proof and moving to done, request it first
-    if (cfg.next === 'done' && chore.proofRequired && !chore.proofUrl) {
-      setProofChoreId(chore.id);
-      return;
-    }
-
-    updateChore.mutate({
-      id: chore.id,
-      data: { status: cfg.next, done: cfg.next === 'done' },
-    });
-  }
-
-  async function handleProofUpload(url: string, type: 'image' | 'video') {
-    if (!proofChoreId) return;
-    updateChore.mutate({
-      id: proofChoreId,
-      data: { status: 'done', done: true, proofUrl: url, proofType: type },
-    });
-    setProofChoreId(null);
+  function handleAdvance(chore: any) {
+    const next = nextStatus(chore.status || 'pending');
+    updateChore.mutate({ id: chore.id, data: { status: next } });
   }
 
   function handleAdd() {
     if (!newChore.title.trim()) return;
-    createChore.mutate({
-      ...newChore,
-      assignedToId: newChore.assignedToId || undefined,
-      dueDate: newChore.dueDate || undefined,
-    });
-    setNewChore({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false, dueDate: '' });
+    createChore.mutate({ ...newChore, assignedToId: newChore.assignedToId || undefined });
+    setNewChore({ title: '', emoji: '\u{1F9F9}', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false });
     setShowAdd(false);
   }
 
-  const FILTERS: { key: typeof filter; label: string }[] = [
-    { key: 'pending',     label: '⏳ Pending' },
-    { key: 'in_progress', label: '🔥 In Progress' },
-    { key: 'done',        label: '✅ Done' },
-    { key: 'all',         label: '📋 All' },
-  ];
+  if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>;
 
-  if (isLoading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-      <div className="spinner" />
-    </div>
-  );
+  const counts = (chores as any[]).reduce((acc: any, c: any) => {
+    acc[c.status || 'pending'] = (acc[c.status || 'pending'] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>✅ Chores</h1>
-        <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize: 13 }}>+ Add chore</button>
+        <h1 style={{ fontSize: 22, fontWeight: 900 }}>\u2705 Chores</h1>
+        <button onClick={() => setShowAdd(true)} className="btn btn-primary">+ Add chore</button>
       </div>
 
       {/* Filter tabs */}
-      <div style={{
-        display: 'flex', gap: 4, marginBottom: 16,
-        background: 'var(--bg-secondary)', padding: 4, borderRadius: 10,
-        border: '1.5px solid var(--border)',
-      }}>
-        {FILTERS.map(({ key, label }) => (
-          <button key={key} onClick={() => setFilter(key)} style={{
-            flex: 1, padding: '7px 4px', borderRadius: 8, fontWeight: 800,
-            fontSize: 11, cursor: 'pointer', border: 'none',
-            background: filter === key ? 'var(--primary)' : 'transparent',
-            color: filter === key ? '#fff' : 'var(--text-secondary)',
-          }}>{label}</button>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--bg-secondary)', padding: 4, borderRadius: 12, border: '1.5px solid var(--border)' }}>
+        {([['pending','\u23F3 Pending'],['in_progress','\u{1F525} In Progress'],['done','\u2705 Done'],['all','\u{1F4CB} All']] as const).map(([f, label]) => (
+          <button key={f} onClick={() => setFilter(f as any)} style={{
+            flex: 1, padding: '8px 4px', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer',
+            background: filter === f ? 'var(--primary)' : 'transparent',
+            color: filter === f ? '#fff' : 'var(--text-secondary)', border: 'none', position: 'relative'
+          }}>
+            {label}
+            {counts[f] > 0 && f !== 'all' && (
+              <span style={{ marginLeft: 4, background: filter === f ? 'rgba(255,255,255,0.25)' : 'var(--primary)', color: '#fff', borderRadius: 10, fontSize: 10, padding: '1px 5px', fontWeight: 900 }}>{counts[f]}</span>
+            )}
+          </button>
         ))}
       </div>
 
       {/* Chore list */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontWeight: 700 }}>
-          {filter === 'pending' ? '🎉 All caught up!' : filter === 'in_progress' ? 'Nothing in progress.' : 'No chores here yet.'}
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontWeight: 700, fontSize: 16 }}>
+          {filter === 'pending' ? '\u{1F389} All caught up!' : filter === 'done' ? 'No completed chores yet.' : 'No chores here yet.'}
         </div>
-      ) : filtered.map((chore: any) => {
-        const assignee = (members as any[]).find(m => m.id === chore.assignedToId);
-        const status = getStatus(chore);
-        return (
-          <div key={chore.id} className="card" style={{
-            marginBottom: 8,
-            opacity: status === 'done' ? 0.65 : 1,
-            transition: 'opacity 0.2s',
-            borderLeft: assignee ? `3px solid ${assignee.color}` : '3px solid var(--border)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <StatusButton status={status} onClick={() => handleAdvanceStatus(chore)} />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 10 }}>
+          {filtered.map((chore: any) => {
+            const assignee = (members as any[]).find((m: any) => m.id === chore.assignedToId);
+            const status = chore.status || 'pending';
+            const cfg = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
+            return (
+              <div key={chore.id} className="card" style={{
+                opacity: status === 'done' ? 0.7 : 1,
+                borderLeft: `4px solid ${assignee?.color || 'var(--border)'}`,
+                transition: 'opacity 0.2s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Advance status button */}
+                  <button
+                    onClick={() => handleAdvance(chore)}
+                    title={`Mark as ${nextStatus(status)}`}
+                    style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      border: `2px solid ${cfg.color}`,
+                      background: status === 'done' ? 'var(--success)' : cfg.bg,
+                      color: status === 'done' ? '#fff' : cfg.color,
+                      fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >{status === 'done' ? '\u2713' : status === 'in_progress' ? '\u{1F525}' : '\u25B6'}</button>
 
-              <span style={{ fontSize: 20 }}>{chore.emoji}</span>
+                  <span style={{ fontSize: 22 }}>{chore.emoji}</span>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontWeight: 800, fontSize: 14,
-                  textDecoration: status === 'done' ? 'line-through' : 'none',
-                }}>
-                  {chore.title}
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {assignee ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <MemberAvatar member={assignee} size={18} />
-                      <span style={{ fontSize: 11, fontWeight: 700, color: assignee.color }}>{assignee.name}</span>
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>👥 Anyone</span>
-                  )}
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
-                    background: 'var(--bg-secondary)', padding: '1px 6px', borderRadius: 4,
-                  }}>{chore.frequency}</span>
-                  <StatusBadge status={status} />
-                  {chore.proofRequired && !chore.proofUrl && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>📸 proof needed</span>
-                  )}
-                  {chore.proofUrl && (
-                    <a href={chore.proofUrl} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 10, fontWeight: 700, color: 'var(--sky)' }}>
-                      {chore.proofType === 'video' ? '🎥 view' : '📷 view'}
-                    </a>
-                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, textDecoration: status === 'done' ? 'line-through' : 'none' }}>
+                      {chore.title}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {assignee ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: assignee.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, overflow: 'hidden' }}>
+                            {avatarSrc(assignee.avatarUrl)
+                              ? <img src={avatarSrc(assignee.avatarUrl)!} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : assignee.emoji}
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>{assignee.name}</span>
+                        </div>
+                      ) : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Anyone</span>}
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>{chore.frequency}</span>
+                      <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 20, background: cfg.bg, color: cfg.color }}>{cfg.icon} {cfg.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#FBBF24' }}>\u2B50 {chore.stars}</span>
+                    </div>
+                  </div>
+
+                  <button onClick={() => deleteChore.mutate(chore.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: 4 }}>\u00D7</button>
                 </div>
               </div>
-
-              <span style={{ fontWeight: 900, fontSize: 12, color: 'var(--warning)', flexShrink: 0 }}>
-                ⭐{chore.stars}
-              </span>
-
-              {member?.role === 'parent' && (
-                <button
-                  onClick={() => { if (confirm('Delete this chore?')) deleteChore.mutate(chore.id); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: 4, flexShrink: 0 }}
-                >🗑️</button>
-              )}
-            </div>
-
-            {proofChoreId === chore.id && (
-              <div style={{ marginTop: 12 }}>
-                <MediaProof onUpload={handleProofUpload} onCancel={() => setProofChoreId(null)} />
-              </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
 
       {/* Add chore modal */}
       {showAdd && (
-        <div className="modal-overlay" onClick={() => setShowAdd(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 16 }}>➕ New Chore</div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+          <div className="card" style={{ width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontWeight: 900, fontSize: 18 }}>\u2795 New Chore</h2>
+              <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>\u00D7</button>
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {/* Emoji picker */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {CHORE_EMOJIS.map(e => (
-                  <button type="button" key={e} onClick={() => setNewChore(p => ({ ...p, emoji: e }))} style={{
-                    fontSize: 18, width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
-                    border: `2px solid ${newChore.emoji === e ? 'var(--primary)' : 'var(--border)'}`,
-                    background: 'var(--bg-secondary)',
-                  }}>{e}</button>
-                ))}
-              </div>
+            {/* Emoji picker */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {CHORE_EMOJIS.map(e => (
+                <button key={e} onClick={() => setNewChore(p => ({ ...p, emoji: e }))} style={{
+                  width: 36, height: 36, borderRadius: 8, fontSize: 18, cursor: 'pointer',
+                  background: newChore.emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  border: newChore.emoji === e ? '2px solid var(--primary)' : '2px solid transparent',
+                }}>{e}</button>
+              ))}
+            </div>
 
-              <input
-                className="input" placeholder="Chore name"
-                value={newChore.title}
-                onChange={e => setNewChore(p => ({ ...p, title: e.target.value }))}
-                autoFocus
-              />
+            <input className="input" placeholder="Chore title..." style={{ marginBottom: 12, width: '100%' }}
+              value={newChore.title} onChange={e => setNewChore(p => ({ ...p, title: e.target.value }))} />
 
-              <div className="grid-2">
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 4 }}>Frequency</label>
-                  <select className="input" value={newChore.frequency}
-                    onChange={e => setNewChore(p => ({ ...p, frequency: e.target.value as any }))}>
-                    {FREQS.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 4 }}>⭐ Stars</label>
-                  <input type="number" className="input" min={1} max={50} value={newChore.stars}
-                    onChange={e => setNewChore(p => ({ ...p, stars: +e.target.value }))} />
-                </div>
-              </div>
+            <select className="input" style={{ marginBottom: 12, width: '100%' }}
+              value={newChore.assignedToId} onChange={e => setNewChore(p => ({ ...p, assignedToId: e.target.value }))}>
+              <option value="">Anyone</option>
+              {(members as any[]).map((m: any) => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
+            </select>
 
-              {/* Assign to */}
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Assign to</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button type="button"
-                    onClick={() => setNewChore(p => ({ ...p, assignedToId: '' }))}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
-                      border: `2px solid ${!newChore.assignedToId ? 'var(--primary)' : 'var(--border)'}`,
-                      background: !newChore.assignedToId ? 'rgba(99,102,241,0.1)' : 'var(--bg-secondary)',
-                      fontWeight: 700, fontSize: 12,
-                      color: !newChore.assignedToId ? 'var(--primary)' : 'var(--text-secondary)',
-                    }}>👥 Anyone</button>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              {FREQS.map(f => (
+                <button key={f} onClick={() => setNewChore(p => ({ ...p, frequency: f }))} style={{
+                  flex: 1, padding: '8px', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer',
+                  background: newChore.frequency === f ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  color: newChore.frequency === f ? '#fff' : 'var(--text-secondary)', border: 'none',
+                }}>{f}</button>
+              ))}
+            </div>
 
-                  {(members as any[]).map((m: any) => (
-                    <button type="button" key={m.id}
-                      onClick={() => setNewChore(p => ({ ...p, assignedToId: m.id }))}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
-                        border: `2px solid ${newChore.assignedToId === m.id ? m.color : 'var(--border)'}`,
-                        background: newChore.assignedToId === m.id ? `${m.color}22` : 'var(--bg-secondary)',
-                        fontWeight: 700, fontSize: 12,
-                        color: newChore.assignedToId === m.id ? m.color : 'var(--text-secondary)',
-                      }}>
-                      <MemberAvatar member={m} size={20} />
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <label style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 12px', background: 'var(--bg-tertiary)', borderRadius: 10, cursor: 'pointer',
-              }}>
-                <input type="checkbox" checked={newChore.proofRequired}
-                  onChange={e => setNewChore(p => ({ ...p, proofRequired: e.target.checked }))}
-                  style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 13 }}>📸 Require photo/video proof</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Kids must submit proof to mark done</div>
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: 12, background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}>
+              <input type="checkbox" id="proof" checked={newChore.proofRequired}
+                onChange={e => setNewChore(p => ({ ...p, proofRequired: e.target.checked }))}
+                style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+              <label htmlFor="proof" style={{ fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                \u{1F4F8} Require photo proof
               </label>
+            </div>
 
-              <div className="flex gap-3">
-                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowAdd(false)}>Cancel</button>
-                <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdd}
-                  disabled={!newChore.title.trim() || createChore.isPending}>
-                  {createChore.isPending ? 'Adding...' : '+ Add Chore'}
-                </button>
-              </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 2 }} onClick={handleAdd} disabled={!newChore.title.trim() || createChore.isPending}>
+                {createChore.isPending ? 'Adding...' : '+ Add Chore'}
+              </button>
             </div>
           </div>
         </div>

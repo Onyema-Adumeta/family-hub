@@ -3,8 +3,8 @@ import { useMeals, useCreateMeal, useUpdateMeal, useDeleteMeal, useMembers } fro
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const SLOTS = ['breakfast','lunch','dinner','snack'] as const;
-const SLOT_EMOJI = { breakfast: 'ðŸŒ…', lunch: 'â˜€ï¸', dinner: 'ðŸŒ™', snack: 'ðŸŽ' };
-const MEAL_EMOJIS = ['ðŸ•','ðŸŒ®','ðŸ¥˜','ðŸ','ðŸ¥©','ðŸ£','ðŸ¥—','ðŸœ','ðŸŒ¯','ðŸ”','ðŸ›','ðŸ¥ž','ðŸ—','ðŸ¥‘','ðŸ±'];
+const SLOT_EMOJI = { breakfast: '\u{1F305}', lunch: '\u2600\uFE0F', dinner: '\u{1F319}', snack: '\u{1F34E}' }', lunch: '\u{2600}', dinner: '\u{1F319}', snack: '\u{1F34E}' };
+const MEAL_EMOJIS = ['\u{1F355}','\u{1F32E}','\u{1F958}','\u{1F35D}','\u{1F969}','\u{1F363}','\u{1F957}','\u{1F35C}','\u{1F32F}','\u{1F354}','\u{1F35B}','\u{1F95E}','\u{1F357}','\u{1F951}','\u{1F371}'];
 
 function getWeekStart() {
   const d = new Date();
@@ -141,4 +141,6 @@ export default function MealsPage() {
     </div>
   );
 }
+
+
 

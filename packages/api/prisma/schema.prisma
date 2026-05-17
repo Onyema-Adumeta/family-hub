@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -13,7 +13,7 @@ model Family {
   inviteCode    String         @unique
   createdAt     DateTime       @default(now())
 
-  // ── Premium / billing ──────────────────────────────────────────────────────
+  // â”€â”€ Premium / billing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   plan          String         @default("free")       // "free" | "plus" | "pro"
   stripeCustomerId  String?    @unique
   stripeSubId       String?    @unique
@@ -37,7 +37,7 @@ model Member {
   familyId        String
   family          Family       @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String       @default("🙂")
+  emoji           String       @default("ðŸ™‚")
   color           String       @default("#6366F1")
   avatarUrl       String?
   role            String       @default("child")      // "parent" | "child"
@@ -47,13 +47,13 @@ model Member {
   pushToken       String?
   createdAt       DateTime     @default(now())
 
-  // ── Gamification ──────────────────────────────────────────────────────────
+  // â”€â”€ Gamification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   streakDays      Int          @default(0)
   streakUpdatedAt DateTime?
   totalChoresDone Int          @default(0)
   badges          String[]     @default([])
 
-  // ── Location / safety ─────────────────────────────────────────────────────
+  // â”€â”€ Location / safety â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   lastLat         Float?
   lastLng         Float?
   lastSeenAt      DateTime?
@@ -67,17 +67,23 @@ model Member {
   groceryAdded    GroceryItem[] @relation("GroceryAdded")
 }
 
+enum ChoreStatus {
+  pending
+  in_progress
+  done
+}
+
 model Chore {
   id            String    @id @default(cuid())
   familyId      String
   family        Family    @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String    @default("✅")
+  emoji         String    @default("âœ…")
   assignedToId  String?
   assignedTo    Member?   @relation("AssignedChores", fields: [assignedToId], references: [id])
   frequency     String    @default("daily")
   stars         Int       @default(5)
-  done          Boolean   @default(false)
+  status       ChoreStatus @default(pending)
   status        String    @default("pending")   // "pending" | "in_progress" | "done"
   proofRequired Boolean   @default(false)
   proofUrl      String?
@@ -96,7 +102,7 @@ model Meal {
   day          String
   slot         String   @default("dinner")
   name         String
-  emoji        String   @default("🍽️")
+  emoji        String   @default("ðŸ½ï¸")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
@@ -109,7 +115,7 @@ model Event {
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   title        String
-  emoji        String   @default("📅")
+  emoji        String   @default("ðŸ“…")
   date         DateTime
   time         String?
   color        String?
@@ -124,7 +130,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("🎁")
+  emoji          String       @default("ðŸŽ")
   cost           Int
   description    String?
   availableCount Int?
@@ -163,7 +169,7 @@ model Quest {
   family      Family    @relation(fields: [familyId], references: [id])
   title       String
   description String?
-  emoji       String    @default("⚔️")
+  emoji       String    @default("âš”ï¸")
   type        String    @default("family")
   goal        Int       @default(5)
   progress    Int       @default(0)
@@ -222,3 +228,4 @@ model GroceryItem {
   checked     Boolean  @default(false)
   createdAt   DateTime @default(now())
 }
+
