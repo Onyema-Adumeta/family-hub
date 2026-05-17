@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState } from 'react';
 
 interface GroceryItem {
   id: string;
@@ -10,19 +10,11 @@ interface GroceryItem {
 
 const CATS = ['🥦 Produce','🥩 Meat','🥛 Dairy','🥫 Pantry','🍞 Bakery','🧴 Household','❄️ Frozen','🍬 Snacks','Other'];
 
-const STORAGE_KEY = 'family-hub-grocery';
-
-function load(): GroceryItem[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-}
-
 export default function GroceryPage() {
-  const [items, setItems] = useState<GroceryItem[]>(load);
+  const [items, setItems] = useState<GroceryItem[]>([]);
   const [name, setName] = useState('');
   const [qty, setQty] = useState('1');
   const [cat, setCat] = useState(CATS[0]);
-
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }, [items]);
 
   function add() {
     if (!name.trim()) return;
@@ -41,6 +33,7 @@ export default function GroceryPage() {
   const done = items.filter(i => i.checked);
   const total = items.length;
   const checked = done.length;
+  const pct = total > 0 ? Math.round(checked / total * 100) : 0;
 
   return (
     <div style={{ maxWidth: 640, padding: '0 0 80px' }}>
@@ -58,10 +51,10 @@ export default function GroceryPage() {
         <div style={{ marginBottom: 20, padding: '12px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: 12, border: '1.5px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 800, marginBottom: 8, color: 'rgba(240,240,245,0.6)' }}>
             <span>{checked} of {total} items</span>
-            <span>{Math.round(checked/total*100)}%</span>
+            <span>{pct}%</span>
           </div>
           <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
-            <div style={{ height: '100%', width: ``%, background: 'linear-gradient(90deg,#6366F1,#A78BFA)', borderRadius: 99, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', width: pct + '%', background: 'linear-gradient(90deg,#6366F1,#A78BFA)', borderRadius: 99, transition: 'width 0.3s' }} />
           </div>
         </div>
       )}
@@ -84,7 +77,6 @@ export default function GroceryPage() {
         <button onClick={add} className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Add</button>
       </div>
 
-      {/* Items by category */}
       {grouped.length === 0 && done.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(240,240,245,0.35)', fontSize: 14, fontWeight: 700 }}>
           🛒 Your list is empty — add items above!
@@ -105,7 +97,6 @@ export default function GroceryPage() {
         </div>
       ))}
 
-      {/* Done items */}
       {done.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 900, color: 'rgba(240,240,245,0.3)', letterSpacing: 0.8, marginBottom: 8 }}>✓ IN CART</div>
@@ -121,5 +112,3 @@ export default function GroceryPage() {
     </div>
   );
 }
-
-
