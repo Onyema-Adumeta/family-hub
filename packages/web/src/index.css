@@ -220,3 +220,8 @@ select option { background: #1E1A2E; color: #EEEAF8; font-weight: 700; }
   .main-content { padding: 16px; }
   .page-title { font-size: 20px; }
 }
+
+:root { color-scheme: dark; }
+select, select.input { background-color: #1E1A2E !important; color: #EEEAF8 !important; }
+select option { background-color: #1E1A2E !important; color: #EEEAF8 !important; }
+select:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(124,111,247,0.15) !important; }

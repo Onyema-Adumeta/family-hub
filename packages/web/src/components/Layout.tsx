@@ -13,16 +13,16 @@ function avatarSrc(url?: string | null): string | null {
 }
 
 const NAV = [
-  { path: '/', icon: 'ðŸ ', label: 'Home' },
-  { path: '/chores', icon: 'âœ…', label: 'Chores' },
-  { path: '/meals', icon: 'ðŸ½ï¸', label: 'Meals' },
-  { path: '/schedule', icon: 'ðŸ“…', label: 'Schedule' },
-  { path: '/rewards', icon: 'â­', label: 'Rewards' },
-  { path: '/chat', icon: 'ðŸ’¬', label: 'Chat' },
-  { path: '/quests', icon: 'âš”ï¸', label: 'Quests' },
-  { path: '/report', icon: 'ðŸ“Š', label: 'Report' },
-  { path: '/grocery', label: 'Grocery', icon: '🛒' },
-  { path: '/settings', icon: 'âš™ï¸', label: 'Settings' },
+  { path: '/',         icon: '🏠',  label: 'Home' },
+  { path: '/chores',   icon: '✅',  label: 'Chores' },
+  { path: '/meals',    icon: '🍽️', label: 'Meals' },
+  { path: '/schedule', icon: '📅',  label: 'Schedule' },
+  { path: '/rewards',  icon: '⭐',  label: 'Rewards' },
+  { path: '/chat',     icon: '💬',  label: 'Chat' },
+  { path: '/quests',   icon: '⚔️', label: 'Quests' },
+  { path: '/report',   icon: '📊',  label: 'Report' },
+  { path: '/grocery',  icon: '🛒',  label: 'Grocery' },
+  { path: '/settings', icon: '⚙️', label: 'Settings' },
 ];
 
 export default function Layout() {
@@ -191,3 +191,4 @@ export default function Layout() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -12,6 +12,7 @@ import RewardsPage from './pages/RewardsPage';
 import ChatPage from './pages/ChatPage';
 import ReportPage from './pages/ReportPage';
 import QuestsPage from './pages/QuestsPage';
+import GroceryPage from './pages/GroceryPage';
 import SettingsPage from './pages/SettingsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -36,9 +37,11 @@ export default function App() {
           <Route path="chat" element={<ChatPage />} />
           <Route path="report" element={<ReportPage />} />
           <Route path="quests" element={<QuestsPage />} />
+          <Route path="grocery" element={<GroceryPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
+
