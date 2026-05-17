@@ -1,14 +1,11 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/auth';
-
-export const api = axios.create({ baseURL: '/api' });
-
+export const api = axios.create({ baseURL: (import.meta.env.VITE_API_URL || '') + '/api' });
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -19,7 +16,6 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-
 export async function uploadFile(file: File): Promise<{ url: string; type: 'image' | 'video' }> {
   const form = new FormData();
   form.append('file', file);
