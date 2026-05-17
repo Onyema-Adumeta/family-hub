@@ -25,7 +25,7 @@ export default function RegisterPage() {
       setAuth(data.token, data.member, data.family);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
     }

@@ -20,7 +20,7 @@ export default function LoginPage() {
       setAuth(data.token, data.member, data.family);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
     }
