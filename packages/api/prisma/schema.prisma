@@ -1,4 +1,4 @@
-﻿generator client {
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -12,13 +12,10 @@ model Family {
   name          String
   inviteCode    String         @unique
   createdAt     DateTime       @default(now())
-
-  // â”€â”€ Premium / billing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  plan          String         @default("free")       // "free" | "plus" | "pro"
+  plan          String         @default("free")
   stripeCustomerId  String?    @unique
   stripeSubId       String?    @unique
   planExpiresAt     DateTime?
-
   members       Member[]
   chores        Chore[]
   meals         Meal[]
@@ -33,33 +30,28 @@ model Family {
 }
 
 model Member {
-  id              String       @id @default(cuid())
+  id              String        @id @default(cuid())
   familyId        String
-  family          Family       @relation(fields: [familyId], references: [id])
+  family          Family        @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String       @default("ðŸ™‚")
-  color           String       @default("#6366F1")
+  emoji           String        @default("🙂")
+  color           String        @default("#6366F1")
   avatarUrl       String?
-  role            String       @default("child")      // "parent" | "child"
-  stars           Int          @default(0)
+  role            String        @default("child")
+  stars           Int           @default(0)
   password        String
   email           String?
   pushToken       String?
-  createdAt       DateTime     @default(now())
-
-  // â”€â”€ Gamification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  streakDays      Int          @default(0)
+  createdAt       DateTime      @default(now())
+  streakDays      Int           @default(0)
   streakUpdatedAt DateTime?
-  totalChoresDone Int          @default(0)
-  badges          String[]     @default([])
-
-  // â”€â”€ Location / safety â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  totalChoresDone Int           @default(0)
+  badges          String[]      @default([])
   lastLat         Float?
   lastLng         Float?
   lastSeenAt      DateTime?
-
-  chores          Chore[]      @relation("AssignedChores")
-  completedChores Chore[]      @relation("CompletedChores")
+  chores          Chore[]       @relation("AssignedChores")
+  completedChores Chore[]       @relation("CompletedChores")
   meals           Meal[]
   events          Event[]
   messages        Message[]
@@ -74,25 +66,24 @@ enum ChoreStatus {
 }
 
 model Chore {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   familyId      String
-  family        Family    @relation(fields: [familyId], references: [id])
+  family        Family      @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String    @default("âœ…")
+  emoji         String      @default("✅")
   assignedToId  String?
-  assignedTo    Member?   @relation("AssignedChores", fields: [assignedToId], references: [id])
-  frequency     String    @default("daily")
-  stars         Int       @default(5)
-  status       ChoreStatus @default(pending)
-  status        String    @default("pending")   // "pending" | "in_progress" | "done"
-  proofRequired Boolean   @default(false)
+  assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
+  frequency     String      @default("daily")
+  stars         Int         @default(5)
+  status        ChoreStatus @default(pending)
+  proofRequired Boolean     @default(false)
   proofUrl      String?
   proofType     String?
   dueDate       DateTime?
   completedAt   DateTime?
   completedById String?
-  completedBy   Member?   @relation("CompletedChores", fields: [completedById], references: [id])
-  createdAt     DateTime  @default(now())
+  completedBy   Member?     @relation("CompletedChores", fields: [completedById], references: [id])
+  createdAt     DateTime    @default(now())
 }
 
 model Meal {
@@ -102,7 +93,7 @@ model Meal {
   day          String
   slot         String   @default("dinner")
   name         String
-  emoji        String   @default("ðŸ½ï¸")
+  emoji        String   @default("🍽️")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
@@ -115,7 +106,7 @@ model Event {
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   title        String
-  emoji        String   @default("ðŸ“…")
+  emoji        String   @default("📅")
   date         DateTime
   time         String?
   color        String?
@@ -130,7 +121,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("ðŸŽ")
+  emoji          String       @default("🎁")
   cost           Int
   description    String?
   availableCount Int?
@@ -169,7 +160,7 @@ model Quest {
   family      Family    @relation(fields: [familyId], references: [id])
   title       String
   description String?
-  emoji       String    @default("âš”ï¸")
+  emoji       String    @default("⚔️")
   type        String    @default("family")
   goal        Int       @default(5)
   progress    Int       @default(0)
@@ -192,16 +183,16 @@ model Notification {
 }
 
 model Automation {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   familyId   String
-  family     Family   @relation(fields: [familyId], references: [id])
+  family     Family    @relation(fields: [familyId], references: [id])
   name       String
   trigger    String
-  conditions Json     @default("{}")
-  actions    Json     @default("[]")
-  active     Boolean  @default(true)
+  conditions Json      @default("{}")
+  actions    Json      @default("[]")
+  active     Boolean   @default(true)
   lastRanAt  DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model Memory {
@@ -217,15 +208,14 @@ model Memory {
 }
 
 model GroceryItem {
-  id          String   @id @default(cuid())
-  familyId    String
-  family      Family   @relation(fields: [familyId], references: [id])
-  addedById   String
-  addedBy     Member   @relation("GroceryAdded", fields: [addedById], references: [id])
-  name        String
-  qty         String?
-  category    String   @default("General")
-  checked     Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  addedById String
+  addedBy   Member   @relation("GroceryAdded", fields: [addedById], references: [id])
+  name      String
+  qty       String?
+  category  String   @default("General")
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
-
