@@ -61,7 +61,7 @@ export default function GroceryPage() {
             <span>{Math.round(checked/total*100)}%</span>
           </div>
           <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 99 }}>
-            <div style={{ height: '100%', width: ${Math.round(checked/total*100)}%, background: 'linear-gradient(90deg,#6366F1,#A78BFA)', borderRadius: 99, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', width: ``%, background: 'linear-gradient(90deg,#6366F1,#A78BFA)', borderRadius: 99, transition: 'width 0.3s' }} />
           </div>
         </div>
       )}
@@ -121,3 +121,4 @@ export default function GroceryPage() {
     </div>
   );
 }
+
