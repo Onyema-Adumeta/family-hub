@@ -1,4 +1,5 @@
 FROM node:20-alpine
+RUN apk add --no-cache openssl openssl-dev
 RUN npm install -g pnpm@9.15.4
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -9,5 +10,6 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared ./packages/shared
 COPY packages/api ./packages/api
 RUN pnpm --filter @family-hub/api build
-EXPOSE 8080
+RUN cd packages/api && npx prisma generate
+EXPOSE 3001
 CMD ["node", "packages/api/dist/index.js"]
