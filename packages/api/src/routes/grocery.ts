@@ -6,7 +6,7 @@ import { broadcast } from '../services/websocket';
 const router = Router();
 const prisma = new PrismaClient();
 
-// GET /api/grocery — list all items for this family
+// GET /api/grocery
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const items = await prisma.groceryItem.findMany({
@@ -20,18 +20,21 @@ router.get('/', async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/grocery — add item
+// POST /api/grocery
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { name, qty, category } = req.body;
+    const { name, qty, category, listType, priority, notes } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
     const item = await prisma.groceryItem.create({
       data: {
-        familyId: req.familyId!,
+        familyId:  req.familyId!,
         addedById: req.memberId!,
-        name: name.trim(),
-        qty: qty || null,
-        category: category || 'General',
+        name:      name.trim(),
+        qty:       qty     || null,
+        category:  category || 'General',
+        listType:  listType || 'grocery',   // ← key field
+        priority:  priority || 'normal',
+        notes:     notes    || null,
       },
       include: { addedBy: { select: { id: true, name: true, emoji: true, color: true } } },
     });
@@ -42,12 +45,12 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
-// PATCH /api/grocery/:id — toggle checked or update
+// PATCH /api/grocery/:id
 router.patch('/:id', async (req: AuthRequest, res) => {
   try {
     const item = await prisma.groceryItem.update({
       where: { id: req.params.id },
-      data: req.body,
+      data:  req.body,
       include: { addedBy: { select: { id: true, name: true, emoji: true, color: true } } },
     });
     broadcast(req.familyId!, { type: 'grocery:updated', item });
@@ -57,7 +60,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// DELETE /api/grocery/:id — remove item
+// DELETE /api/grocery/:id
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     await prisma.groceryItem.delete({ where: { id: req.params.id } });
@@ -68,7 +71,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// DELETE /api/grocery/checked/all — clear all checked items
+// DELETE /api/grocery/checked/all
 router.delete('/checked/all', async (req: AuthRequest, res) => {
   try {
     const { count } = await prisma.groceryItem.deleteMany({
