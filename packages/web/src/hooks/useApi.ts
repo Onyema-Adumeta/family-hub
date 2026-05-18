@@ -12,15 +12,27 @@ export function useChores() {
 }
 export function useCreateChore() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/chores', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['chores'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/chores', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chores'] }),
+  });
 }
 export function useUpdateChore() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/chores/${id}`, data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['chores', 'members'] }) });
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/chores/${id}`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chores'] });   // FIX: was ['chores', 'members'] — one bad key
+      qc.invalidateQueries({ queryKey: ['members'] });  // FIX: now two separate correct invalidations
+    },
+  });
 }
 export function useDeleteChore() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/chores/${id}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['chores'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/chores/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chores'] }),
+  });
 }
 
 // ── Meals ─────────────────────────────────────────────────────
@@ -29,15 +41,24 @@ export function useMeals(week?: string) {
 }
 export function useUpdateMeal() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/meals/${id}`, data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }) });
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/meals/${id}`, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }),
+  });
 }
 export function useCreateMeal() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/meals', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/meals', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }),
+  });
 }
 export function useDeleteMeal() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/meals/${id}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/meals/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['meals'] }),
+  });
 }
 
 // ── Events ─────────────────────────────────────────────────────
@@ -46,11 +67,17 @@ export function useEvents() {
 }
 export function useCreateEvent() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/events', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/events', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
+  });
 }
 export function useDeleteEvent() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/events/${id}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/events/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
+  });
 }
 
 // ── Rewards ───────────────────────────────────────────────────
@@ -62,15 +89,27 @@ export function useRedemptions() {
 }
 export function useCreateReward() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/rewards', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/rewards', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }),
+  });
 }
 export function useDeleteReward() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/rewards/${id}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/rewards/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rewards'] }),
+  });
 }
 export function useRedeemReward() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (rewardId: string) => api.post(`/rewards/redeem/${rewardId}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['redemptions', 'members'] }) });
+  return useMutation({
+    mutationFn: (rewardId: string) => api.post(`/rewards/redeem/${rewardId}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['redemptions'] }); // FIX: was ['redemptions', 'members'] — bad key
+      qc.invalidateQueries({ queryKey: ['members'] });
+    },
+  });
 }
 
 // ── Chat ──────────────────────────────────────────────────────
@@ -79,7 +118,10 @@ export function useMessages() {
 }
 export function useSendMessage() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/chat', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/chat', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  });
 }
 
 // ── Notifications ─────────────────────────────────────────────
@@ -88,11 +130,17 @@ export function useNotifications() {
 }
 export function useMarkRead() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.patch(`/notifications/${id}/read`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`/notifications/${id}/read`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
 }
 export function useMarkAllRead() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: () => api.patch('/notifications/read-all').then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }) });
+  return useMutation({
+    mutationFn: () => api.patch('/notifications/read-all').then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
 }
 
 // ── Quests ────────────────────────────────────────────────────
@@ -101,15 +149,34 @@ export function useQuests() {
 }
 export function useCreateQuest() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (data: any) => api.post('/quests', data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }) });
+  return useMutation({
+    mutationFn: (data: any) => api.post('/quests', data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }),
+  });
 }
 export function useUpdateQuest() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/quests/${id}`, data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }) });
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/quests/${id}`, data).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }),
+  });
 }
 export function useDeleteQuest() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/quests/${id}`).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }) });
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/quests/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['quests'] }),
+  });
+}
+export function useCompleteQuest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/quests/${id}/complete`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['quests'] });  // FIX: was ['quests', 'members'] — bad key
+      qc.invalidateQueries({ queryKey: ['members'] });
+    },
+  });
 }
 
 // ── Report ────────────────────────────────────────────────────
@@ -117,16 +184,7 @@ export function useWeeklyReport() {
   return useQuery({ queryKey: ['report'], queryFn: () => api.get('/report/weekly').then(r => r.data), staleTime: 5 * 60_000 });
 }
 
-// ── Quests (extra) ────────────────────────────────────────────
-export function useCompleteQuest() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.post(`/quests/${id}/complete`).then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['quests', 'members'] }),
-  });
-}
-
-// useChat — alias for useMessages
+// ── Chat alias ────────────────────────────────────────────────
 export function useChat() {
   return useQuery({
     queryKey: ['messages'],
