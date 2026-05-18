@@ -216,6 +216,9 @@ model GroceryItem {
   name      String
   qty       String?
   category  String   @default("General")
+  listType  String   @default("grocery")
+  priority  String   @default("normal")
+  notes     String?
   checked   Boolean  @default(false)
   createdAt DateTime @default(now())
 }
