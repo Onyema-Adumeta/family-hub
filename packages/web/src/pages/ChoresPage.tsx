@@ -1,20 +1,22 @@
-﻿import { useState } from 'react';
+﻿import { useState, useRef } from 'react';
 import { useChores, useMembers, useCreateChore, useUpdateChore, useDeleteChore } from '../hooks/useApi';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','🗑️','🪣','🧽','📚','🛒','🚗','🧴','💧'];
-const FREQS = ['daily','weekly','once'] as const;
+const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','🗑️','🪣','🧽','📚','🛒','🚗','🧴','💧','🪟','🧊','🏠'];
+const FREQS = ['daily', 'weekly', 'once'] as const;
 
-const STATUS_CONFIG = {
-  pending:     { label: 'Pending',     icon: '⏳', color: 'rgba(240,240,245,0.4)',  bg: 'rgba(255,255,255,0.06)' },
-  in_progress: { label: 'In Progress', icon: '🔥', color: '#FBBF24',                bg: 'rgba(251,191,36,0.1)'  },
-  done:        { label: 'Done',        icon: '✅', color: '#4ADE80',                 bg: 'rgba(74,222,128,0.1)'  },
-};
+type Status = 'pending' | 'in_progress' | 'done';
 
-function nextStatus(current: string): string {
-  if (current === 'pending')     return 'in_progress';
-  if (current === 'in_progress') return 'done';
+const COLUMNS: { key: Status; label: string; icon: string; color: string; bg: string; border: string }[] = [
+  { key: 'pending',     label: 'Pending',     icon: '⏳', color: '#94A3B8', bg: 'rgba(148,163,184,0.06)', border: 'rgba(148,163,184,0.2)' },
+  { key: 'in_progress', label: 'In Progress', icon: '🔥', color: '#FBBF24', bg: 'rgba(251,191,36,0.06)',  border: 'rgba(251,191,36,0.3)'  },
+  { key: 'done',        label: 'Done',        icon: '✅', color: '#4ADE80', bg: 'rgba(74,222,128,0.06)',  border: 'rgba(74,222,128,0.3)'  },
+];
+
+function nextStatus(s: Status): Status {
+  if (s === 'pending') return 'in_progress';
+  if (s === 'in_progress') return 'done';
   return 'pending';
 }
 
@@ -23,332 +25,463 @@ function avatarSrc(url?: string | null) {
   return url.startsWith('http') ? url : `${API_BASE}${url}`;
 }
 
-function isOverdue(dueDate?: string | null, status?: string) {
-  if (!dueDate || status === 'done') return false;
-  return new Date() > new Date(dueDate);
-}
-
-function formatDue(dueDate?: string | null) {
-  if (!dueDate) return null;
-  const d = new Date(dueDate);
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
-  if (diff < 0)  return `${Math.abs(diff)}d overdue`;
-  if (diff === 0) return 'Due today';
-  if (diff === 1) return 'Due tomorrow';
-  return `Due in ${diff}d`;
+function MemberAvatar({ member, size = 22 }: { member: any; size?: number }) {
+  const src = avatarSrc(member?.avatarUrl);
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: member?.color || '#6366F1',
+      border: `2px solid ${member?.color || '#6366F1'}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.5, overflow: 'hidden', flexShrink: 0,
+    }}>
+      {src
+        ? <img src={src} alt={member?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span>{member?.emoji || '👤'}</span>}
+    </div>
+  );
 }
 
 export default function ChoresPage() {
   const { data: chores = [], isLoading } = useChores();
-  const { data: members = [] }           = useMembers();
-  const createChore  = useCreateChore();
-  const updateChore  = useUpdateChore();
-  const deleteChore  = useDeleteChore();
+  const { data: members = [] } = useMembers();
+  const createChore = useCreateChore();
+  const updateChore = useUpdateChore();
+  const deleteChore = useDeleteChore();
 
-  const [filter, setFilter]   = useState<'pending'|'in_progress'|'done'|'all'>('pending');
   const [showAdd, setShowAdd] = useState(false);
-  const [editChore, setEditChore] = useState<any>(null); // chore being reassigned/edited
-
+  const [view, setView] = useState<'kanban' | 'list'>('kanban');
+  const [listFilter, setListFilter] = useState<Status | 'all'>('all');
   const [newChore, setNewChore] = useState({
-    title: '', emoji: '🧹', assignedToId: '', frequency: 'daily' as typeof FREQS[number],
-    stars: 5, proofRequired: false, dueDate: '',
+    title: '', emoji: '🧹', assignedToId: '',
+    frequency: 'daily' as typeof FREQS[number],
+    stars: 5, proofRequired: false,
   });
 
+  // Drag state
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<Status | null>(null);
+  const dragItem = useRef<any>(null);
+
   const allChores = chores as any[];
-  const memberList = members as any[];
 
-  const filtered = allChores.filter(c =>
-    filter === 'all' ? true : (c.status || 'pending') === filter
-  );
+  const choresByStatus = (status: Status) =>
+    allChores.filter(c => (c.status || 'pending') === status);
 
-  const counts = allChores.reduce((acc: Record<string,number>, c: any) => {
-    const s = c.status || 'pending';
-    acc[s] = (acc[s] || 0) + 1;
-    return acc;
-  }, {});
-
-  const overdueCount = allChores.filter(c => isOverdue(c.dueDate, c.status)).length;
-
-  function handleAdvance(chore: any) {
+  const handleAdvance = async (chore: any) => {
     const next = nextStatus(chore.status || 'pending');
-    updateChore.mutate({ id: chore.id, data: { status: next } });
-  }
+    try {
+      await updateChore.mutateAsync({ id: chore.id, data: { status: next } });
+    } catch (e) { console.error(e); }
+  };
 
-  function handleReassign(chore: any, assignedToId: string) {
-    updateChore.mutate({ id: chore.id, data: { assignedToId: assignedToId || null } });
-    setEditChore(null);
-  }
+  const handleStatusSet = async (chore: any, status: Status) => {
+    if (chore.status === status) return;
+    try {
+      await updateChore.mutateAsync({ id: chore.id, data: { status } });
+    } catch (e) { console.error(e); }
+  };
 
-  function handleAdd() {
+  // --- Drag handlers ---
+  const onDragStart = (e: React.DragEvent, chore: any) => {
+    dragItem.current = chore;
+    setDragId(chore.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const onDragEnd = () => {
+    setDragId(null);
+    setDragOver(null);
+    dragItem.current = null;
+  };
+  const onDragOver = (e: React.DragEvent, col: Status) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOver(col);
+  };
+  const onDrop = async (e: React.DragEvent, col: Status) => {
+    e.preventDefault();
+    const chore = dragItem.current;
+    if (chore && chore.status !== col) {
+      await handleStatusSet(chore, col);
+    }
+    setDragId(null);
+    setDragOver(null);
+  };
+
+  const handleAdd = async () => {
     if (!newChore.title.trim()) return;
-    createChore.mutate({
-      ...newChore,
-      assignedToId: newChore.assignedToId || undefined,
-      dueDate: newChore.dueDate || undefined,
-    });
-    setNewChore({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false, dueDate: '' });
-    setShowAdd(false);
-  }
+    try {
+      await createChore.mutateAsync({ ...newChore, status: 'pending' });
+      setNewChore({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false });
+      setShowAdd(false);
+    } catch (e) { console.error(e); }
+  };
 
-  if (isLoading) return (
-    <div style={{ display:'flex', justifyContent:'center', padding:40 }}>
-      <div className="spinner" />
-    </div>
-  );
+  // ── Chore Card ──────────────────────────────────────────────
+  const ChoreCard = ({ chore }: { chore: any }) => {
+    const status: Status = chore.status || 'pending';
+    const col = COLUMNS.find(c => c.key === status)!;
+    const assignee = (members as any[]).find(m => m.id === chore.assignedToId || m.id === chore.assignedTo?.id);
+    const isDragging = dragId === chore.id;
 
-  const FILTER_TABS: [string,string][] = [
-    ['pending',     '⏳ Pending'],
-    ['in_progress', '🔥 In Progress'],
-    ['done',        '✅ Done'],
-    ['all',         '📋 All'],
-  ];
-
-  return (
-    <div style={{ width:'100%' }}>
-
-      {/* Header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <div>
-          <h1 style={{ fontSize:22, fontWeight:900 }}>✅ Chores</h1>
-          {overdueCount > 0 && (
-            <div style={{ fontSize:12, fontWeight:800, color:'#F87171', marginTop:2 }}>
-              ⚠️ {overdueCount} overdue — streak at risk!
+    return (
+      <div
+        draggable
+        onDragStart={e => onDragStart(e, chore)}
+        onDragEnd={onDragEnd}
+        style={{
+          background: isDragging ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${isDragging ? col.color : 'rgba(255,255,255,0.1)'}`,
+          borderRadius: 12,
+          padding: '12px 14px',
+          marginBottom: 8,
+          cursor: 'grab',
+          opacity: isDragging ? 0.5 : 1,
+          transition: 'all 0.15s ease',
+          userSelect: 'none',
+        }}
+      >
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>{chore.emoji || '🧹'}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontWeight: 600,
+              fontSize: 14,
+              color: status === 'done' ? '#94A3B8' : 'var(--text)',
+              textDecoration: status === 'done' ? 'line-through' : 'none',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{chore.title}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <span style={{
+                fontSize: 11, fontWeight: 600, color: col.color,
+                background: `${col.color}22`, borderRadius: 6,
+                padding: '2px 7px',
+              }}>{col.icon} {col.label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                ⭐ {chore.stars}
+              </span>
+              {chore.frequency && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  · {chore.frequency}
+                </span>
+              )}
             </div>
+          </div>
+          {/* Assignee avatar */}
+          {assignee && (
+            <MemberAvatar member={assignee} size={26} />
           )}
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn btn-primary">+ Add chore</button>
-      </div>
 
-      {/* Filter tabs */}
-      <div style={{ display:'flex', gap:4, marginBottom:20, background:'var(--bg-secondary)', padding:4, borderRadius:12, border:'1.5px solid var(--border)' }}>
-        {FILTER_TABS.map(([f, label]) => (
-          <button key={f} onClick={() => setFilter(f as any)} style={{
-            flex:1, padding:'8px 4px', borderRadius:8, fontWeight:800, fontSize:12, cursor:'pointer',
-            background: filter === f ? 'var(--primary)' : 'transparent',
-            color: filter === f ? '#fff' : 'var(--text-secondary)', border:'none',
+        {/* Action row */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+          {/* Advance button */}
+          {status !== 'done' && (
+            <button
+              onClick={() => handleAdvance(chore)}
+              style={{
+                flex: 1,
+                padding: '6px 0',
+                background: status === 'pending' ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.15)',
+                border: `1px solid ${status === 'pending' ? '#FBBF24' : '#4ADE80'}`,
+                borderRadius: 8,
+                color: status === 'pending' ? '#FBBF24' : '#4ADE80',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {status === 'pending' ? '▶ Start' : '✓ Mark Done'}
+            </button>
+          )}
+          {status === 'done' && (
+            <button
+              onClick={() => handleStatusSet(chore, 'pending')}
+              style={{
+                flex: 1, padding: '6px 0',
+                background: 'rgba(148,163,184,0.1)',
+                border: '1px solid rgba(148,163,184,0.3)',
+                borderRadius: 8, color: '#94A3B8',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >↩ Undo</button>
+          )}
+          <button
+            onClick={() => deleteChore.mutate(chore.id)}
+            style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: 'rgba(248,113,113,0.1)',
+              border: '1px solid rgba(248,113,113,0.2)',
+              color: '#F87171', fontSize: 13, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >×</button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Kanban Column ────────────────────────────────────────────
+  const KanbanColumn = ({ col }: { col: typeof COLUMNS[0] }) => {
+    const items = choresByStatus(col.key);
+    const isOver = dragOver === col.key;
+
+    return (
+      <div
+        onDragOver={e => onDragOver(e, col.key)}
+        onDrop={e => onDrop(e, col.key)}
+        style={{
+          flex: 1, minWidth: 0,
+          background: isOver ? `${col.color}15` : col.bg,
+          border: `2px solid ${isOver ? col.color : col.border}`,
+          borderRadius: 16,
+          padding: '14px 12px',
+          transition: 'all 0.15s ease',
+          minHeight: 200,
+        }}
+      >
+        {/* Column header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 16 }}>{col.icon}</span>
+          <span style={{ fontWeight: 700, fontSize: 13, color: col.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {col.label}
+          </span>
+          <span style={{
+            marginLeft: 'auto',
+            background: `${col.color}22`, color: col.color,
+            borderRadius: 20, padding: '1px 8px', fontSize: 12, fontWeight: 700,
+          }}>{items.length}</span>
+        </div>
+
+        {/* Drop hint */}
+        {isOver && dragItem.current && (
+          <div style={{
+            border: `2px dashed ${col.color}`,
+            borderRadius: 10, padding: '10px',
+            marginBottom: 8, textAlign: 'center',
+            color: col.color, fontSize: 13, fontWeight: 600,
+            background: `${col.color}10`,
+          }}>Drop here → {col.label}</div>
+        )}
+
+        {items.length === 0 && !isOver && (
+          <div style={{
+            textAlign: 'center', padding: '24px 0',
+            color: 'var(--text-muted)', fontSize: 13,
+            border: '2px dashed rgba(255,255,255,0.08)',
+            borderRadius: 10,
           }}>
-            {label}
-            {counts[f] > 0 && f !== 'all' && (
-              <span style={{ marginLeft:4, borderRadius:10, fontSize:10, padding:'1px 5px', fontWeight:900,
-                background: filter === f ? 'rgba(255,255,255,0.25)' : 'var(--primary)', color:'#fff' }}>
-                {counts[f]}
-              </span>
-            )}
-          </button>
+            Drag tasks here
+          </div>
+        )}
+
+        {items.map(chore => (
+          <ChoreCard key={chore.id} chore={chore} />
         ))}
       </div>
+    );
+  };
 
-      {/* Chore list */}
-      {filtered.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text-muted)', fontWeight:700, fontSize:16 }}>
-          {filter === 'pending' ? '🎉 All caught up!' : filter === 'done' ? 'No completed chores yet.' : 'No chores here yet.'}
+  // ── List view ────────────────────────────────────────────────
+  const listItems = listFilter === 'all'
+    ? allChores
+    : allChores.filter(c => (c.status || 'pending') === listFilter);
+
+  return (
+    <div style={{ padding: '16px 16px 80px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🧹 Chores</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+            {allChores.filter(c => (c.status || 'pending') === 'done').length} / {allChores.length} done today
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* View toggle */}
+          <button
+            onClick={() => setView(v => v === 'kanban' ? 'list' : 'kanban')}
+            style={{
+              padding: '8px 14px',
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 10, color: 'var(--text)',
+              fontSize: 13, cursor: 'pointer',
+            }}
+          >{view === 'kanban' ? '☰ List' : '⊞ Board'}</button>
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{
+              padding: '8px 16px',
+              background: 'var(--primary)',
+              border: 'none', borderRadius: 10,
+              color: '#fff', fontWeight: 700,
+              fontSize: 14, cursor: 'pointer',
+            }}
+          >+ Add</button>
+        </div>
+      </div>
+
+      {/* Quick stats */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto' }}>
+        {COLUMNS.map(col => {
+          const count = choresByStatus(col.key).length;
+          return (
+            <div key={col.key} style={{
+              flexShrink: 0,
+              background: `${col.color}15`,
+              border: `1px solid ${col.color}44`,
+              borderRadius: 10, padding: '8px 14px',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span>{col.icon}</span>
+              <span style={{ fontWeight: 700, color: col.color }}>{count}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{col.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading...</div>
+      ) : view === 'kanban' ? (
+        /* ── KANBAN BOARD ── */
+        <div style={{
+          display: 'flex', gap: 10,
+          /* On mobile, scroll horizontally */
+          overflowX: 'auto',
+          paddingBottom: 8,
+          minHeight: 300,
+        }}>
+          {COLUMNS.map(col => <KanbanColumn key={col.key} col={col} />)}
         </div>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:10 }}>
-          {filtered.map((chore: any) => {
-            const assignee  = memberList.find((m:any) => m.id === chore.assignedToId);
-            const status    = chore.status || 'pending';
-            const cfg       = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
-            const avatarUrl = avatarSrc(assignee?.avatarUrl);
-            const overdue   = isOverdue(chore.dueDate, status);
-            const dueLabel  = formatDue(chore.dueDate);
-            const isEditing = editChore?.id === chore.id;
-
-            return (
-              <div key={chore.id} className="card" style={{
-                opacity: status === 'done' ? 0.75 : 1,
-                borderLeft: `4px solid ${overdue ? '#F87171' : assignee?.color || 'var(--border)'}`,
-                transition: 'opacity 0.2s',
-              }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-
-                  {/* Status advance button */}
-                  <button
-                    onClick={() => handleAdvance(chore)}
-                    disabled={updateChore.isPending}
-                    title={`Move to: ${nextStatus(status)}`}
-                    style={{
-                      width:40, height:40, borderRadius:'50%', flexShrink:0,
-                      border:`2px solid ${cfg.color}`,
-                      background: status === 'done' ? '#4ADE80' : cfg.bg,
-                      color: status === 'done' ? '#000' : cfg.color,
-                      fontSize: status === 'done' ? 16 : 14,
-                      cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                      transition:'all 0.15s',
-                    }}
-                  >
-                    {status === 'done' ? '✓' : status === 'in_progress' ? '🔥' : '▶'}
-                  </button>
-
-                  <span style={{ fontSize:22 }}>{chore.emoji}</span>
-
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:800, fontSize:14, textDecoration: status === 'done' ? 'line-through' : 'none' }}>
-                      {chore.title}
-                    </div>
-
-                    <div style={{ display:'flex', gap:6, marginTop:4, flexWrap:'wrap', alignItems:'center' }}>
-
-                      {/* Assignee — click to reassign */}
-                      <button
-                        onClick={() => setEditChore(isEditing ? null : chore)}
-                        style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:4 }}
-                      >
-                        {assignee ? (
-                          <>
-                            <div style={{ width:16, height:16, borderRadius:'50%', background:assignee.color,
-                              display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, overflow:'hidden', flexShrink:0 }}>
-                              {avatarUrl
-                                ? <img src={avatarUrl} alt={assignee.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                                : assignee.emoji}
-                            </div>
-                            <span style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)', textDecoration:'underline dotted' }}>{assignee.name}</span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize:11, fontWeight:700, color:'var(--primary)', textDecoration:'underline dotted' }}>+ Assign</span>
-                        )}
-                      </button>
-
-                      <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700 }}>{chore.frequency}</span>
-
-                      <span style={{ fontSize:11, fontWeight:900, padding:'2px 8px', borderRadius:20, background:cfg.bg, color:cfg.color }}>
-                        {cfg.icon} {cfg.label}
-                      </span>
-
-                      <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>⭐ {chore.stars}</span>
-
-                      {/* Due date badge */}
-                      {dueLabel && (
-                        <span style={{ fontSize:10, fontWeight:900, padding:'2px 7px', borderRadius:20,
-                          background: overdue ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)',
-                          color: overdue ? '#F87171' : 'var(--text-muted)',
-                          border: overdue ? '1px solid rgba(248,113,113,0.3)' : 'none',
-                        }}>
-                          {overdue ? '⚠️' : '📅'} {dueLabel}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Inline reassign dropdown */}
-                    {isEditing && (
-                      <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
-                        <button
-                          onClick={() => handleReassign(chore, '')}
-                          style={{ fontSize:11, fontWeight:800, padding:'4px 10px', borderRadius:20, cursor:'pointer',
-                            background:'rgba(255,255,255,0.06)', border:'1.5px solid var(--border)', color:'var(--text-muted)' }}>
-                          Anyone
-                        </button>
-                        {memberList.map((m:any) => (
-                          <button key={m.id}
-                            onClick={() => handleReassign(chore, m.id)}
-                            style={{ fontSize:11, fontWeight:800, padding:'4px 10px', borderRadius:20, cursor:'pointer',
-                              background: chore.assignedToId === m.id ? m.color+'33' : 'rgba(255,255,255,0.06)',
-                              border: `1.5px solid ${chore.assignedToId === m.id ? m.color : 'var(--border)'}`,
-                              color: chore.assignedToId === m.id ? m.color : 'var(--text-secondary)' }}>
-                            {m.emoji} {m.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => deleteChore.mutate(chore.id)}
-                    style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1 }}
-                  >×</button>
-                </div>
-              </div>
-            );
-          })}
+        /* ── LIST VIEW ── */
+        <div>
+          {/* Filter tabs */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+            {(['all', ...COLUMNS.map(c => c.key)] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setListFilter(f as any)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8,
+                  background: listFilter === f ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                  border: 'none', color: listFilter === f ? '#fff' : 'var(--text-muted)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >{f === 'all' ? 'All' : f.replace('_', ' ')}</button>
+            ))}
+          </div>
+          {listItems.map(chore => <ChoreCard key={chore.id} chore={chore} />)}
+          {listItems.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>No chores here</div>
+          )}
         </div>
       )}
 
-      {/* Add chore modal */}
+      {/* ── ADD MODAL ── */}
       {showAdd && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:16 }}>
-          <div className="card" style={{ width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-              <h2 style={{ fontWeight:900, fontSize:18 }}>+ New Chore</h2>
-              <button onClick={() => setShowAdd(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:20 }}>×</button>
-            </div>
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'flex-end',
+          zIndex: 1000,
+        }} onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
+          <div style={{
+            width: '100%', maxWidth: 480, margin: '0 auto',
+            background: 'var(--surface)', borderRadius: '20px 20px 0 0',
+            padding: '24px 20px 40px',
+          }}>
+            <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800 }}>+ New Chore</h2>
 
-            {/* Emoji picker */}
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
+            {/* Emoji row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {CHORE_EMOJIS.map(e => (
-                <button key={e} onClick={() => setNewChore(p => ({ ...p, emoji: e }))} style={{
-                  width:36, height:36, borderRadius:8, fontSize:18, cursor:'pointer',
-                  background: newChore.emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
-                  border: newChore.emoji === e ? '2px solid var(--primary)' : '2px solid transparent',
-                }}>{e}</button>
+                <button key={e} onClick={() => setNewChore(n => ({ ...n, emoji: e }))}
+                  style={{
+                    width: 36, height: 36, borderRadius: 8, fontSize: 18,
+                    background: newChore.emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
+                    border: newChore.emoji === e ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                  }}>{e}</button>
               ))}
             </div>
 
-            <input className="input" placeholder="Chore title..."
-              style={{ marginBottom:12, width:'100%' }}
+            {/* Title */}
+            <input
               value={newChore.title}
-              onChange={e => setNewChore(p => ({ ...p, title: e.target.value }))}
+              onChange={e => setNewChore(n => ({ ...n, title: e.target.value }))}
+              placeholder="Chore name..."
+              className="input"
+              style={{ width: '100%', marginBottom: 12 }}
+              autoFocus
             />
 
-            {/* Assign to */}
-            <select className="input" style={{ marginBottom:12, width:'100%' }}
-              value={newChore.assignedToId}
-              onChange={e => setNewChore(p => ({ ...p, assignedToId: e.target.value }))}>
-              <option value="">Anyone</option>
-              {memberList.map((m:any) => (
-                <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>
-              ))}
-            </select>
-
-            {/* Frequency */}
-            <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-              {FREQS.map(f => (
-                <button key={f} onClick={() => setNewChore(p => ({ ...p, frequency: f }))} style={{
-                  flex:1, padding:'8px', borderRadius:8, fontWeight:800, fontSize:12, cursor:'pointer',
-                  background: newChore.frequency === f ? 'var(--primary)' : 'rgba(255,255,255,0.06)',
-                  color: newChore.frequency === f ? '#fff' : 'var(--text-secondary)', border:'none',
-                }}>{f}</button>
-              ))}
-            </div>
-
-            {/* Due date */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, fontWeight:800, color:'var(--text-muted)', display:'block', marginBottom:4 }}>📅 Due date (optional)</label>
-              <input type="date" className="input" style={{ width:'100%' }}
-                value={newChore.dueDate}
-                onChange={e => setNewChore(p => ({ ...p, dueDate: e.target.value }))}
-              />
+            {/* Assign & Frequency */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <select
+                value={newChore.assignedToId}
+                onChange={e => setNewChore(n => ({ ...n, assignedToId: e.target.value }))}
+                className="input" style={{ flex: 1 }}
+              >
+                <option value="">Anyone</option>
+                {(members as any[]).map(m => (
+                  <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>
+                ))}
+              </select>
+              <select
+                value={newChore.frequency}
+                onChange={e => setNewChore(n => ({ ...n, frequency: e.target.value as any }))}
+                className="input" style={{ flex: 1 }}
+              >
+                {FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
             </div>
 
             {/* Stars */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>Stars:</span>
-              {[1,2,3,5,10].map(n => (
-                <button key={n} onClick={() => setNewChore(p => ({ ...p, stars: n }))} style={{
-                  padding:'4px 10px', borderRadius:8, fontWeight:900, fontSize:12, cursor:'pointer',
-                  background: newChore.stars === n ? '#FBBF24' : 'rgba(255,255,255,0.06)',
-                  color: newChore.stars === n ? '#000' : 'var(--text-secondary)', border:'none',
-                }}>⭐{n}</button>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', marginRight: 4 }}>Stars:</span>
+              {[1,2,3,5,8,10].map(n => (
+                <button key={n} onClick={() => setNewChore(c => ({ ...c, stars: n }))}
+                  style={{
+                    padding: '4px 10px', borderRadius: 8,
+                    background: newChore.stars === n ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
+                    border: newChore.stars === n ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+                    color: newChore.stars === n ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  }}>⭐{n}</button>
               ))}
             </div>
 
-            {/* Proof required */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20, padding:12, background:'rgba(255,255,255,0.04)', borderRadius:10 }}>
-              <input type="checkbox" id="proof" checked={newChore.proofRequired}
-                onChange={e => setNewChore(p => ({ ...p, proofRequired: e.target.checked }))}
-                style={{ width:18, height:18, accentColor:'var(--primary)', cursor:'pointer' }}
-              />
-              <label htmlFor="proof" style={{ fontWeight:700, fontSize:13, cursor:'pointer' }}>📸 Require photo proof</label>
-            </div>
+            {/* Proof toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: 'pointer' }}>
+              <div
+                onClick={() => setNewChore(n => ({ ...n, proofRequired: !n.proofRequired }))}
+                style={{
+                  width: 44, height: 24, borderRadius: 12,
+                  background: newChore.proofRequired ? 'var(--primary)' : 'rgba(255,255,255,0.12)',
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3,
+                  left: newChore.proofRequired ? 23 : 3,
+                  transition: 'left 0.2s',
+                }} />
+              </div>
+              <span style={{ fontSize: 13 }}>Require photo proof</span>
+            </label>
 
-            <div style={{ display:'flex', gap:8 }}>
-              <button className="btn" style={{ flex:1 }} onClick={() => setShowAdd(false)}>Cancel</button>
-              <button className="btn btn-primary" style={{ flex:2 }}
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setShowAdd(false)}>Cancel</button>
+              <button
+                className="btn btn-primary" style={{ flex: 2 }}
                 onClick={handleAdd}
-                disabled={!newChore.title.trim() || createChore.isPending}>
-                {createChore.isPending ? 'Adding...' : '+ Add Chore'}
-              </button>
+                disabled={!newChore.title.trim() || createChore.isPending}
+              >{createChore.isPending ? 'Adding...' : '+ Add Chore'}</button>
             </div>
           </div>
         </div>
