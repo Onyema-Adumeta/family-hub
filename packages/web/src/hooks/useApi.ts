@@ -117,9 +117,7 @@ export function useWeeklyReport() {
   return useQuery({ queryKey: ['report'], queryFn: () => api.get('/report/weekly').then(r => r.data), staleTime: 5 * 60_000 });
 }
 
-// ── Add these to the bottom of src/hooks/useApi.ts ────────────────────────
-
-// useCompleteQuest — called by QuestsPage
+// ── Quests (extra) ────────────────────────────────────────────
 export function useCompleteQuest() {
   const qc = useQueryClient();
   return useMutation({
@@ -128,7 +126,7 @@ export function useCompleteQuest() {
   });
 }
 
-// useChat — alias for useMessages, called by ChatPage
+// useChat — alias for useMessages
 export function useChat() {
   return useQuery({
     queryKey: ['messages'],
@@ -137,28 +135,28 @@ export function useChat() {
   });
 }
 
-// ── Grocery ──────────────────────────────────────────────────────────────────
+// ── Grocery ───────────────────────────────────────────────────
 export function useGrocery() {
-  return useQuery({ queryKey: ['grocery'], queryFn: () => api.get('/grocery') });
+  return useQuery({ queryKey: ['grocery'], queryFn: () => api.get('/grocery').then(r => r.data) });
 }
 export function useCreateGroceryItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.post('/grocery', data),
+    mutationFn: (data: any) => api.post('/grocery', data).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
   });
 }
 export function useUpdateGroceryItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/grocery/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/grocery/${id}`, data).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
   });
 }
 export function useDeleteGroceryItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/grocery/${id}`),
+    mutationFn: (id: string) => api.delete(`/grocery/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['grocery'] }),
   });
 }
