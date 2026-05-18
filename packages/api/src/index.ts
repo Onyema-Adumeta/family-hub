@@ -35,6 +35,7 @@ const allowedOrigins = [
 ].filter(Boolean) as string[];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.options('*', cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -63,6 +64,7 @@ setupCron();
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`🚀 Family Hub API running on port ${PORT}`));
+
 
 
 
