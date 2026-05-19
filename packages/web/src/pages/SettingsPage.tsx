@@ -5,30 +5,40 @@ import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
 const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA','#34D399'];
-const EMOJIS = ['👨','👩','🧑','👦','👧','🧒','👴','👵','🦊','🐱','🐶','🐼','🦁','🐸'];
+const EMOJIS = ['👨','👩','🧑','👦','👧','🧒','👴','👵','🦊','🐱','🐶','🐼','🦁','🐸','🐯','🦋'];
 
-function avatarSrc(url?: string | null): string | null {
+function avatarSrc(url?: string | null) {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url}`;
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
 }
+
+const BADGE_META: Record<string, { icon: string; label: string; color: string }> = {
+  first_chore: { icon: '🌟', label: 'First Chore',   color: '#FBBF24' },
+  streak_7:    { icon: '🔥', label: '7-Day Streak',  color: '#FB923C' },
+  streak_30:   { icon: '💎', label: '30-Day Streak', color: '#60A5FA' },
+  star_50:     { icon: '⭐', label: '50 Stars',       color: '#4ADE80' },
+  star_100:    { icon: '🌠', label: '100 Stars',      color: '#A78BFA' },
+};
 
 export default function SettingsPage() {
   const { member, family, setMember, logout } = useAuthStore();
   const { data: members = [] } = useMembers();
   const navigate = useNavigate();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef  = useRef<HTMLInputElement>(null);
 
-  const [name, setName] = useState(member?.name || '');
-  const [emoji, setEmoji] = useState(member?.emoji || '🙂');
-  const [color, setColor] = useState(member?.color || '#6366F1');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [name, setName]       = useState(member?.name  || '');
+  const [emoji, setEmoji]     = useState(member?.emoji || '🙂');
+  const [color, setColor]     = useState(member?.color || '#6366F1');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarSrc(member?.avatarUrl) || null);
   const [uploading, setUploading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarSrc(member?.avatarUrl));
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [copied, setCopied]   = useState(false);
+  const [shared, setShared]   = useState(false);
+
+  const inviteCode = family?.inviteCode || '';
+  const inviteUrl  = `${window.location.origin}/join/${inviteCode}`;
 
   async function handleSave() {
     if (!member) return;
@@ -53,223 +63,286 @@ export default function SettingsPage() {
       const form = new FormData();
       form.append('avatar', file);
       const { data } = await api.post(`/members/${member.id}/avatar`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMember(data);
       if (data.avatarUrl) setAvatarPreview(avatarSrc(data.avatarUrl));
-    } catch { alert('Failed to upload photo'); }
+    } catch (e: any) { alert('Failed to upload photo'); }
     finally { setUploading(false); }
   }
 
-  function copyCode() {
-    if (family?.inviteCode) {
-      navigator.clipboard.writeText(family.inviteCode);
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2500);
+    } catch { alert(`Invite code: ${inviteCode}`); }
+  }
+
+  async function shareLink() {
+    const shareData = {
+      title: `Join ${family?.name || 'our family'} on Family Hub`,
+      text:  `Use invite code ${inviteCode} to join our family on Family Hub!`,
+      url:   inviteUrl,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } catch { /* user cancelled */ }
+    } else {
+      // Fallback: copy the full URL
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
     }
   }
 
-  return (
-    <div style={{ width: '100%' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>⚙️ Settings</h1>
+  const myBadges: string[] = (member as any)?.badges ?? [];
+  const myStreak: number   = (member as any)?.streakDays ?? 0;
 
-      {/* Invite code — full width banner */}
-      <div className="card" style={{
-        marginBottom: 20,
+  return (
+    <div style={{ padding: '16px 16px 80px', maxWidth: 540, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 16px' }}>⚙️ Settings</h1>
+
+      {/* ── INVITE CODE ── */}
+      <div style={{
         background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(244,114,182,0.06))',
-        borderColor: 'rgba(99,102,241,0.3)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 12
+        border: '1.5px solid rgba(99,102,241,0.3)',
+        borderRadius: 16, padding: '16px', marginBottom: 16,
       }}>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.06em' }}>🔗 FAMILY INVITE CODE</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 28, fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.08em' }}>
-            {family?.inviteCode}
+        <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 10 }}>
+          🔗 FAMILY INVITE
+        </div>
+        {/* Big code display */}
+        <div style={{
+          fontFamily: 'monospace', fontSize: 28, fontWeight: 900,
+          color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: 12,
+          textAlign: 'center',
+        }}>{inviteCode}</div>
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={copyCode} style={{
+            flex: 1, padding: '10px', borderRadius: 10,
+            background: copied ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)',
+            border: `1.5px solid ${copied ? '#4ADE80' : 'rgba(255,255,255,0.15)'}`,
+            color: copied ? '#4ADE80' : 'var(--text)',
+            fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+          }}>
+            {copied ? '✅ Copied!' : '📋 Copy Code'}
+          </button>
+          <button onClick={shareLink} style={{
+            flex: 1, padding: '10px', borderRadius: 10,
+            background: shared ? 'rgba(74,222,128,0.15)' : 'var(--primary)',
+            border: 'none',
+            color: '#fff',
+            fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          }}>
+            {shared ? '✅ Shared!' : '📤 Share Link'}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>
+          Family members join at <strong>{window.location.origin}/join</strong>
+        </div>
+      </div>
+
+      {/* ── MY STATS ── */}
+      {(myStreak > 0 || myBadges.length > 0) && (
+        <div style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 16, padding: '14px', marginBottom: 16,
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.08em' }}>
+            🏆 MY ACHIEVEMENTS
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginTop: 4 }}>
-            Share with family members so they can join at /join
+          {myStreak > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 22 }}>🔥</span>
+              <span style={{ fontWeight: 700, color: '#FB923C' }}>{myStreak}-day streak!</span>
+              {myStreak >= 7  && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Keep it up!</span>}
+            </div>
+          )}
+          {myBadges.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {myBadges.map(b => {
+                const m = BADGE_META[b] || { icon: '🏅', label: b, color: '#94A3B8' };
+                return (
+                  <div key={b} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    background: `${m.color}22`, border: `1px solid ${m.color}44`,
+                    borderRadius: 20, padding: '5px 12px',
+                    fontSize: 12, fontWeight: 700, color: m.color,
+                  }}>
+                    <span>{m.icon}</span><span>{m.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PROFILE ── */}
+      <div style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16, padding: '16px', marginBottom: 16,
+      }}>
+        <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, letterSpacing: '0.08em' }}>
+          👤 YOUR PROFILE
+        </div>
+
+        {/* Avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+          <div onClick={() => fileRef.current?.click()} style={{
+            width: 72, height: 72, borderRadius: '50%', cursor: 'pointer',
+            background: avatarPreview ? 'transparent' : color,
+            border: `3px solid ${color}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', flexShrink: 0, position: 'relative',
+          }}>
+            {avatarPreview
+              ? <img src={avatarPreview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 30 }}>{emoji}</span>}
+            {uploading && (
+              <div style={{
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18,
+              }}>⏳</div>
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Profile photo</div>
+            <button onClick={() => fileRef.current?.click()} style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+              color: 'var(--text)', fontSize: 12, cursor: 'pointer',
+            }}>
+              {uploading ? 'Uploading...' : '📷 Change photo'}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={handleAvatarChange} />
           </div>
         </div>
-        <button onClick={copyCode} className="btn btn-primary" style={{ fontSize: 13, padding: '10px 24px' }}>
-          {copied ? '✅ Copied!' : '📋 Copy code'}
+
+        {/* Name */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Name</label>
+          <input value={name} onChange={e => setName(e.target.value)}
+            className="input" style={{ width: '100%' }} />
+        </div>
+
+        {/* Emoji picker */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Avatar emoji</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {EMOJIS.map(e => (
+              <button key={e} onClick={() => setEmoji(e)} style={{
+                width: 36, height: 36, borderRadius: 8, fontSize: 18,
+                background: emoji === e ? color : 'rgba(255,255,255,0.06)',
+                border: emoji === e ? `2px solid ${color}` : '1px solid rgba(255,255,255,0.1)',
+                cursor: 'pointer',
+              }}>{e}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Color picker */}
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Your color</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {COLORS.map(c => (
+              <div key={c} onClick={() => setColor(c)} style={{
+                width: 32, height: 32, borderRadius: '50%', background: c, cursor: 'pointer',
+                border: color === c ? `3px solid #fff` : '2px solid transparent',
+                boxShadow: color === c ? `0 0 0 2px ${c}` : 'none',
+                transition: 'all 0.15s',
+              }} />
+            ))}
+          </div>
+        </div>
+
+        <button onClick={handleSave} disabled={saving} style={{
+          width: '100%', padding: '12px', borderRadius: 12,
+          background: saved ? 'rgba(74,222,128,0.2)' : 'var(--primary)',
+          border: saved ? '1.5px solid #4ADE80' : 'none',
+          color: saved ? '#4ADE80' : '#fff',
+          fontWeight: 700, fontSize: 15, cursor: 'pointer', transition: 'all 0.2s',
+        }}>
+          {saved ? '✅ Saved!' : saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
 
-      {/* Two-column grid */}
+      {/* ── FAMILY MEMBERS ── */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-        gap: 20,
-        alignItems: 'start',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16, padding: '16px', marginBottom: 16,
       }}>
-        {/* LEFT — Your Profile */}
-        <div className="card">
-          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 16 }}>👤 Your Profile</div>
-
-          {/* Avatar row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <div
-              onClick={() => fileRef.current?.click()}
-              style={{
-                width: 80, height: 80, borderRadius: '50%', cursor: 'pointer', position: 'relative',
-                background: avatarPreview ? 'transparent' : color,
-                border: `3px solid ${color}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', flexShrink: 0
-              }}
-            >
-              {avatarPreview
-                ? <img src={avatarPreview} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: 36 }}>{emoji}</span>
-              }
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                background: 'rgba(0,0,0,0.55)', fontSize: 10, fontWeight: 800,
-                color: '#fff', textAlign: 'center', padding: '3px 0'
-              }}>
-                {uploading ? '...' : '📷'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 15 }}>{name || member?.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textTransform: 'capitalize' }}>{member?.role}</div>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="btn btn-ghost"
-                style={{ fontSize: 11, marginTop: 8, padding: '4px 10px' }}
-                disabled={uploading}
-              >
-                {uploading ? 'Uploading...' : '📷 Change photo'}
-              </button>
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 4 }}>Name</label>
-              <input className="input" value={name} onChange={e => setName(e.target.value)} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Emoji (used when no photo)</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {EMOJIS.map(e => (
-                  <button type="button" key={e} onClick={() => setEmoji(e)} style={{
-                    fontSize: 18, width: 36, height: 36, borderRadius: 8,
-                    border: `2px solid ${emoji === e ? 'var(--primary)' : 'var(--border)'}`,
-                    background: emoji === e ? 'rgba(99,102,241,0.1)' : 'var(--bg-secondary)',
-                    cursor: 'pointer', transition: 'all 0.1s'
-                  }}>{e}</button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Color</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {COLORS.map(c => (
-                  <button type="button" key={c} onClick={() => setColor(c)} style={{
-                    width: 34, height: 34, borderRadius: '50%', background: c, cursor: 'pointer',
-                    border: `3px solid ${color === c ? '#fff' : 'transparent'}`,
-                    boxShadow: color === c ? `0 0 0 2px ${c}` : 'none',
-                    transition: 'all 0.15s'
-                  }} />
-                ))}
-              </div>
-            </div>
-
-            {/* Live preview */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 14px',
-              border: '1px solid var(--border)'
+        <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', marginBottom: 14, letterSpacing: '0.08em' }}>
+          👨‍👩‍👧‍👦 FAMILY MEMBERS
+        </div>
+        {(members as any[]).map(m => {
+          const src = avatarSrc(m.avatarUrl);
+          const badges: string[] = m.badges ?? [];
+          return (
+            <div key={m.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 0',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
               <div style={{
-                width: 38, height: 38, borderRadius: '50%',
-                background: avatarPreview ? 'transparent' : color,
-                border: `3px solid ${color}`,
+                width: 42, height: 42, borderRadius: '50%',
+                background: m.color || '#6366F1',
+                border: `2px solid ${m.color || '#6366F1'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, overflow: 'hidden', flexShrink: 0
+                overflow: 'hidden', flexShrink: 0,
               }}>
-                {avatarPreview
-                  ? <img src={avatarPreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : emoji
-                }
+                {src
+                  ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 20 }}>{m.emoji || '👤'}</span>}
               </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 800 }}>{name || member?.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>Preview</div>
-              </div>
-            </div>
-
-            <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-              {saved ? '✅ Saved!' : saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-          {/* Family Members */}
-          <div className="card">
-            <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 14 }}>
-              👨‍👩‍👧 Family Members
-              <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                {(members as any[]).length} member{(members as any[]).length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {(members as any[]).map((m: any) => (
-                <div key={m.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 12px', borderRadius: 10,
-                  background: m.id === member?.id ? 'rgba(99,102,241,0.08)' : 'var(--bg-secondary)',
-                  border: `1.5px solid ${m.id === member?.id ? 'rgba(99,102,241,0.25)' : 'var(--border)'}`,
-                }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    background: m.color,
-                    border: `2px solid ${m.color}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 22, overflow: 'hidden', flexShrink: 0
-                  }}>
-                    {m.avatarUrl
-                      ? <img src={avatarSrc(m.avatarUrl)!} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : m.emoji
-                    }
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 800, fontSize: 14 }}>{m.name}</span>
-                      {m.id === member?.id && (
-                        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--primary)', background: 'rgba(99,102,241,0.12)', padding: '1px 6px', borderRadius: 6 }}>YOU</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'capitalize' }}>{m.role}</div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                    <span style={{ fontSize: 14 }}>⭐</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--warning)' }}>{m.stars}</span>
-                  </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 2 }}>
+                  <span style={{ textTransform: 'capitalize' }}>{m.role}</span>
+                  <span>· ⭐ {m.stars ?? 0}</span>
+                  {(m.streakDays ?? 0) > 0 && <span>· 🔥 {m.streakDays}d streak</span>}
                 </div>
-              ))}
+                {badges.length > 0 && (
+                  <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                    {badges.slice(0, 3).map(b => {
+                      const bm = BADGE_META[b] || { icon: '🏅', label: b, color: '#94A3B8' };
+                      return (
+                        <span key={b} style={{
+                          fontSize: 10, color: bm.color,
+                          background: `${bm.color}22`, borderRadius: 10, padding: '1px 6px',
+                        }}>{bm.icon} {bm.label}</span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {m.id === member?.id && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--primary)',
+                  background: 'rgba(99,102,241,0.15)', borderRadius: 8, padding: '3px 8px',
+                }}>You</span>
+              )}
             </div>
-          </div>
-
-          {/* Account */}
-          <div className="card" style={{ borderColor: 'rgba(248,113,113,0.2)', background: 'rgba(248,113,113,0.03)' }}>
-            <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--danger)', marginBottom: 12 }}>⚠️ Account</div>
-            <button onClick={() => { logout(); navigate('/login'); }} className="btn btn-danger" style={{ width: '100%' }}>
-              Sign out
-            </button>
-          </div>
-        </div>
+          );
+        })}
       </div>
+
+      {/* Sign out */}
+      <button onClick={() => { logout(); navigate('/login'); }} style={{
+        width: '100%', padding: '12px', borderRadius: 12,
+        background: 'rgba(248,113,113,0.1)', border: '1.5px solid rgba(248,113,113,0.25)',
+        color: '#F87171', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+      }}>Sign Out</button>
     </div>
   );
 }

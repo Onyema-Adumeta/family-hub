@@ -135,6 +135,7 @@ model Redemption {
   memberId  String
   member    Member   @relation(fields: [memberId], references: [id])
   rewardId  String
+  status    String   @default("pending")
   reward    Reward   @relation(fields: [rewardId], references: [id])
   approved  Boolean  @default(false)
   createdAt DateTime @default(now())

@@ -19,6 +19,7 @@ import membersRoutes from './routes/members';
 import questsRoutes from './routes/quests';
 import uploadRoutes from './routes/upload';
 import groceryRoutes from './routes/grocery';
+import { startStreakCron } from './services/streaks';
 
 
 import { setupWebSocket } from './services/websocket';
@@ -58,6 +59,8 @@ app.use('/api/grocery',       authMiddleware, groceryRoutes);
 
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+startStreakCron();
 
 setupWebSocket(wss);
 setupCron();
