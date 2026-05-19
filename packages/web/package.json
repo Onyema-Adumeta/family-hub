@@ -7,6 +7,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@family-hub/shared": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.6.0",
