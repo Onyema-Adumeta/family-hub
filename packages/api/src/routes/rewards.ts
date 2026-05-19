@@ -11,7 +11,7 @@ router.get('/', async (req: AuthRequest, res) => {
   try {
     const rewards = await prisma.reward.findMany({
       where: { familyId: req.familyId },
-      orderBy: { starCost: 'asc' },
+      orderBy: { cost: 'asc' },          // ← schema field is 'cost'
     });
     res.json(rewards);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -20,14 +20,17 @@ router.get('/', async (req: AuthRequest, res) => {
 // POST /api/rewards
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { title, emoji, starCost, description } = req.body;
-    if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+    const { title, name, emoji, starCost, cost, description } = req.body;
+    const rewardName = (title || name || '').trim();
+    const rewardCost = Number(starCost || cost) || 10;
+    if (!rewardName) return res.status(400).json({ error: 'name is required' });
+
     const reward = await prisma.reward.create({
       data: {
         familyId:    req.familyId!,
-        title:       title.trim(),
+        name:        rewardName,           // ← schema field is 'name'
         emoji:       emoji || '🎁',
-        starCost:    Number(starCost) || 10,
+        cost:        rewardCost,           // ← schema field is 'cost'
         description: description || null,
       },
     });
@@ -60,7 +63,7 @@ router.get('/redemptions', async (req: AuthRequest, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/rewards/redeem/:rewardId  — child requests a reward
+// POST /api/rewards/redeem/:rewardId — child requests a reward
 router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
   try {
     const reward = await prisma.reward.findUnique({ where: { id: req.params.rewardId } });
@@ -68,16 +71,16 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
 
     const member = await prisma.member.findUnique({ where: { id: req.memberId } });
     if (!member) return res.status(404).json({ error: 'Member not found' });
-    if ((member.stars ?? 0) < reward.starCost) {
-      return res.status(400).json({ error: `Need ${reward.starCost} stars, you have ${member.stars}` });
+    if ((member.stars ?? 0) < reward.cost) {
+      return res.status(400).json({ error: `Need ${reward.cost} stars, you have ${member.stars}` });
     }
 
-    // Create redemption as "pending" — parent must approve
+    // Create redemption — approved:false means "pending parent approval"
     const redemption = await prisma.redemption.create({
       data: {
         memberId: req.memberId!,
         rewardId: reward.id,
-        status:   'pending',
+        approved: false,                   // ← schema field is 'approved Boolean'
       },
       include: {
         reward:  true,
@@ -85,10 +88,10 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
       },
     });
 
-    // Deduct stars immediately (refund on rejection)
+    // Deduct stars immediately (refunded on rejection)
     await prisma.member.update({
       where: { id: req.memberId },
-      data:  { stars: { decrement: reward.starCost } },
+      data:  { stars: { decrement: reward.cost } },
     });
 
     broadcast(req.familyId!, { type: 'redemption:requested', redemption });
@@ -96,7 +99,7 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
-// PATCH /api/rewards/redemptions/:id  — parent approves or rejects
+// PATCH /api/rewards/redemptions/:id — parent approves or rejects
 router.patch('/redemptions/:id', async (req: AuthRequest, res) => {
   try {
     const { approved } = req.body;
@@ -105,41 +108,38 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res) => {
       include: { reward: true },
     });
     if (!redemption) return res.status(404).json({ error: 'Redemption not found' });
-    if (redemption.status !== 'pending') {
-      return res.status(400).json({ error: 'Already processed' });
-    }
 
     if (approved) {
-      // Mark as approved — stars already deducted
+      // Approve — stars already deducted, just mark approved
       await prisma.redemption.update({
         where: { id: redemption.id },
-        data:  { status: 'approved' },
+        data:  { approved: true },
       });
     } else {
-      // Reject — refund the stars
-      await prisma.redemption.update({
-        where: { id: redemption.id },
-        data:  { status: 'rejected' },
-      });
+      // Reject — refund the stars, delete the redemption
       await prisma.member.update({
         where: { id: redemption.memberId },
-        data:  { stars: { increment: redemption.reward.starCost } },
+        data:  { stars: { increment: redemption.reward.cost } },
       });
+      await prisma.redemption.delete({ where: { id: redemption.id } });
     }
 
-    const updated = await prisma.redemption.findUnique({
-      where: { id: redemption.id },
-      include: {
-        reward:  true,
-        member: { select: { id: true, name: true, emoji: true } },
-      },
-    });
+    const updated = approved
+      ? await prisma.redemption.findUnique({
+          where: { id: redemption.id },
+          include: {
+            reward:  true,
+            member: { select: { id: true, name: true, emoji: true } },
+          },
+        })
+      : null;
 
     broadcast(req.familyId!, {
       type: approved ? 'redemption:approved' : 'redemption:rejected',
       redemption: updated,
+      id: redemption.id,
     });
-    res.json(updated);
+    res.json(updated ?? { ok: true, rejected: true });
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
