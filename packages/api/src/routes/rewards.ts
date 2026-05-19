@@ -78,9 +78,10 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
     // Create redemption — approved:false means "pending parent approval"
     const redemption = await prisma.redemption.create({
       data: {
-        member:  { connect: { id: req.memberId! } },
-        reward:  { connect: { id: reward.id } },
-        approved: false,
+        familyId: req.familyId!,
+        member:   { connect: { id: req.memberId! } },
+        reward:   { connect: { id: reward.id } },
+        approved:  false,
       },
       include: {
         reward:  true,
