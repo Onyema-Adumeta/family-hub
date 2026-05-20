@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useNotifications, useMembers } from '../hooks/useApi';
@@ -15,16 +15,16 @@ function getLevel(stars: number) {
   return             { level: 5, title: 'Legend',        next: 1000 };
 }
 
-const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
-const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽️', label:'Meals'    },{ path:'/grocery',  icon:'🛒', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
-const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'⚔️', label:'Quests'   },{ path:'/settings', icon:'⚙️', label:'Settings'  }];
+const NAV_PRIMARY   = [{ path:'/',         icon:'??', label:'Home'     },{ path:'/chat',     icon:'??', label:'Chat'     },{ path:'/schedule', icon:'??', label:'Schedule' },{ path:'/chores',   icon:'?', label:'Chores'   }];
+const NAV_SECONDARY = [{ path:'/meals',    icon:'???', label:'Meals'    },{ path:'/grocery',  icon:'??', label:'Grocery'  },{ path:'/rewards',  icon:'?', label:'Rewards'  }];
+const NAV_ADVANCED  = [{ path:'/report',   icon:'??', label:'Insights' },{ path:'/quests',   icon:'??', label:'Quests'   },{ path:'/settings', icon:'??', label:'Settings'  }];
 
 const BOTTOM_NAV = [
-  { path:'/',         icon:'🏠', label:'Home'    },
-  { path:'/chores',   icon:'✅', label:'Chores'  },
-  { path:'/chat',     icon:'💬', label:'Chat'    },
-  { path:'/meals',    icon:'🍽️', label:'Meals'   },
-  { path:'/schedule', icon:'📅', label:'More'    },
+  { path:'/',         icon:'??', label:'Home'    },
+  { path:'/chores',   icon:'?', label:'Chores'  },
+  { path:'/chat',     icon:'??', label:'Chat'    },
+  { path:'/meals',    icon:'???', label:'Meals'   },
+  { path:'/schedule', icon:'??', label:'More'    },
 ];
 
 function NavSection({ label, items, highlight, onNav }: { label: string; items: typeof NAV_PRIMARY; highlight?: string[]; onNav?: () => void }) {
@@ -60,14 +60,14 @@ function NavSection({ label, items, highlight, onNav }: { label: string; items: 
   );
 }
 
-// ── Theme Toggle ──────────────────────────────────────────────────────────────
+// -- Theme Toggle --------------------------------------------------------------
 function useTheme() {
   const [theme, setTheme] = useState<'dark'|'light'>(() => {
-    return (localStorage.getItem('theme') as 'dark'|'light') || 'dark';
+    try { return (localStorage.getItem('theme') as 'dark'|'light') || 'dark'; } catch { return 'dark'; }
   });
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    try { document.documentElement.setAttribute('data-theme', theme); } catch {}
+    try { localStorage.setItem('theme', theme); } catch {}
   }, [theme]);
   const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   return { theme, toggle };
@@ -117,10 +117,10 @@ export default function Layout() {
 
   const isDark = theme === 'dark';
 
-  // ── Profile Drawer (shared between mobile & desktop) ──────────────────────
+  // -- Profile Drawer (shared between mobile & desktop) ----------------------
   const ProfileDrawer = () => (
     <>
-      {/* Full-screen backdrop — covers everything */}
+      {/* Full-screen backdrop � covers everything */}
       <div
         onClick={() => setDrawerOpen(false)}
         style={{
@@ -168,7 +168,7 @@ export default function Layout() {
                 border:'none', color:'var(--text-muted)', fontSize:14, cursor:'pointer',
                 display:'flex', alignItems:'center', justifyContent:'center',
               }}
-            >✕</button>
+            >?</button>
           </div>
 
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
@@ -182,13 +182,13 @@ export default function Layout() {
             }}>
               {avatarUrl
                 ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : member?.emoji || '👤'
+                : member?.emoji || '??'
               }
             </div>
             <div>
               <div style={{ fontWeight:900, fontSize:17 }}>{member?.name || 'You'}</div>
-              <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800, marginTop:2 }}>⭐ {stars} stars</div>
-              {streak > 0 && <div style={{ fontSize:11, color:'#F97316', fontWeight:700 }}>🔥 {streak} day streak</div>}
+              <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800, marginTop:2 }}>? {stars} stars</div>
+              {streak > 0 && <div style={{ fontSize:11, color:'#F97316', fontWeight:700 }}>?? {streak} day streak</div>}
             </div>
           </div>
 
@@ -200,9 +200,9 @@ export default function Layout() {
           </div>
           <div style={{ marginTop:10, display:'flex', gap:6, alignItems:'center' }}>
             <span className="badge badge-primary" style={{ fontSize:10 }}>
-              {member?.role === 'parent' ? '👑 Parent' : '⭐ Member'}
+              {member?.role === 'parent' ? '?? Parent' : '? Member'}
             </span>
-            {streak >= 7 && <span className="badge badge-warning" style={{ fontSize:10 }}>🔥 On fire!</span>}
+            {streak >= 7 && <span className="badge badge-warning" style={{ fontSize:10 }}>?? On fire!</span>}
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export default function Layout() {
               display:'flex', alignItems:'center', justifyContent:'center', gap:8,
             }}
           >
-            {isDark ? '☀️ Switch to Light' : '🌙 Switch to Dark'}
+            {isDark ? '?? Switch to Light' : '?? Switch to Dark'}
           </button>
 
           <button
@@ -245,7 +245,7 @@ export default function Layout() {
     </>
   );
 
-  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
+  // -- MOBILE LAYOUT ----------------------------------------------------------
   if (isMobile) {
     return (
       <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden' }}>
@@ -278,14 +278,14 @@ export default function Layout() {
                 fontSize:15, cursor:'pointer',
               }}
             >
-              {isDark ? '☀️' : '🌙'}
+              {isDark ? '??' : '??'}
             </button>
 
             {unread > 0 && (
               <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }} />
             )}
 
-            {/* Avatar — opens drawer */}
+            {/* Avatar � opens drawer */}
             <div
               onClick={() => setDrawerOpen(true)}
               style={{
@@ -299,7 +299,7 @@ export default function Layout() {
             >
               {avatarUrl
                 ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : member?.emoji || '👤'
+                : member?.emoji || '??'
               }
             </div>
           </div>
@@ -377,7 +377,7 @@ export default function Layout() {
     );
   }
 
-  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
+  // -- DESKTOP LAYOUT ---------------------------------------------------------
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--bg)' }}>
       {drawerOpen && <ProfileDrawer />}
@@ -407,14 +407,14 @@ export default function Layout() {
             >
               {avatarUrl
                 ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : member?.emoji || '👤'
+                : member?.emoji || '??'
               }
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontWeight:900, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{member?.name || 'You'}</div>
               <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
-                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>⭐ {stars}</span>
-                {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>🔥 {streak}</span>}
+                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>? {stars}</span>
+                {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>?? {streak}</span>}
               </div>
             </div>
           </div>
@@ -445,7 +445,7 @@ export default function Layout() {
               color:'var(--text-secondary)', fontSize:12, fontWeight:800,
             }}
           >
-            {isDark ? '☀️ Light mode' : '🌙 Dark mode'}
+            {isDark ? '?? Light mode' : '?? Dark mode'}
           </button>
           <button
             onClick={() => { logout(); navigate('/login'); }}
