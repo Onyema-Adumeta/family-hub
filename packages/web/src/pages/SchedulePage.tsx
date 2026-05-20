@@ -3,7 +3,7 @@ import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const EMOJIS      = ['??','??','??','??','??','?','??','??','??','??','??','??','????????','??','??'];
+const EMOJIS      = ['📅','🎂','🏥','✈️','🏫','⚽','🎵','🍕','💼','🎉','🏠','🚗','👨‍👩‍👧','💊','🎓'];
 const COLORS      = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA'];
 
 function useIsMobile() {
@@ -28,7 +28,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
         <div style={{ fontWeight:900, fontSize:13, marginBottom:10, color:'var(--text-secondary)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <span>
             {selectedDate === todayStr
-              ? '?? Today'
+              ? '📌 Today'
               : new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}
           </span>
           <button onClick={onAdd} style={{ fontSize:11, fontWeight:800, padding:'4px 10px', borderRadius:20, background:'var(--primary)', color:'#fff', border:'none', cursor:'pointer' }}>
@@ -38,7 +38,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
 
         {selectedEvents.length === 0 ? (
           <div style={{ fontSize:12, color:'var(--text-muted)', fontWeight:700, padding:'8px 0', textAlign:'center' }}>
-            No events � tap + Add
+            No events — tap + Add
           </div>
         ) : selectedEvents.map((ev: any) => {
           const assignee = members.find((m: any) => m.id === ev.assignedToId);
@@ -47,34 +47,34 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
               <div style={{ width:3, alignSelf:'stretch', borderRadius:2, flexShrink:0, background:ev.color || 'var(--primary)', minHeight:32 }} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:800, fontSize:13 }}>{ev.emoji} {ev.title}</div>
-                {ev.time && <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, marginTop:2 }}>?? {ev.time}</div>}
+                {ev.time && <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, marginTop:2 }}>🕐 {ev.time}</div>}
                 {assignee && <div style={{ fontSize:11, fontWeight:700, color:assignee.color, marginTop:2 }}>{assignee.emoji} {assignee.name}</div>}
               </div>
               <button
                 onClick={() => onDelete(ev.id)}
                 style={{ background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:8, cursor:'pointer', color:'#F87171', fontSize:13, padding:'6px 8px', flexShrink:0 }}
-              >???</button>
+              >🗑️</button>
             </div>
           );
         })}
       </div>
 
       <div className="card">
-        <div style={{ fontWeight:900, fontSize:13, marginBottom:10, color:'var(--text-secondary)' }}>?? Upcoming</div>
+        <div style={{ fontWeight:900, fontSize:13, marginBottom:10, color:'var(--text-secondary)' }}>📆 Upcoming</div>
         {upcomingEvents.length === 0 ? (
           <div style={{ fontSize:12, color:'var(--text-muted)', fontWeight:700 }}>No upcoming events</div>
         ) : upcomingEvents.map((ev: any) => {
           const d = new Date(ev.date + 'T12:00:00');
-          const dateLabel = d.toISOString().slice(0,10) === todayStr ? 'Today'
+          const dateLabel = !isNaN(d.getTime()) && d.toISOString().slice(0,10) === todayStr ? 'Today'
             : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
           return (
             <div key={ev.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 0', borderBottom:'1px solid var(--border)' }}>
               <div style={{ width:3, height:36, borderRadius:2, background:ev.color || 'var(--primary)', flexShrink:0 }} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:800, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.emoji} {ev.title}</div>
-                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:700 }}>{dateLabel}{ev.time ? ' � ' + ev.time : ''}</div>
+                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:700 }}>{dateLabel}{ev.time ? ' · ' + ev.time : ''}</div>
               </div>
-              <button onClick={() => onDelete(ev.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:4 }}>???</button>
+              <button onClick={() => onDelete(ev.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:4 }}>🗑️</button>
             </div>
           );
         })}
@@ -96,7 +96,7 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(today.toISOString().slice(0, 10));
   const [showAdd, setShowAdd]           = useState(false);
   const [showPanel, setShowPanel]       = useState(false);
-  const [form, setForm] = useState({ title:'', emoji:'??', time:'', assignedToId:'', notes:'', color:'#6366F1' });
+  const [form, setForm] = useState({ title:'', emoji:'📅', time:'', assignedToId:'', notes:'', color:'#6366F1' });
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay    = new Date(year, month, 1).getDay();
@@ -107,16 +107,16 @@ export default function SchedulePage() {
 
   function getEventsForDate(day: number) {
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    return (events as any[]).filter(e => new Date(e.date).toISOString().slice(0,10) === dateStr);
+    return (events as any[]).filter(e => { try { return new Date(e.date).toISOString().slice(0,10) === dateStr; } catch { return false; } });
   }
 
   const selectedEvents = (events as any[])
-    .filter(e => new Date(e.date).toISOString().slice(0,10) === selectedDate)
+    .filter(e => { try { return new Date(e.date).toISOString().slice(0,10) === selectedDate; } catch { return false; } })
     .sort((a,b) => (a.time||'').localeCompare(b.time||''));
 
   const upcomingEvents = (events as any[])
-    .filter(e => new Date(e.date).toISOString().slice(0,10) >= todayStr)
-    .sort((a,b) => { const da = new Date(a.date); const db = new Date(b.date); return (isNaN(da.getTime())?0:da.getTime()) - (isNaN(db.getTime())?0:db.getTime()); })
+    .filter(e => { try { return new Date(e.date).toISOString().slice(0,10) >= todayStr; } catch { return false; } })
+    .sort((a,b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
     .slice(0, 10);
 
   async function handleCreate() {
@@ -126,7 +126,7 @@ export default function SchedulePage() {
       time: form.time || undefined, assignedToId: form.assignedToId || undefined,
       notes: form.notes || undefined, color: form.color,
     });
-    setForm({ title:'', emoji:'??', time:'', assignedToId:'', notes:'', color:'#6366F1' });
+    setForm({ title:'', emoji:'📅', time:'', assignedToId:'', notes:'', color:'#6366F1' });
     setShowAdd(false);
   }
 
@@ -153,7 +153,7 @@ export default function SchedulePage() {
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <h1 style={{ fontSize:22, fontWeight:900 }}>?? Schedule</h1>
+        <h1 style={{ fontSize:22, fontWeight:900 }}>📅 Schedule</h1>
         <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize:13 }}>+ Add Event</button>
       </div>
 
@@ -161,9 +161,9 @@ export default function SchedulePage() {
         {/* Calendar */}
         <div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <button onClick={prevMonth} className="btn btn-ghost" style={{ padding:'6px 12px', fontSize:13 }}>? Prev</button>
+            <button onClick={prevMonth} className="btn btn-ghost" style={{ padding:'6px 12px', fontSize:13 }}>← Prev</button>
             <div style={{ fontWeight:900, fontSize:16 }}>{MONTH_NAMES[month]} {year}</div>
-            <button onClick={nextMonth} className="btn btn-ghost" style={{ padding:'6px 12px', fontSize:13 }}>Next ?</button>
+            <button onClick={nextMonth} className="btn btn-ghost" style={{ padding:'6px 12px', fontSize:13 }}>Next →</button>
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:4 }}>
@@ -237,7 +237,7 @@ export default function SchedulePage() {
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight:900, fontSize:16, marginBottom:16 }}>
-              ? New Event � {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+              ➕ New Event — {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
