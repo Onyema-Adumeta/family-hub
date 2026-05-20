@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { useQuery } from '@tanstack/react-query';
-import api from '../lib/api';
+import { api } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
