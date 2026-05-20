@@ -1,60 +1,160 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/auth';
 import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 const prisma = new PrismaClient();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-router.get('/weekly', async (req: AuthRequest, res) => {
-  try {
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
-    const [completedChores, members, quests] = await Promise.all([
-      prisma.chore.findMany({ where: { familyId: req.familyId, status: 'done', completedAt: { gte: oneWeekAgo } }, include: { completedBy: true } }),
-      prisma.member.findMany({ where: { familyId: req.familyId }, select: { id: true, name: true, emoji: true, color: true, role: true, stars: true } }),
-      prisma.quest.findMany({ where: { familyId: req.familyId, completed: true, completedAt: { gte: oneWeekAgo } } })
+// GET /api/report — full weekly report with AI insights
+router.get('/', async (req: any, res) => {
+  try {
+    const familyId = req.user?.familyId;
+    if (!familyId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const weekStart = getWeekStart();
+    const weekEnd   = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // ── Fetch all data in parallel ──────────────────────────────
+    const [members, allChores, completedThisWeek, messages, meals] = await Promise.all([
+      prisma.member.findMany({
+        where: { familyId },
+        select: { id: true, name: true, emoji: true, color: true, stars: true, streakDays: true, badges: true, totalChoresDone: true }
+      }),
+      prisma.chore.findMany({
+        where: { familyId },
+        select: { id: true, title: true, status: true, stars: true, assignedToId: true, completedById: true, completedAt: true, emoji: true }
+      }),
+      prisma.chore.findMany({
+        where: {
+          familyId,
+          status: 'done',
+          completedAt: { gte: weekStart, lt: weekEnd }
+        },
+        select: { id: true, title: true, stars: true, completedById: true, completedAt: true, emoji: true }
+      }),
+      prisma.message.findMany({
+        where: { familyId, createdAt: { gte: weekStart } },
+        select: { id: true, memberId: true }
+      }),
+      prisma.meal.findMany({
+        where: { familyId, createdAt: { gte: weekStart } },
+        select: { id: true, name: true, day: true, slot: true }
+      }),
     ]);
 
-    const starsByMember: Record<string, number> = {};
-    for (const chore of completedChores) {
-      if (chore.completedById) {
-        starsByMember[chore.completedById] = (starsByMember[chore.completedById] || 0) + chore.stars;
-      }
-    }
+    // ── Compute per-member stats ────────────────────────────────
+    const memberStats = members.map(m => {
+      const assigned  = allChores.filter(c => c.assignedToId === m.id);
+      const doneThisWeek = completedThisWeek.filter(c => c.completedById === m.id);
+      const starsEarned  = doneThisWeek.reduce((sum, c) => sum + (c.stars || 0), 0);
+      const msgCount     = messages.filter(msg => msg.memberId === m.id).length;
+      const completionPct = assigned.length > 0
+        ? Math.round((assigned.filter(c => c.status === 'done').length / assigned.length) * 100)
+        : 0;
+      return {
+        ...m,
+        assigned: assigned.length,
+        doneThisWeek: doneThisWeek.length,
+        starsEarned,
+        msgCount,
+        completionPct,
+      };
+    });
 
-    const topMemberId = Object.entries(starsByMember).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const topMember = members.find(m => m.id === topMemberId);
-    const totalStars = Object.values(starsByMember).reduce((a, b) => a + b, 0);
+    // ── Overall family stats ────────────────────────────────────
+    const totalChores    = allChores.length;
+    const doneChores     = allChores.filter(c => c.status === 'done').length;
+    const familyPct      = totalChores > 0 ? Math.round((doneChores / totalChores) * 100) : 0;
+    const totalStarsWeek = completedThisWeek.reduce((s, c) => s + (c.stars || 0), 0);
+    const topMember      = [...memberStats].sort((a, b) => b.starsEarned - a.starsEarned)[0];
+    const streakLeader   = [...memberStats].sort((a, b) => (b.streakDays || 0) - (a.streakDays || 0))[0];
+    const mealsPlanned   = meals.length;
 
-    // Generate AI summary
-    let aiSummary = '';
-    if (process.env.ANTHROPIC_API_KEY && completedChores.length > 0) {
+    // ── AI Insights from Claude ─────────────────────────────────
+    let aiInsights = '';
+    let aiTips: string[] = [];
+
+    if (process.env.ANTHROPIC_API_KEY) {
       try {
-        const msg = await anthropic.messages.create({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 200,
-          messages: [{
-            role: 'user',
-            content: `Write a fun, encouraging 2-sentence weekly family report. ${completedChores.length} chores completed, ${totalStars} stars earned. Top performer: ${topMember?.name || 'everyone'}. ${quests.length} quests completed. Keep it kid-friendly and celebratory!`
-          }]
+        const prompt = `You are a warm, encouraging family coach. Based on this week's Family Hub data, give 3 short actionable parenting tips and a brief family summary.
+
+Family stats this week:
+- Overall chore completion: ${familyPct}%
+- Total stars earned: ${totalStarsWeek}
+- Meals planned: ${mealsPlanned}/7
+- Messages sent: ${messages.length}
+
+Member breakdown:
+${memberStats.map(m => `- ${m.name}: ${m.doneThisWeek} chores done, ${m.starsEarned} stars earned, ${m.streakDays || 0} day streak`).join('\n')}
+
+Top performer: ${topMember?.name || 'N/A'}
+Streak leader: ${streakLeader?.name || 'N/A'} (${streakLeader?.streakDays || 0} days)
+
+Respond in JSON format only, no markdown:
+{
+  "summary": "2-3 sentence warm family summary",
+  "tips": ["tip 1", "tip 2", "tip 3"],
+  "encouragement": "one sentence of encouragement for the whole family"
+}`;
+
+        const response = await anthropic.messages.create({
+          model: 'claude-opus-4-5',
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }]
         });
-        aiSummary = (msg.content[0] as any).text;
-      } catch { /* AI optional */ }
+
+        const text = response.content[0].type === 'text' ? response.content[0].text : '';
+        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+        aiInsights = parsed.summary || '';
+        aiTips     = parsed.tips || [];
+        if (parsed.encouragement) aiTips.push(parsed.encouragement);
+      } catch (e) {
+        aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way with ${topMember.starsEarned} stars!` : ''} Keep building those good habits!`;
+        aiTips = [
+          'Celebrate small wins — even one completed chore deserves recognition.',
+          'Consistency beats perfection. A daily routine builds lasting habits.',
+          'Let kids choose their own chores sometimes — ownership increases motivation.',
+        ];
+      }
+    } else {
+      aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way!` : ''} Great effort all around!`;
+      aiTips = [
+        'Celebrate small wins — even one completed chore deserves recognition.',
+        'Consistency beats perfection. A daily routine builds lasting habits.',
+        'Let kids choose their own chores sometimes — ownership increases motivation.',
+      ];
     }
 
     res.json({
-      week: oneWeekAgo.toISOString(),
-      choresCompleted: completedChores.length,
-      totalStars,
+      week: { start: weekStart.toISOString(), end: weekEnd.toISOString() },
+      family: {
+        totalChores,
+        doneChores,
+        familyPct,
+        totalStarsWeek,
+        mealsPlanned,
+        messagesCount: messages.length,
+      },
+      memberStats,
       topMember,
-      questsCompleted: quests.length,
-      highlights: completedChores.slice(0, 5).map(c => `${c.emoji || '✅'} ${c.title}`),
-      aiSummary,
-      memberStats: members.map(m => ({ ...m, weeklyStars: starsByMember[m.id] || 0 }))
+      streakLeader,
+      recentCompleted: completedThisWeek.slice(0, 10),
+      ai: { summary: aiInsights, tips: aiTips },
     });
+
   } catch (e: any) {
+    console.error('Report error:', e);
     res.status(500).json({ error: e.message });
   }
 });

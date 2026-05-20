@@ -1,4 +1,4 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -20,8 +20,6 @@ import questsRoutes from './routes/quests';
 import uploadRoutes from './routes/upload';
 import groceryRoutes from './routes/grocery';
 import { startStreakCron } from './services/streaks';
-
-
 import { setupWebSocket } from './services/websocket';
 import { setupCron } from './services/cron';
 
@@ -40,10 +38,7 @@ app.options('*', cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Public routes
-app.use('/api/auth', authRoutes);
-
-// Protected routes
+app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
 app.use('/api/events',        authMiddleware, eventsRoutes);
@@ -57,17 +52,11 @@ app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
 
-
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 startStreakCron();
-
 setupWebSocket(wss);
 setupCron();
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => console.log(`🚀 Family Hub API running on port ${PORT}`));
-
-
-
-
+server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));
