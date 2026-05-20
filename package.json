@@ -4,18 +4,31 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev:api":    "pnpm --filter @family-hub/api dev",
-    "dev:web":    "pnpm --filter @family-hub/web dev",
+    "dev:api": "pnpm --filter @family-hub/api dev",
+    "dev:web": "pnpm --filter @family-hub/web dev",
     "dev:mobile": "pnpm --filter @family-hub/mobile start",
-    "build:api":  "pnpm --filter @family-hub/api build",
-    "build:web":  "pnpm --filter @family-hub/web build",
+    "build:api": "pnpm --filter @family-hub/api build",
+    "build:web": "pnpm --filter @family-hub/web build",
     "db:migrate": "pnpm --filter @family-hub/api db:migrate",
-    "db:seed":    "pnpm --filter @family-hub/api db:seed",
-    "db:studio":  "pnpm --filter @family-hub/api db:studio"
+    "db:seed": "pnpm --filter @family-hub/api db:seed",
+    "db:studio": "pnpm --filter @family-hub/api db:studio"
   },
-  "workspaces": ["packages/*"],
-  "engines": { "node": ">=18.0.0", "pnpm": ">=9.0.0" },
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "prisma", "@prisma/client"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "prisma",
+      "@prisma/client"
+    ]
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4"
   }
 }

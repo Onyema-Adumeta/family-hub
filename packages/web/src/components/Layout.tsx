@@ -18,9 +18,7 @@ function getLevel(stars: number) {
 const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
 const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽️', label:'Meals'    },{ path:'/grocery',  icon:'🛒', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
 const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'⚔️', label:'Quests'   },{ path:'/settings', icon:'⚙️', label:'Settings'  }];
-const ALL_NAV = [...NAV_PRIMARY, ...NAV_SECONDARY, ...NAV_ADVANCED];
 
-// Bottom nav shows only the most important 5 items
 const BOTTOM_NAV = [
   { path:'/',         icon:'🏠', label:'Home'    },
   { path:'/chores',   icon:'✅', label:'Chores'  },
@@ -37,10 +35,24 @@ function NavSection({ label, items, highlight }: { label: string; items: typeof 
       {items.map(({ path, icon, label: lbl }) => {
         const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
         return (
-          <NavLink key={path} to={path} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, margin:'2px 0', fontWeight:800, fontSize:14, color: isActive ? '#fff' : 'var(--text-secondary)', background: isActive ? 'var(--primary)' : 'transparent', transition:'all 0.15s', textDecoration:'none', boxShadow: isActive ? '0 4px 12px rgba(124,111,247,0.3)' : 'none', position:'relative' }}>
+          <NavLink
+            key={path}
+            to={path}
+            style={{
+              display:'flex', alignItems:'center', gap:10, padding:'9px 12px',
+              borderRadius:10, margin:'2px 0', fontWeight:800, fontSize:14,
+              color: isActive ? '#fff' : 'var(--text-secondary)',
+              background: isActive ? 'var(--primary)' : 'transparent',
+              transition:'all 0.15s', textDecoration:'none',
+              boxShadow: isActive ? '0 4px 12px rgba(124,111,247,0.3)' : 'none',
+              position:'relative',
+            }}
+          >
             <span style={{ fontSize:17 }}>{icon}</span>
             <span style={{ flex:1 }}>{lbl}</span>
-            {highlight?.includes(path) && !isActive && <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }} />}
+            {highlight?.includes(path) && !isActive && (
+              <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', flexShrink:0 }} />
+            )}
           </NavLink>
         );
       })}
@@ -89,7 +101,11 @@ export default function Layout() {
       <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden' }}>
 
         {/* Mobile top bar */}
-        <header style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.02)', flexShrink:0 }}>
+        <header style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'10px 16px', borderBottom:'1px solid var(--border)',
+          background:'rgba(255,255,255,0.02)', flexShrink:0,
+        }}>
           <div>
             <div style={{ fontSize:9, fontWeight:900, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1 }}>Family Hub</div>
             <div style={{ fontWeight:900, fontSize:14 }}>{family?.name || 'My Family'}</div>
@@ -100,9 +116,18 @@ export default function Layout() {
             )}
             <div
               onClick={() => setSidebarOpen(true)}
-              style={{ width:36, height:36, borderRadius:'50%', background: member?.color || 'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, overflow:'hidden', cursor:'pointer', border:`2px solid ${member?.color || 'var(--primary)'}` }}
+              style={{
+                width:36, height:36, borderRadius:'50%',
+                background: member?.color || 'var(--primary)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:18, overflow:'hidden', cursor:'pointer',
+                border:`2px solid ${member?.color || 'var(--primary)'}`,
+              }}
             >
-              {avatarUrl ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : member?.emoji || '👤'}
+              {avatarUrl
+                ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                : member?.emoji || '👤'
+              }
             </div>
           </div>
         </header>
@@ -111,25 +136,44 @@ export default function Layout() {
         {sidebarOpen && (
           <>
             <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:100 }} />
-            <div style={{ position:'fixed', top:0, right:0, bottom:0, width:260, background:'var(--bg-secondary)', zIndex:101, display:'flex', flexDirection:'column', borderLeft:'1.5px solid var(--border)', overflowY:'auto' }}>
+            <div style={{
+              position:'fixed', top:0, right:0, bottom:0, width:260,
+              background:'var(--bg-secondary)', zIndex:101,
+              display:'flex', flexDirection:'column',
+              borderLeft:'1.5px solid var(--border)', overflowY:'auto',
+            }}>
               {/* Profile */}
               <div style={{ padding:'20px 16px 14px', borderBottom:'1px solid var(--border)' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                  <div style={{ width:50, height:50, borderRadius:'50%', background: member?.color || 'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, overflow:'hidden', border:`2.5px solid ${member?.color || 'var(--primary)'}` }}>
-                    {avatarUrl ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : member?.emoji || '👤'}
+                  <div style={{
+                    width:50, height:50, borderRadius:'50%',
+                    background: member?.color || 'var(--primary)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:24, overflow:'hidden',
+                    border:`2.5px solid ${member?.color || 'var(--primary)'}`,
+                  }}>
+                    {avatarUrl
+                      ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      : member?.emoji || '👤'
+                    }
                   </div>
                   <div>
                     <div style={{ fontWeight:900, fontSize:16 }}>{member?.name || 'You'}</div>
                     <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800 }}>⭐ {stars}</div>
                   </div>
-                  <button onClick={() => setSidebarOpen(false)} style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text-muted)', fontSize:20, cursor:'pointer' }}>✕</button>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text-muted)', fontSize:20, cursor:'pointer' }}
+                  >✕</button>
                 </div>
                 <div style={{ fontSize:11, fontWeight:800, color:'var(--text-muted)', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                   <span>Lv.{level} {title}</span><span>{stars}/{next}</span>
                 </div>
                 <div className="progress-bar"><div className="progress-fill" style={{ width:`${levelPct}%` }} /></div>
                 <div style={{ marginTop:8 }}>
-                  <span className="badge badge-primary" style={{ fontSize:10 }}>{member?.role === 'parent' ? 'Parent' : 'Member'}</span>
+                  <span className="badge badge-primary" style={{ fontSize:10 }}>
+                    {member?.role === 'parent' ? 'Parent' : 'Member'}
+                  </span>
                 </div>
               </div>
 
@@ -141,7 +185,14 @@ export default function Layout() {
               </nav>
 
               <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)' }}>
-                <button onClick={() => { logout(); navigate('/login'); }} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:'1.5px solid rgba(248,113,113,0.25)', color:'var(--danger)', fontSize:13, fontWeight:800, cursor:'pointer' }}>
+                <button
+                  onClick={() => { logout(); navigate('/login'); }}
+                  style={{
+                    width:'100%', padding:'10px', borderRadius:10,
+                    background:'transparent', border:'1.5px solid rgba(248,113,113,0.25)',
+                    color:'var(--danger)', fontSize:13, fontWeight:800, cursor:'pointer',
+                  }}
+                >
                   Sign out
                 </button>
               </div>
@@ -150,21 +201,76 @@ export default function Layout() {
         )}
 
         {/* Page content */}
-        <main style={{ flex:1, overflowY:'auto', padding:'16px', paddingBottom:80 }}>
+        <main style={{ flex:1, overflowY:'auto', padding:'16px', paddingBottom:90 }}>
           <Outlet />
         </main>
 
-        {/* Bottom nav bar */}
-        <nav style={{ position:'fixed', bottom:0, left:0, right:0, height:62, background:'var(--bg-secondary)', borderTop:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-around', zIndex:50, paddingBottom:'env(safe-area-inset-bottom)' }}>
+        {/* ── Bottom Nav Bar ── */}
+        <nav style={{
+          position:'fixed', bottom:0, left:0, right:0,
+          background:'rgba(10,10,20,0.97)',
+          backdropFilter:'blur(20px)',
+          borderTop:'2px solid rgba(124,111,247,0.4)',
+          display:'flex',
+          paddingBottom:'env(safe-area-inset-bottom, 8px)',
+          boxShadow:'0 -8px 32px rgba(0,0,0,0.7)',
+          zIndex:50,
+        }}>
           {BOTTOM_NAV.map(({ path, icon, label: lbl }) => {
             const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
             const showBadge = lbl === 'Chat' && unread > 0;
             return (
-              <NavLink key={path} to={path} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'6px 12px', borderRadius:10, textDecoration:'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', position:'relative', minWidth:50 }}>
-                <span style={{ fontSize:22 }}>{icon}</span>
-                <span style={{ fontSize:10, fontWeight:800 }}>{lbl}</span>
-                {showBadge && <span style={{ position:'absolute', top:4, right:8, width:7, height:7, borderRadius:'50%', background:'var(--accent)' }} />}
-                {isActive && <span style={{ position:'absolute', bottom:-2, left:'50%', transform:'translateX(-50%)', width:20, height:3, borderRadius:2, background:'var(--primary)' }} />}
+              <NavLink
+                key={path}
+                to={path}
+                style={{
+                  flex:1, display:'flex', flexDirection:'column',
+                  alignItems:'center', justifyContent:'center',
+                  padding:'10px 0 6px', textDecoration:'none',
+                  position:'relative', gap:3,
+                }}
+              >
+                {/* Glowing top active indicator */}
+                {isActive && (
+                  <span style={{
+                    position:'absolute', top:0, left:'15%', right:'15%',
+                    height:3, borderRadius:'0 0 6px 6px',
+                    background:'linear-gradient(90deg,#7C6FF7,#A78BFA)',
+                    boxShadow:'0 0 12px #7C6FF7, 0 0 24px rgba(124,111,247,0.4)',
+                  }} />
+                )}
+
+                {/* Icon */}
+                <span style={{
+                  fontSize:24, display:'block', lineHeight:1,
+                  transform: isActive ? 'scale(1.2) translateY(-1px)' : 'scale(1)',
+                  transition:'transform 0.2s ease',
+                  filter: isActive ? 'drop-shadow(0 0 6px rgba(167,139,250,0.8))' : 'grayscale(0.15) opacity(0.7)',
+                }}>
+                  {icon}
+                </span>
+
+                {/* Label */}
+                <span style={{
+                  fontSize:10,
+                  fontWeight: isActive ? 900 : 600,
+                  color: isActive ? '#C4B5FD' : 'rgba(255,255,255,0.35)',
+                  letterSpacing: isActive ? 0.5 : 0.2,
+                  transition:'color 0.2s ease',
+                }}>
+                  {lbl}
+                </span>
+
+                {/* Notification badge */}
+                {showBadge && (
+                  <span style={{
+                    position:'absolute', top:6, right:'18%',
+                    width:9, height:9, borderRadius:'50%',
+                    background:'#F87171',
+                    boxShadow:'0 0 8px #F87171',
+                    border:'1.5px solid rgba(10,10,20,0.97)',
+                  }} />
+                )}
               </NavLink>
             );
           })}
@@ -181,7 +287,14 @@ export default function Layout() {
       <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>{sidebarOpen ? '✕' : '☰'}</button>
       <div className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
-      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`} style={{ width:220, display:'flex', flexDirection:'column', background:'rgba(255,255,255,0.02)', borderRight:'1.5px solid var(--border)', height:'100vh', flexShrink:0, overflowY:'auto' }}>
+      <aside
+        className={`sidebar${sidebarOpen ? ' open' : ''}`}
+        style={{
+          width:220, display:'flex', flexDirection:'column',
+          background:'rgba(255,255,255,0.02)', borderRight:'1.5px solid var(--border)',
+          height:'100vh', flexShrink:0, overflowY:'auto',
+        }}
+      >
         <div style={{ padding:'16px 14px 10px', borderBottom:'1px solid var(--border)' }}>
           <div style={{ fontSize:10, fontWeight:900, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1 }}>Family Hub</div>
           <div style={{ fontWeight:900, fontSize:15 }}>{family?.name || 'My Family'}</div>
@@ -189,11 +302,25 @@ export default function Layout() {
 
         <div style={{ padding:'14px', borderBottom:'1px solid var(--border)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-            <div className="avatar-ring" style={{ width:42, height:42, borderRadius:'50%', background: member?.color || 'var(--primary)', border:`2.5px solid ${member?.color || 'var(--primary)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, overflow:'hidden', flexShrink:0 }}>
-              {avatarUrl ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : member?.emoji || '👤'}
+            <div
+              className="avatar-ring"
+              style={{
+                width:42, height:42, borderRadius:'50%',
+                background: member?.color || 'var(--primary)',
+                border:`2.5px solid ${member?.color || 'var(--primary)'}`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:20, overflow:'hidden', flexShrink:0,
+              }}
+            >
+              {avatarUrl
+                ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                : member?.emoji || '👤'
+              }
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontWeight:900, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{member?.name || 'You'}</div>
+              <div style={{ fontWeight:900, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {member?.name || 'You'}
+              </div>
               <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
                 <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>⭐ {stars}</span>
                 {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>🔥 {streak}</span>}
@@ -205,7 +332,9 @@ export default function Layout() {
           </div>
           <div className="progress-bar"><div className="progress-fill" style={{ width:`${levelPct}%` }} /></div>
           <div style={{ marginTop:8, display:'flex', gap:5 }}>
-            <span className="badge badge-primary" style={{ fontSize:10 }}>{member?.role === 'parent' ? 'Parent' : 'Member'}</span>
+            <span className="badge badge-primary" style={{ fontSize:10 }}>
+              {member?.role === 'parent' ? 'Parent' : 'Member'}
+            </span>
             {streak >= 7 && <span className="badge badge-warning" style={{ fontSize:10 }}>On fire!</span>}
           </div>
         </div>
@@ -217,11 +346,22 @@ export default function Layout() {
         </nav>
 
         <div style={{ padding:'10px 14px', borderTop:'1px solid var(--border)' }}>
-          <button onClick={() => { logout(); navigate('/login'); }} style={{ width:'100%', padding:'9px', borderRadius:10, background:'transparent', border:'1.5px solid rgba(248,113,113,0.25)', color:'var(--danger)', fontSize:13, fontWeight:800, cursor:'pointer' }}>Sign out</button>
+          <button
+            onClick={() => { logout(); navigate('/login'); }}
+            style={{
+              width:'100%', padding:'9px', borderRadius:10,
+              background:'transparent', border:'1.5px solid rgba(248,113,113,0.25)',
+              color:'var(--danger)', fontSize:13, fontWeight:800, cursor:'pointer',
+            }}
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 
-      <main style={{ flex:1, minWidth:0, overflowY:'auto', padding:'28px 32px' }}><Outlet /></main>
+      <main style={{ flex:1, minWidth:0, overflowY:'auto', padding:'28px 32px' }}>
+        <Outlet />
+      </main>
       <QuickActionFAB />
     </div>
   );
