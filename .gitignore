@@ -1,7 +1,6 @@
-node_modules/
-dist/
-.env
-.env.local
-.expo/
-generated/
-*.tsbuildinfo
+﻿# Android build
+android/
+packages/web/android/
+packages/web/*.apk
+packages/web/*.log
+*.log
