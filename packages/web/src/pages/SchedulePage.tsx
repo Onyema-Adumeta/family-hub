@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ï»¿import { useState, useEffect } from 'react';
 import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/useApi';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -38,7 +38,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
 
         {selectedEvents.length === 0 ? (
           <div style={{ fontSize:12, color:'var(--text-muted)', fontWeight:700, padding:'8px 0', textAlign:'center' }}>
-            No events — tap + Add
+            No events ï¿½ tap + Add
           </div>
         ) : selectedEvents.map((ev: any) => {
           const assignee = members.find((m: any) => m.id === ev.assignedToId);
@@ -72,7 +72,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
               <div style={{ width:3, height:36, borderRadius:2, background:ev.color || 'var(--primary)', flexShrink:0 }} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:800, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.emoji} {ev.title}</div>
-                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:700 }}>{dateLabel}{ev.time ? ' · ' + ev.time : ''}</div>
+                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:700 }}>{dateLabel}{ev.time ? ' ï¿½ ' + ev.time : ''}</div>
               </div>
               <button onClick={() => onDelete(ev.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:13, padding:4 }}>???</button>
             </div>
@@ -116,7 +116,7 @@ export default function SchedulePage() {
 
   const upcomingEvents = (events as any[])
     .filter(e => new Date(e.date).toISOString().slice(0,10) >= todayStr)
-    .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a,b) => { const da = new Date(a.date); const db = new Date(b.date); return (isNaN(da.getTime())?0:da.getTime()) - (isNaN(db.getTime())?0:db.getTime()); })
     .slice(0, 10);
 
   async function handleCreate() {
@@ -237,7 +237,7 @@ export default function SchedulePage() {
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div style={{ fontWeight:900, fontSize:16, marginBottom:16 }}>
-              ? New Event — {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+              ? New Event ï¿½ {new Date(selectedDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
