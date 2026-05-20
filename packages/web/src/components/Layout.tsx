@@ -135,10 +135,10 @@ export default function Layout() {
         {/* Mobile slide-out profile drawer */}
         {sidebarOpen && (
           <>
-            <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:100 }} />
+            <div onClick={() => setSidebarOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:200 }} />
             <div style={{
               position:'fixed', top:0, right:0, bottom:0, width:260,
-              background:'var(--bg-secondary)', zIndex:101,
+              background:'var(--bg-secondary)', zIndex:201,
               display:'flex', flexDirection:'column',
               borderLeft:'1.5px solid var(--border)', overflowY:'auto',
             }}>
