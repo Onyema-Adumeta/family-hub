@@ -2,28 +2,75 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 
 const router = Router();
 const prisma = new PrismaClient();
 
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // 10 attempts per window
+  message: { error: 'Too many attempts, please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,                    // 5 registrations per hour per IP
+  message: { error: 'Too many accounts created, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ── Zod schemas ───────────────────────────────────────────────────────────────
+const RegisterSchema = z.object({
+  familyName: z.string().min(1).max(50).trim(),
+  name:       z.string().min(1).max(50).trim(),
+  emoji:      z.string().max(10).optional(),
+  color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  password:   z.string().min(6).max(100),
+  email:      z.string().email().optional().or(z.literal('')),
+});
+
+const LoginSchema = z.object({
+  familyCode: z.string().min(1).max(20).trim().toUpperCase(),
+  name:       z.string().min(1).max(50).trim(),
+  password:   z.string().min(1).max(100),
+});
+
+const JoinSchema = z.object({
+  inviteCode: z.string().min(1).max(20).trim().toUpperCase(),
+  name:       z.string().min(1).max(50).trim(),
+  emoji:      z.string().max(10).optional(),
+  color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  password:   z.string().min(6).max(100),
+  role:       z.enum(['parent', 'child']).optional(),
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function makeInviteCode() {
   return 'FAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 }
-
 function makeToken(memberId: string, familyId: string, role: string) {
   return jwt.sign({ memberId, familyId, role }, process.env.JWT_SECRET!, { expiresIn: '30d' });
 }
-
 const MEMBER_SELECT = {
   id: true, name: true, emoji: true, color: true,
-  role: true, stars: true, avatarUrl: true, email: true, createdAt: true
+  role: true, stars: true, avatarUrl: true, email: true, createdAt: true,
 };
 
-// Register — creates a new family + parent member
-router.post('/register', async (req, res) => {
+// ── Register ──────────────────────────────────────────────────────────────────
+router.post('/register', registerLimiter, async (req, res) => {
   try {
-    const { familyName, name, emoji, color, password, email } = req.body;
-    const hash = await bcrypt.hash(password, 10);
+    const parsed = RegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { familyName, name, emoji, color, password, email } = parsed.data;
+    const hash = await bcrypt.hash(password, 12);
     const family = await prisma.family.create({
       data: {
         name: familyName,
@@ -31,11 +78,11 @@ router.post('/register', async (req, res) => {
         members: {
           create: {
             name, emoji: emoji || '👨', color: color || '#6366F1',
-            role: 'parent', password: hash, email, stars: 0
-          }
-        }
+            role: 'parent', password: hash, email: email || null, stars: 0,
+          },
+        },
       },
-      include: { members: { select: MEMBER_SELECT } }
+      include: { members: { select: MEMBER_SELECT } },
     });
     const member = family.members[0];
     res.json({ token: makeToken(member.id, family.id, member.role), member, family });
@@ -44,15 +91,19 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
-router.post('/login', async (req, res) => {
+// ── Login ─────────────────────────────────────────────────────────────────────
+router.post('/login', authLimiter, async (req, res) => {
   try {
-    const { familyCode, name, password } = req.body;
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { familyCode, name, password } = parsed.data;
     const family = await prisma.family.findUnique({ where: { inviteCode: familyCode } });
     if (!family) return res.status(400).json({ error: 'Family not found' });
     const member = await prisma.member.findFirst({
-      where: { familyId: family.id, name },
-      select: { ...MEMBER_SELECT, password: true }
+      where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
+      select: { ...MEMBER_SELECT, password: true },
     });
     if (!member) return res.status(400).json({ error: 'Member not found' });
     const ok = await bcrypt.compare(password, member.password);
@@ -64,19 +115,30 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Join an existing family
-router.post('/join', async (req, res) => {
+// ── Join ──────────────────────────────────────────────────────────────────────
+router.post('/join', authLimiter, async (req, res) => {
   try {
-    const { inviteCode, name, emoji, color, password, role } = req.body;
+    const parsed = JoinSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { inviteCode, name, emoji, color, password, role } = parsed.data;
     const family = await prisma.family.findUnique({ where: { inviteCode } });
     if (!family) return res.status(400).json({ error: 'Invalid invite code' });
-    const hash = await bcrypt.hash(password, 10);
+
+    // Check name not already taken in this family
+    const existing = await prisma.member.findFirst({
+      where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
+    });
+    if (existing) return res.status(400).json({ error: 'That name is already taken in this family' });
+
+    const hash = await bcrypt.hash(password, 12);
     const member = await prisma.member.create({
       data: {
         familyId: family.id, name, emoji: emoji || '🙂',
-        color: color || '#F472B6', role: role || 'child', password: hash, stars: 0
+        color: color || '#F472B6', role: role || 'child', password: hash, stars: 0,
       },
-      select: MEMBER_SELECT
+      select: MEMBER_SELECT,
     });
     res.json({ token: makeToken(member.id, family.id, member.role), member, family });
   } catch (e: any) {
@@ -84,7 +146,7 @@ router.post('/join', async (req, res) => {
   }
 });
 
-// Get current member info
+// ── Me ────────────────────────────────────────────────────────────────────────
 router.get('/me', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -92,7 +154,7 @@ router.get('/me', async (req, res) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
     const member = await prisma.member.findUnique({
       where: { id: payload.memberId },
-      select: MEMBER_SELECT
+      select: MEMBER_SELECT,
     });
     const family = await prisma.family.findUnique({ where: { id: payload.familyId } });
     res.json({ member, family });
