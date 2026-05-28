@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -8,25 +8,26 @@ datasource db {
 }
 
 model Family {
-  id            String         @id @default(cuid())
-  name          String
-  inviteCode    String         @unique
-  createdAt     DateTime       @default(now())
-  plan          String         @default("free")
-  stripeCustomerId  String?    @unique
-  stripeSubId       String?    @unique
-  planExpiresAt     DateTime?
-  members       Member[]
-  chores        Chore[]
-  meals         Meal[]
-  events        Event[]
-  rewards       Reward[]
-  messages      Message[]
-  quests        Quest[]
-  notifications Notification[]
-  automations   Automation[]
-  memories      Memory[]
-  groceryItems  GroceryItem[]
+  id               String        @id @default(cuid())
+  name             String
+  inviteCode       String        @unique
+  createdAt        DateTime      @default(now())
+  plan             String        @default("free")
+  stripeCustomerId String?       @unique
+  stripeSubId      String?       @unique
+  planExpiresAt    DateTime?
+  members          Member[]
+  chores           Chore[]
+  meals            Meal[]
+  events           Event[]
+  rewards          Reward[]
+  messages         Message[]
+  quests           Quest[]
+  notifications    Notification[]
+  automations      Automation[]
+  memories         Memory[]
+  groceryItems     GroceryItem[]
+  weeklyRules      WeeklyRule[]
 }
 
 model Member {
@@ -57,6 +58,9 @@ model Member {
   messages        Message[]
   redemptions     Redemption[]
   groceryAdded    GroceryItem[] @relation("GroceryAdded")
+  rulesAsTarget   WeeklyRule[]  @relation("RuleTarget")
+  rulesCreated    WeeklyRule[]  @relation("RuleCreator")
+  ruleOutcomes    RuleOutcome[]
 }
 
 enum ChoreStatus {
@@ -222,4 +226,34 @@ model GroceryItem {
   notes     String?
   checked   Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model WeeklyRule {
+  id              String        @id @default(cuid())
+  familyId        String
+  family          Family        @relation(fields: [familyId], references: [id])
+  assignedToId    String
+  assignedTo      Member        @relation("RuleTarget",  fields: [assignedToId], references: [id])
+  createdById     String
+  createdBy       Member        @relation("RuleCreator", fields: [createdById],  references: [id])
+  label           String
+  minStars        Int
+  consequence     String        @default("reduce_screen_time")
+  consequenceNote String?
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  outcomes        RuleOutcome[]
+}
+
+model RuleOutcome {
+  id          String     @id @default(cuid())
+  ruleId      String
+  rule        WeeklyRule @relation(fields: [ruleId], references: [id])
+  memberId    String
+  member      Member     @relation(fields: [memberId], references: [id])
+  weekStart   String
+  starsEarned Int
+  passed      Boolean
+  notified    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
 }
