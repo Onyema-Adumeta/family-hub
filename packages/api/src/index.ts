@@ -27,6 +27,7 @@ import rulesRoutes from './routes/rules';
 import { startWeeklyRulesCron } from './services/weeklyRulesCron';
 
 const app = express();
+app.set('trust proxy', 1);
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
