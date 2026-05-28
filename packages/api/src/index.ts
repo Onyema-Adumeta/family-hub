@@ -23,6 +23,8 @@ import groceryRoutes from './routes/grocery';
 import { startStreakCron } from './services/streaks';
 import { setupWebSocket } from './services/websocket';
 import { setupCron } from './services/cron';
+import rulesRoutes from './routes/rules';
+import { startWeeklyRulesCron } from './services/weeklyRulesCron';
 
 const app = express();
 const server = createServer(app);
@@ -75,6 +77,7 @@ app.use('/api/members',       authMiddleware, membersRoutes);
 app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
+app.use('/api/rules', authMiddleware, rulesRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -92,6 +95,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 startStreakCron();
 setupWebSocket(wss);
 setupCron();
+startWeeklyRulesCron();
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));
