@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { prisma } from '../lib/prisma';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
+const prisma = new PrismaClient();
 
 // GET /api/members — list all members in the family
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const members = await prisma.member.findMany({
-      where: { familyId: req.member!.familyId },
+      where: { familyId: req.familyId },
       orderBy: { createdAt: 'asc' },
     });
     res.json(members);
@@ -17,20 +18,26 @@ router.get('/', async (req: AuthRequest, res) => {
   }
 });
 
-// PATCH /api/members/:id — update own profile (name, emoji, color)
+// PATCH /api/members/:id — update profile (name, emoji, color, avatar)
 router.patch('/:id', async (req: AuthRequest, res) => {
   const { id } = req.params;
-  const { name, emoji, color, avatar } = req.body;
+  const { name, emoji, color, avatar, pushToken } = req.body;
 
-  // Members can only edit themselves (parents can edit anyone)
-  if (req.member!.id !== id && req.member!.role !== 'parent') {
+  // Members can only edit themselves; parents can edit anyone
+  if (req.memberId !== id && req.role !== 'parent') {
     return res.status(403).json({ error: 'Not allowed' });
   }
 
   try {
     const updated = await prisma.member.update({
       where: { id },
-      data: { ...(name && { name }), ...(emoji && { emoji }), ...(color && { color }), ...(avatar !== undefined && { avatar }) },
+      data: {
+        ...(name      !== undefined && { name }),
+        ...(emoji     !== undefined && { emoji }),
+        ...(color     !== undefined && { color }),
+        ...(avatar    !== undefined && { avatar }),
+        ...(pushToken !== undefined && { pushToken }),
+      },
     });
     res.json(updated);
   } catch (e) {
@@ -43,18 +50,18 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   const { id } = req.params;
 
   // Must be a parent
-  if (req.member!.role !== 'parent') {
+  if (req.role !== 'parent') {
     return res.status(403).json({ error: 'Only parents can remove members' });
   }
 
   // Cannot remove yourself
-  if (req.member!.id === id) {
+  if (req.memberId === id) {
     return res.status(400).json({ error: 'You cannot remove yourself' });
   }
 
   // Target must be in same family
   const target = await prisma.member.findFirst({
-    where: { id, familyId: req.member!.familyId },
+    where: { id, familyId: req.familyId },
   });
 
   if (!target) {
@@ -62,11 +69,10 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 
   try {
-    // Reassign or delete their chores, then remove the member
     await prisma.$transaction([
-      // Unassign their chores (set assignedTo null)
+      // Unassign their chores
       prisma.chore.updateMany({
-        where: { assignedToId: id, familyId: req.member!.familyId },
+        where: { assignedToId: id, familyId: req.familyId },
         data: { assignedToId: null },
       }),
       // Delete their chat messages
