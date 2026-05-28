@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/auth';
 import { useMembers } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA','#34D399'];
@@ -24,8 +25,9 @@ const BADGE_META: Record<string, { icon: string; label: string; color: string }>
 export default function SettingsPage() {
   const { member, family, setMember, logout } = useAuthStore();
   const { data: members = [] } = useMembers();
-  const navigate = useNavigate();
-  const fileRef  = useRef<HTMLInputElement>(null);
+  const navigate    = useNavigate();
+  const queryClient = useQueryClient();
+  const fileRef     = useRef<HTMLInputElement>(null);
 
   const [name, setName]       = useState(member?.name  || '');
   const [emoji, setEmoji]     = useState(member?.emoji || '🙂');
@@ -36,7 +38,10 @@ export default function SettingsPage() {
   const [saved, setSaved]     = useState(false);
   const [copied, setCopied]   = useState(false);
   const [shared, setShared]   = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [removingId, setRemovingId]       = useState<string | null>(null);
 
+  const isParent   = member?.role === 'parent';
   const inviteCode = family?.inviteCode || '';
   const inviteUrl  = `${window.location.origin}/join/${inviteCode}`;
 
@@ -92,10 +97,22 @@ export default function SettingsPage() {
         setTimeout(() => setShared(false), 2000);
       } catch { /* user cancelled */ }
     } else {
-      // Fallback: copy the full URL
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
+    }
+  }
+
+  async function handleRemoveMember(id: string) {
+    setRemovingId(id);
+    try {
+      await api.delete(`/members/${id}`);
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      setConfirmRemove(null);
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to remove member');
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -115,13 +132,11 @@ export default function SettingsPage() {
         <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 10 }}>
           🔗 FAMILY INVITE
         </div>
-        {/* Big code display */}
         <div style={{
           fontFamily: 'monospace', fontSize: 28, fontWeight: 900,
           color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: 12,
           textAlign: 'center',
         }}>{inviteCode}</div>
-        {/* Action buttons */}
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={copyCode} style={{
             flex: 1, padding: '10px', borderRadius: 10,
@@ -135,8 +150,7 @@ export default function SettingsPage() {
           <button onClick={shareLink} style={{
             flex: 1, padding: '10px', borderRadius: 10,
             background: shared ? 'rgba(74,222,128,0.15)' : 'var(--primary)',
-            border: 'none',
-            color: '#fff',
+            border: 'none', color: '#fff',
             fontWeight: 700, fontSize: 13, cursor: 'pointer',
           }}>
             {shared ? '✅ Shared!' : '📤 Share Link'}
@@ -161,7 +175,7 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 22 }}>🔥</span>
               <span style={{ fontWeight: 700, color: '#FB923C' }}>{myStreak}-day streak!</span>
-              {myStreak >= 7  && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Keep it up!</span>}
+              {myStreak >= 7 && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Keep it up!</span>}
             </div>
           )}
           {myBadges.length > 0 && (
@@ -194,7 +208,6 @@ export default function SettingsPage() {
           👤 YOUR PROFILE
         </div>
 
-        {/* Avatar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
           <div onClick={() => fileRef.current?.click()} style={{
             width: 72, height: 72, borderRadius: '50%', cursor: 'pointer',
@@ -209,8 +222,7 @@ export default function SettingsPage() {
             {uploading && (
               <div style={{
                 position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
               }}>⏳</div>
             )}
           </div>
@@ -228,14 +240,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Name */}
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>Name</label>
           <input value={name} onChange={e => setName(e.target.value)}
             className="input" style={{ width: '100%' }} />
         </div>
 
-        {/* Emoji picker */}
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Avatar emoji</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -250,7 +260,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Color picker */}
         <div style={{ marginBottom: 18 }}>
           <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Your color</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -288,12 +297,16 @@ export default function SettingsPage() {
         {(members as any[]).map(m => {
           const src = avatarSrc(m.avatarUrl);
           const badges: string[] = m.badges ?? [];
+          const isMe         = m.id === member?.id;
+          const isConfirming = confirmRemove === m.id;
+
           return (
             <div key={m.id} style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '10px 0',
               borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
+              {/* Avatar */}
               <div style={{
                 width: 42, height: 42, borderRadius: '50%',
                 background: m.color || '#6366F1',
@@ -305,7 +318,9 @@ export default function SettingsPage() {
                   ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span style={{ fontSize: 20 }}>{m.emoji || '👤'}</span>}
               </div>
-              <div style={{ flex: 1 }}>
+
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 2 }}>
                   <span style={{ textTransform: 'capitalize' }}>{m.role}</span>
@@ -326,11 +341,50 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
-              {m.id === member?.id && (
+
+              {/* Right: "You" badge OR remove controls (parents only, not yourself) */}
+              {isMe ? (
                 <span style={{
                   fontSize: 10, fontWeight: 700, color: 'var(--primary)',
                   background: 'rgba(99,102,241,0.15)', borderRadius: 8, padding: '3px 8px',
+                  flexShrink: 0,
                 }}>You</span>
+              ) : isParent && (
+                isConfirming ? (
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => handleRemoveMember(m.id)}
+                      disabled={removingId === m.id}
+                      style={{
+                        padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.4)',
+                        color: '#F87171', cursor: 'pointer',
+                      }}
+                    >
+                      {removingId === m.id ? '…' : 'Remove'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(null)}
+                      style={{
+                        padding: '5px 10px', borderRadius: 8, fontSize: 12,
+                        background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+                        color: 'var(--text-muted)', cursor: 'pointer',
+                      }}
+                    >Cancel</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmRemove(m.id)}
+                    title={`Remove ${m.name}`}
+                    style={{
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      fontSize: 16, padding: '6px', borderRadius: 8, lineHeight: 1,
+                      color: 'var(--text-muted)', flexShrink: 0, transition: 'color 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >🗑️</button>
+                )
               )}
             </div>
           );

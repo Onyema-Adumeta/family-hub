@@ -1,73 +1,84 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '../middleware/auth';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { prisma } from '../lib/prisma';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `avatar-${req.params.id}-${Date.now()}${ext}`);
+// GET /api/members — list all members in the family
+router.get('/', async (req: AuthRequest, res) => {
+  try {
+    const members = await prisma.member.findMany({
+      where: { familyId: req.member!.familyId },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(members);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch members' });
   }
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const MEMBER_SELECT = {
-  id: true, name: true, emoji: true, color: true,
-  role: true, stars: true, avatarUrl: true, createdAt: true
-};
-
-router.get('/', async (req: AuthRequest, res) => {
-  const members = await prisma.member.findMany({
-    where: { familyId: req.familyId },
-    select: MEMBER_SELECT
-  });
-  res.json(members);
-});
-
+// PATCH /api/members/:id — update own profile (name, emoji, color)
 router.patch('/:id', async (req: AuthRequest, res) => {
-  const { name, emoji, color, pushToken } = req.body;
-  const member = await prisma.member.update({
-    where: { id: req.params.id },
-    data: { name, emoji, color, pushToken },
-    select: MEMBER_SELECT
-  });
-  res.json(member);
+  const { id } = req.params;
+  const { name, emoji, color, avatar } = req.body;
+
+  // Members can only edit themselves (parents can edit anyone)
+  if (req.member!.id !== id && req.member!.role !== 'parent') {
+    return res.status(403).json({ error: 'Not allowed' });
+  }
+
+  try {
+    const updated = await prisma.member.update({
+      where: { id },
+      data: { ...(name && { name }), ...(emoji && { emoji }), ...(color && { color }), ...(avatar !== undefined && { avatar }) },
+    });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update member' });
+  }
 });
 
-router.post('/:id/avatar', upload.single('avatar'), async (req: AuthRequest, res) => {
+// DELETE /api/members/:id — parent only, cannot remove yourself
+router.delete('/:id', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+
+  // Must be a parent
+  if (req.member!.role !== 'parent') {
+    return res.status(403).json({ error: 'Only parents can remove members' });
+  }
+
+  // Cannot remove yourself
+  if (req.member!.id === id) {
+    return res.status(400).json({ error: 'You cannot remove yourself' });
+  }
+
+  // Target must be in same family
+  const target = await prisma.member.findFirst({
+    where: { id, familyId: req.member!.familyId },
+  });
+
+  if (!target) {
+    return res.status(404).json({ error: 'Member not found' });
+  }
+
   try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    // Reassign or delete their chores, then remove the member
+    await prisma.$transaction([
+      // Unassign their chores (set assignedTo null)
+      prisma.chore.updateMany({
+        where: { assignedToId: id, familyId: req.member!.familyId },
+        data: { assignedToId: null },
+      }),
+      // Delete their chat messages
+      prisma.message.deleteMany({ where: { memberId: id } }),
+      // Delete the member
+      prisma.member.delete({ where: { id } }),
+    ]);
 
-    // Delete old avatar file if it exists
-    const existing = await prisma.member.findUnique({
-      where: { id: req.params.id },
-      select: { avatarUrl: true }
-    });
-    if (existing?.avatarUrl) {
-      const oldPath = path.join(__dirname, '../../', existing.avatarUrl);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-
-    const avatarUrl = `/uploads/${req.file.filename}`;
-    const member = await prisma.member.update({
-      where: { id: req.params.id },
-      data: { avatarUrl },
-      select: MEMBER_SELECT
-    });
-    res.json(member);
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to remove member' });
   }
 });
 
