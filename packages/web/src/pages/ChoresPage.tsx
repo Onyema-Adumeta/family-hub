@@ -32,11 +32,151 @@ function dueDateLabel(dueDate?: string | null, status?: string) {
   return `Due in ${diff}d`;
 }
 
+// ─── Inline Edit Form ─────────────────────────────────────────────────────────
+function InlineEditForm({ chore, members, onSave, onCancel }: {
+  chore: any; members: any[]; onSave: (data: any) => void; onCancel: () => void;
+}) {
+  const [title, setTitle]       = useState(chore.title);
+  const [emoji, setEmoji]       = useState(chore.emoji || '🧹');
+  const [stars, setStars]       = useState(chore.stars ?? 5);
+  const [frequency, setFreq]    = useState(chore.frequency || 'daily');
+  const [dayOfWeek, setDay]     = useState(chore.dayOfWeek || 'Monday');
+  const [recurring, setRecurring] = useState(chore.recurring ?? false);
+  const [dueDate, setDueDate]   = useState(chore.dueDate ? chore.dueDate.substring(0,10) : '');
+  const [assignedToId, setAssignee] = useState(chore.assignedToId || '');
+  const [proofRequired, setProof]   = useState(chore.proofRequired ?? false);
+  const [saving, setSaving]     = useState(false);
+
+  async function handleSave() {
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      await onSave({
+        title: title.trim(), emoji, stars, frequency,
+        ...(frequency === 'weekly' && { dayOfWeek, recurring }),
+        dueDate: dueDate || null,
+        assignedToId: assignedToId || null,
+        proofRequired,
+      });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{
+      borderTop: '1px solid rgba(255,255,255,0.08)',
+      padding: '14px 14px 16px',
+      background: 'rgba(124,111,247,0.05)',
+    }}>
+      {/* Emoji picker */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+        {CHORE_EMOJIS.map(e => (
+          <button key={e} onClick={() => setEmoji(e)} style={{
+            width: 36, height: 36, borderRadius: 8, fontSize: 18, cursor: 'pointer',
+            background: emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
+            border: emoji === e ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+          }}>{e}</button>
+        ))}
+      </div>
+
+      {/* Title */}
+      <input
+        value={title} onChange={e => setTitle(e.target.value)}
+        className="input" style={{ width: '100%', marginBottom: 10 }}
+        placeholder="Chore name..."
+      />
+
+      {/* Assign + Frequency */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <select value={assignedToId} onChange={e => setAssignee(e.target.value)} className="input" style={{ flex: 1 }}>
+          <option value="">Anyone</option>
+          {members.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
+        </select>
+        <select value={frequency} onChange={e => setFreq(e.target.value as any)} className="input" style={{ flex: 1 }}>
+          {FREQS.map(f => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
+        </select>
+      </div>
+
+      {/* Weekly options */}
+      {frequency === 'weekly' && (
+        <>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 700 }}>📆 DAY OF WEEK</div>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {DAYS_OF_WEEK.map((day, i) => (
+                <button key={day} onClick={() => setDay(day)} style={{
+                  padding: '5px 9px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  background: dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
+                  border: `1.5px solid ${dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}`,
+                  color: dayOfWeek === day ? '#fff' : 'var(--text-muted)',
+                }}>{DAY_SHORT[i]}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div onClick={() => setRecurring(v => !v)} style={{
+              width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer',
+              background: recurring ? '#FBBF24' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s',
+            }}>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: recurring ? 21 : 3, transition: 'left 0.2s' }} />
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>🔁 Repeat every week</span>
+          </div>
+        </>
+      )}
+
+      {/* Due date — non-weekly only */}
+      {frequency !== 'weekly' && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 700 }}>📅 DUE DATE (optional)</div>
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="input" style={{ width: '100%' }} />
+        </div>
+      )}
+
+      {/* Stars */}
+      <div style={{ display: 'flex', gap: 5, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Stars:</span>
+        {[1,2,3,5,8,10].map(n => (
+          <button key={n} onClick={() => setStars(n)} style={{
+            padding: '3px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+            background: stars === n ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
+            border: stars === n ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)',
+            color: stars === n ? '#fff' : 'var(--text-muted)',
+          }}>⭐{n}</button>
+        ))}
+      </div>
+
+      {/* Proof toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div onClick={() => setProof(v => !v)} style={{
+          width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer',
+          background: proofRequired ? 'var(--primary)' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s',
+        }}>
+          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: proofRequired ? 21 : 3, transition: 'left 0.2s' }} />
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Require photo proof</span>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onCancel} style={{
+          flex: 1, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text)',
+        }}>Cancel</button>
+        <button onClick={handleSave} disabled={!title.trim() || saving} style={{
+          flex: 2, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+          background: 'var(--primary)', border: 'none', color: '#fff',
+          opacity: (!title.trim() || saving) ? 0.5 : 1,
+        }}>{saving ? 'Saving...' : '💾 Save Changes'}</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Weekly Rules Panel ───────────────────────────────────────────────────────
 interface Rule {
   id: string; label: string; minStars: number; consequenceNote: string; active: boolean;
   assignedTo: { id: string; name: string; emoji: string; color: string };
-  outcomes: { passed: boolean; starsEarned: number; weekStart: string }[];
+  outcomes?: { passed: boolean; starsEarned: number; weekStart: string }[];
 }
 
 function WeeklyRulesPanel() {
@@ -149,7 +289,7 @@ function WeeklyRulesPanel() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {rules.map(rule => {
-            const lastOutcome = rule.outcomes[0];
+            const lastOutcome = (rule.outcomes ?? [])[0];
             return (
               <div key={rule.id} style={{ padding: '14px 16px', borderRadius: 16, background: rule.active ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)', border: `1.5px solid ${rule.active ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`, opacity: rule.active ? 1 : 0.55 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -192,6 +332,7 @@ export default function ChoresPage() {
 
   const [tab, setTab]         = useState<Status | 'all'>('all');
   const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: '', emoji: '🧹', assignedToId: '',
     frequency: 'daily' as typeof FREQS[number],
@@ -222,9 +363,8 @@ export default function ChoresPage() {
     try {
       let dueDate = form.dueDate || null;
       if (form.frequency === 'weekly') {
-        // Compute next occurrence of chosen day
         const dayIdx = DAYS_OF_WEEK.indexOf(form.dayOfWeek);
-        const jsDay  = dayIdx === 6 ? 0 : dayIdx + 1; // Mon=1...Sun=0
+        const jsDay  = dayIdx === 6 ? 0 : dayIdx + 1;
         const now = new Date();
         const diff = (jsDay - now.getDay() + 7) % 7 || 7;
         const next = new Date(now);
@@ -246,6 +386,11 @@ export default function ChoresPage() {
       setForm({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '' });
       setShowAdd(false);
     } catch (e) { console.error(e); }
+  };
+
+  const handleEdit = async (chore: any, data: any) => {
+    await updateChore.mutateAsync({ id: chore.id, data });
+    setEditingId(null);
   };
 
   const memberList = members as any[];
@@ -305,24 +450,18 @@ export default function ChoresPage() {
         const dueLabel = dueDateLabel(chore.dueDate, status);
         const streak   = chore.weeklyStreak ?? 0;
         const isRecurring = chore.recurring && chore.frequency === 'weekly';
+        const isEditing = editingId === chore.id;
 
         return (
-          <div key={chore.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1.5px solid ${overdue ? '#F87171' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
+          <div key={chore.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1.5px solid ${overdue ? '#F87171' : isEditing ? 'rgba(124,111,247,0.5)' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
+            {/* Main row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px' }}>
               <span style={{ fontSize: 26, flexShrink: 0 }}>{chore.emoji || '🧹'}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: status === 'done' ? '#64748B' : 'var(--text)', textDecoration: status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chore.title}</div>
-                  {/* Recurring streak badge */}
                   {isRecurring && (
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0,
-                      padding: '2px 7px', borderRadius: 20,
-                      background: streak > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)',
-                      border: `1px solid ${streak > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.12)'}`,
-                      fontSize: 11, fontWeight: 800,
-                      color: streak > 0 ? '#FBBF24' : 'var(--text-muted)',
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, padding: '2px 7px', borderRadius: 20, background: streak > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)', border: `1px solid ${streak > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.12)'}`, fontSize: 11, fontWeight: 800, color: streak > 0 ? '#FBBF24' : 'var(--text-muted)' }}>
                       🔥 {streak}w
                     </div>
                   )}
@@ -339,6 +478,12 @@ export default function ChoresPage() {
                   )}
                 </div>
               </div>
+              {/* Edit button */}
+              <button
+                onClick={() => setEditingId(isEditing ? null : chore.id)}
+                style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Edit chore"
+              >✏️</button>
               <select value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ padding: '6px 8px', background: meta.bg, border: `1.5px solid ${meta.color}66`, borderRadius: 10, color: meta.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                 <option value="pending">⏳ Pending</option>
                 <option value="in_progress">🔥 In Progress</option>
@@ -346,20 +491,34 @@ export default function ChoresPage() {
               </select>
               <button onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select value={chore.assignedToId || ''} onChange={e => reassign(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <option value="">👤 Unassigned</option>
-                {memberList.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
-              </select>
-              <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDateFn(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
-            </div>
+
+            {/* Quick reassign + due date row */}
+            {!isEditing && (
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select value={chore.assignedToId || ''} onChange={e => reassign(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <option value="">👤 Unassigned</option>
+                  {memberList.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
+                </select>
+                <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDateFn(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
+              </div>
+            )}
+
+            {/* Inline edit form */}
+            {isEditing && (
+              <InlineEditForm
+                chore={chore}
+                members={memberList}
+                onSave={(data) => handleEdit(chore, data)}
+                onCancel={() => setEditingId(null)}
+              />
+            )}
           </div>
         );
       })}
 
-      {list.length > 0 && (
+      {list.length > 0 && !editingId && (
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-          Use the dropdown to change status · reassign or set due date below each card
+          Tap ✏️ to edit · use dropdown to change status · reassign or set due date below each card
         </p>
       )}
 
@@ -400,7 +559,6 @@ export default function ChoresPage() {
               {/* Weekly options */}
               {form.frequency === 'weekly' && (
                 <>
-                  {/* Day of week */}
                   <div style={{ marginBottom: 12 }}>
                     <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8, fontWeight: 700 }}>📆 Which day of the week?</label>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -409,16 +567,12 @@ export default function ChoresPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Recurring toggle */}
                   <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: form.recurring ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${form.recurring ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 800 }}>🔁 Repeat every week</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
-                          {form.recurring
-                            ? `Resets every ${form.dayOfWeek} · streak tracked 🔥`
-                            : 'One-time weekly task — mark done once'}
+                          {form.recurring ? `Resets every ${form.dayOfWeek} · streak tracked 🔥` : 'One-time weekly task — mark done once'}
                         </div>
                       </div>
                       <div onClick={() => setForm(f => ({ ...f, recurring: !f.recurring }))} style={{ width: 44, height: 24, borderRadius: 12, flexShrink: 0, background: form.recurring ? '#FBBF24' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
