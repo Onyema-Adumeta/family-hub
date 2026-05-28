@@ -45,6 +45,7 @@ router.post('/', async (req: AuthRequest, res) => {
       },
       include: {
         assignedTo: { select: { id: true, name: true, emoji: true, color: true } },
+        outcomes:   { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     });
     res.json(rule);
@@ -70,6 +71,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       },
       include: {
         assignedTo: { select: { id: true, name: true, emoji: true, color: true } },
+        outcomes:   { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     });
     res.json(rule);
@@ -101,15 +103,14 @@ router.get('/my', async (req: AuthRequest, res) => {
 
     // Calculate stars earned this week
     const weekStart = getWeekStart();
-    const member = await prisma.member.findUnique({ where: { id: req.memberId } });
 
     // Stars earned this week = completed chores this week
     const completedThisWeek = await prisma.chore.findMany({
       where: {
-        familyId:    req.familyId,
+        familyId:     req.familyId,
         assignedToId: req.memberId,
-        status:      'done',
-        completedAt: { gte: new Date(weekStart) },
+        status:       'done',
+        completedAt:  { gte: new Date(weekStart) },
       },
       select: { stars: true },
     });
