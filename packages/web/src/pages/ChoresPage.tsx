@@ -196,6 +196,7 @@ export default function ChoresPage() {
     title: '', emoji: '🧹', assignedToId: '',
     frequency: 'daily' as typeof FREQS[number],
     dayOfWeek: 'Monday',
+    recurring: false,
     stars: 5, proofRequired: false, dueDate: '',
   });
 
@@ -213,17 +214,17 @@ export default function ChoresPage() {
     updateChore.mutate({ id: chore.id, data: { status } });
   const reassign = (chore: any, assignedToId: string) =>
     updateChore.mutate({ id: chore.id, data: { assignedToId: assignedToId || null } });
-  const setDueDate = (chore: any, dueDate: string) =>
+  const setDueDateFn = (chore: any, dueDate: string) =>
     updateChore.mutate({ id: chore.id, data: { dueDate: dueDate || null } });
 
   const handleAdd = async () => {
     if (!form.title.trim()) return;
     try {
-      // For weekly chores, compute next occurrence of chosen day as the dueDate
       let dueDate = form.dueDate || null;
-      if (form.frequency === 'weekly' && !form.dueDate) {
-        const dayIdx = DAYS_OF_WEEK.indexOf(form.dayOfWeek); // 0=Mon
-        const jsDay  = dayIdx === 6 ? 0 : dayIdx + 1;        // convert to JS (0=Sun)
+      if (form.frequency === 'weekly') {
+        // Compute next occurrence of chosen day
+        const dayIdx = DAYS_OF_WEEK.indexOf(form.dayOfWeek);
+        const jsDay  = dayIdx === 6 ? 0 : dayIdx + 1; // Mon=1...Sun=0
         const now = new Date();
         const diff = (jsDay - now.getDay() + 7) % 7 || 7;
         const next = new Date(now);
@@ -239,10 +240,10 @@ export default function ChoresPage() {
         proofRequired: form.proofRequired,
         status: 'pending',
         dueDate,
-        // store dayOfWeek in notes or as extra field if your API supports it
+        recurring: form.frequency === 'weekly' ? form.recurring : false,
         ...(form.frequency === 'weekly' && { dayOfWeek: form.dayOfWeek }),
       });
-      setForm({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', dayOfWeek: 'Monday', stars: 5, proofRequired: false, dueDate: '' });
+      setForm({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '' });
       setShowAdd(false);
     } catch (e) { console.error(e); }
   };
@@ -302,16 +303,36 @@ export default function ChoresPage() {
         const assignee = memberList.find(m => m.id === (chore.assignedToId || chore.assignedTo?.id));
         const overdue  = isOverdue(chore.dueDate, status);
         const dueLabel = dueDateLabel(chore.dueDate, status);
+        const streak   = chore.weeklyStreak ?? 0;
+        const isRecurring = chore.recurring && chore.frequency === 'weekly';
 
         return (
           <div key={chore.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1.5px solid ${overdue ? '#F87171' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px' }}>
               <span style={{ fontSize: 26, flexShrink: 0 }}>{chore.emoji || '🧹'}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: status === 'done' ? '#64748B' : 'var(--text)', textDecoration: status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chore.title}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: status === 'done' ? '#64748B' : 'var(--text)', textDecoration: status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chore.title}</div>
+                  {/* Recurring streak badge */}
+                  {isRecurring && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0,
+                      padding: '2px 7px', borderRadius: 20,
+                      background: streak > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${streak > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                      fontSize: 11, fontWeight: 800,
+                      color: streak > 0 ? '#FBBF24' : 'var(--text-muted)',
+                    }}>
+                      🔥 {streak}w
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>⭐{chore.stars}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    · {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}
+                    {isRecurring ? ' · 🔁 recurring' : ''}
+                  </span>
                   {assignee && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {assignee.emoji} {assignee.name}</span>}
                   {dueLabel && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', borderRadius: 6, padding: '1px 6px' }}>📅 {dueLabel}</span>
@@ -330,7 +351,7 @@ export default function ChoresPage() {
                 <option value="">👤 Unassigned</option>
                 {memberList.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
               </select>
-              <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDate(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
+              <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDateFn(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
             </div>
           </div>
         );
@@ -342,35 +363,18 @@ export default function ChoresPage() {
         </p>
       )}
 
-      {/* Weekly Rules Panel */}
       <WeeklyRulesPanel />
 
       {/* ── Add Modal ── */}
       {showAdd && (
         <>
-          {/* Full-screen backdrop — covers everything including sidebar */}
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9998, backdropFilter: 'blur(4px)' }}
-            onClick={() => setShowAdd(false)}
-          />
-          {/* Sheet */}
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
-            display: 'flex', justifyContent: 'center',
-          }}>
-            <div style={{
-              width: '100%', maxWidth: 520,
-              background: '#1a1625',
-              borderRadius: '24px 24px 0 0',
-              border: '1.5px solid rgba(255,255,255,0.1)', borderBottom: 'none',
-              padding: '8px 20px 48px',
-              maxHeight: '92vh', overflowY: 'auto',
-            }}>
-              {/* Handle */}
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9998, backdropFilter: 'blur(4px)' }} onClick={() => setShowAdd(false)} />
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 520, background: '#1a1625', borderRadius: '24px 24px 0 0', border: '1.5px solid rgba(255,255,255,0.1)', borderBottom: 'none', padding: '8px 20px 48px', maxHeight: '92vh', overflowY: 'auto' }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '12px auto 20px' }} />
               <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800 }}>+ New Chore</h2>
 
-              {/* Emoji picker */}
+              {/* Emoji */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {CHORE_EMOJIS.map(e => (
                   <button key={e} onClick={() => setForm(f => ({ ...f, emoji: e }))} style={{ width: 42, height: 42, borderRadius: 10, fontSize: 22, background: form.emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.07)', border: form.emoji === e ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>{e}</button>
@@ -388,34 +392,49 @@ export default function ChoresPage() {
                   <option value="">Anyone</option>
                   {memberList.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
                 </select>
-                <select value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value as any }))} className="input" style={{ flex: 1 }}>
+                <select value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value as any, recurring: false }))} className="input" style={{ flex: 1 }}>
                   {FREQS.map(f => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
                 </select>
               </div>
 
-              {/* Day of week picker — only when weekly */}
+              {/* Weekly options */}
               {form.frequency === 'weekly' && (
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8, fontWeight: 700 }}>
-                    📆 Which day of the week?
-                  </label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {DAYS_OF_WEEK.map((day, i) => (
-                      <button key={day} onClick={() => setForm(f => ({ ...f, dayOfWeek: day }))} style={{
-                        padding: '6px 10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        background: form.dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
-                        border: `1.5px solid ${form.dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}`,
-                        color: form.dayOfWeek === day ? '#fff' : 'var(--text-muted)',
-                      }}>{DAY_SHORT[i]}</button>
-                    ))}
+                <>
+                  {/* Day of week */}
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8, fontWeight: 700 }}>📆 Which day of the week?</label>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {DAYS_OF_WEEK.map((day, i) => (
+                        <button key={day} onClick={() => setForm(f => ({ ...f, dayOfWeek: day }))} style={{ padding: '6px 10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: form.dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.07)', border: `1.5px solid ${form.dayOfWeek === day ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}`, color: form.dayOfWeek === day ? '#fff' : 'var(--text-muted)' }}>{DAY_SHORT[i]}</button>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-                    Next occurrence will be set as the due date automatically
+
+                  {/* Recurring toggle */}
+                  <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: form.recurring ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${form.recurring ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 800 }}>🔁 Repeat every week</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                          {form.recurring
+                            ? `Resets every ${form.dayOfWeek} · streak tracked 🔥`
+                            : 'One-time weekly task — mark done once'}
+                        </div>
+                      </div>
+                      <div onClick={() => setForm(f => ({ ...f, recurring: !f.recurring }))} style={{ width: 44, height: 24, borderRadius: 12, flexShrink: 0, background: form.recurring ? '#FBBF24' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: form.recurring ? 23 : 3, transition: 'left 0.2s' }} />
+                      </div>
+                    </div>
+                    {form.recurring && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>
+                        ✓ Auto-resets every week after completion · builds a 🔥 streak counter · missed weeks stay overdue
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
 
-              {/* Due date (manual override, hidden for weekly since auto-set) */}
+              {/* Due date — only for non-weekly */}
               {form.frequency !== 'weekly' && (
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>📅 Due date (optional)</label>
