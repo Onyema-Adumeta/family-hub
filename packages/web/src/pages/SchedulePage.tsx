@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/useApi';
+import { useEvents, useMembers, useCreateEvent, useDeleteEvent, useChores } from '../hooks/useApi';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -67,7 +67,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
             </div>
             {selectedEvents.length > 0 && (
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                {selectedEvents.length} event{selectedEvents.length !== 1 ? 's' : ''}
+                {selectedEvents.length} item{selectedEvents.length !== 1 ? 's' : ''}
               </div>
             )}
           </div>
@@ -107,8 +107,17 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
                 }}>{ev.emoji || '📅'}</div>
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {ev.title}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ev.title}
+                    </div>
+                    {ev.isChore && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 20, flexShrink: 0,
+                        background: 'rgba(245,158,11,0.15)', color: '#F59E0B',
+                        border: '1px solid rgba(245,158,11,0.3)',
+                      }}>chore</span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                     {ev.time && (
@@ -123,12 +132,15 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
                     )}
                   </div>
                 </div>
-                <button onClick={() => onDelete(ev.id)} style={{
-                  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                  background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)',
-                  color: '#F87171', fontSize: 14, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>×</button>
+                {/* Only show delete for real events, not chores */}
+                {!ev.isChore && (
+                  <button onClick={() => onDelete(ev.id)} style={{
+                    width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                    background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)',
+                    color: '#F87171', fontSize: 14, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>×</button>
+                )}
               </div>
             );
           })}
@@ -155,7 +167,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
               No upcoming events
             </div>
           ) : upcomingEvents.slice(0, 8).map((ev: any) => {
-            const evDateStr = new Date(ev.date).toISOString().slice(0,10);
+            const evDateStr = new Date(ev.date || ev.dueDate).toISOString().slice(0,10);
             const label = daysUntil(evDateStr, todayStr);
             const isEventToday = evDateStr === todayStr;
             return (
@@ -174,6 +186,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {ev.emoji} {ev.title}
+                    {ev.isChore && <span style={{ marginLeft: 4, fontSize: 10, color: '#F59E0B' }}>· chore</span>}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                     {ev.time ? `🕐 ${ev.time} · ` : ''}{label}
@@ -187,14 +200,16 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
                 }}>
                   {label}
                 </div>
-                <button onClick={() => onDelete(ev.id)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-muted)', fontSize: 14, padding: '4px',
-                  opacity: 0.5, transition: 'opacity 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
-                >×</button>
+                {!ev.isChore && (
+                  <button onClick={() => onDelete(ev.id)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', fontSize: 14, padding: '4px',
+                    opacity: 0.5, transition: 'opacity 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
+                  >×</button>
+                )}
               </div>
             );
           })}
@@ -207,6 +222,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function SchedulePage() {
   const { data: events = [], isLoading } = useEvents();
+  const { data: chores = [] }            = useChores();
   const { data: members = [] }           = useMembers();
   const createEvent = useCreateEvent();
   const deleteEvent = useDeleteEvent();
@@ -224,20 +240,35 @@ export default function SchedulePage() {
   const firstDay    = new Date(year, month, 1).getDay();
   const todayStr    = today.toISOString().slice(0, 10);
 
+  // Convert chores with due dates into calendar-compatible items
+  const choreEvents = (chores as any[])
+    .filter(c => c.dueDate && c.status !== 'done')
+    .map(c => ({
+      id:           'chore-' + c.id,
+      title:        c.title,
+      emoji:        c.emoji || '🧹',
+      date:         c.dueDate.slice(0, 10),
+      color:        '#F59E0B',
+      isChore:      true,
+      assignedToId: c.assignedToId,
+    }));
+
+  const allItems = [...(events as any[]), ...choreEvents];
+
   function prevMonth() { if (month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); }
   function nextMonth() { if (month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); }
 
   function getEventsForDate(day: number) {
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    return (events as any[]).filter(e => { try { return new Date(e.date).toISOString().slice(0,10) === dateStr; } catch { return false; } });
+    return allItems.filter(e => { try { return (e.date || '').slice(0,10) === dateStr; } catch { return false; } });
   }
 
-  const selectedEvents = (events as any[])
-    .filter(e => { try { return new Date(e.date).toISOString().slice(0,10) === selectedDate; } catch { return false; } })
+  const selectedEvents = allItems
+    .filter(e => { try { return (e.date || '').slice(0,10) === selectedDate; } catch { return false; } })
     .sort((a,b) => (a.time||'').localeCompare(b.time||''));
 
-  const upcomingEvents = (events as any[])
-    .filter(e => { try { return new Date(e.date).toISOString().slice(0,10) >= todayStr; } catch { return false; } })
+  const upcomingEvents = allItems
+    .filter(e => { try { return (e.date || '').slice(0,10) >= todayStr; } catch { return false; } })
     .sort((a,b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
     .slice(0, 10);
 
@@ -282,7 +313,7 @@ export default function SchedulePage() {
         <div>
           <h1 style={{ fontSize:22, fontWeight:900, margin:0 }}>📅 Schedule</h1>
           <p style={{ fontSize:12, color:'var(--text-muted)', margin:'3px 0 0' }}>
-            {upcomingEvents.length} upcoming event{upcomingEvents.length !== 1 ? 's' : ''}
+            {upcomingEvents.length} upcoming item{upcomingEvents.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button onClick={() => setShowAdd(true)} style={{
@@ -418,7 +449,7 @@ export default function SchedulePage() {
           <div style={{
             padding:'10px 20px 14px',
             borderTop:'1px solid rgba(255,255,255,0.06)',
-            display:'flex', gap:16, alignItems:'center',
+            display:'flex', gap:16, alignItems:'center', flexWrap:'wrap',
           }}>
             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
               <div style={{ width:12, height:12, borderRadius:3, background:'var(--primary)' }} />
@@ -429,8 +460,12 @@ export default function SchedulePage() {
               <span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600 }}>Selected</span>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <div style={{ width:12, height:12, borderRadius:3, background:'#F472B6' }} />
+              <div style={{ width:12, height:12, borderRadius:3, background:'#6366F1' }} />
               <span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600 }}>Event</span>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ width:12, height:12, borderRadius:3, background:'#F59E0B' }} />
+              <span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600 }}>Chore due</span>
             </div>
             {isMobile && (
               <span style={{ fontSize:10, color:'var(--text-muted)', marginLeft:'auto' }}>Tap date to view</span>
