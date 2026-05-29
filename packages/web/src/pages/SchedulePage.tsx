@@ -231,7 +231,9 @@ export default function SchedulePage() {
   const today = new Date();
   const [year, setYear]                 = useState(today.getFullYear());
   const [month, setMonth]               = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState(today.toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(
+  `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  );
   const [showAdd, setShowAdd]           = useState(false);
   const [showPanel, setShowPanel]       = useState(false);
   const [form, setForm] = useState({ title:'', emoji:'📅', time:'', assignedToId:'', notes:'', color:'#6366F1' });
@@ -371,7 +373,7 @@ export default function SchedulePage() {
               const dayEvents  = getEventsForDate(day);
               const isToday    = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
-              const isWeekend  = [0,6].includes(new Date(dateStr).getDay());
+              const isWeekend  = [0,6].includes(new Date(dateStr + 'T12:00:00').getDay());
               const hasEvents  = dayEvents.length > 0;
 
               return (
