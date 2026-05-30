@@ -39,7 +39,7 @@ export default function App() {
           <Route path="report" element={<ReportPage />} />
           <Route path="quests" element={<QuestsPage />} />
           <Route path="grocery" element={<GroceryPage />} />
-          <Route path="/trivia" element={<TriviaPage />} />
+          <Route path="trivia" element={<TriviaPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
