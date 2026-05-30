@@ -26,11 +26,13 @@ async function generateDailyTrivia() {
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `Generate 10 challenging trivia questions for the ${family.name} family.
-Mix of: history, science, geography, literature, math puzzles, and tricky general knowledge.
-Make them genuinely difficult — questions that require real thought, not just guessing.
-Avoid overly simple questions. Aim for a difficulty level that would challenge teens and adults.
-Use a different set of topics than yesterday — keep it fresh and varied.
+          content: `Generate 10 trivia questions for a family with a 10-year-old, a 14-year-old, and 2 adults.
+Mix difficulty like this:
+- 3 easy questions (10-year-old level: animals, basic science, Disney/Pixar, superheroes, Minecraft, fun world records)
+- 4 medium questions (14-year-old level: history, geography, music, movies/TV, sports, technology, pop culture)
+- 3 hard questions (adult level: literature, advanced science, world history, Canadian geography, cooking, 80s/90s nostalgia, tricky logic)
+Make sure every family member gets to shine at least once. Keep all content family-friendly.
+Use a completely different mix of topics each time — never repeat the same questions.
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
 [
