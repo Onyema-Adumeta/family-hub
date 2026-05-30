@@ -6,6 +6,10 @@ const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const EMOJIS      = ['📅','🎂','🏥','✈️','🏫','⚽','🎵','🍕','💼','🎉','🏠','🚗','👨‍👩‍👧','💊','🎓','🎭','🏊','🎪'];
 const COLORS      = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA','#F87171'];
 
+function toLocalDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -21,7 +25,7 @@ function formatDateLabel(dateStr: string, todayStr: string) {
   const d = new Date(dateStr + 'T12:00:00');
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (d.toISOString().slice(0,10) === tomorrow.toISOString().slice(0,10)) return 'Tomorrow';
+  if (toLocalDateStr(d) === toLocalDateStr(tomorrow)) return 'Tomorrow';
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
@@ -167,7 +171,7 @@ function EventPanel({ selectedDate, todayStr, selectedEvents, upcomingEvents, me
               No upcoming events
             </div>
           ) : upcomingEvents.slice(0, 8).map((ev: any) => {
-            const evDateStr = new Date(ev.date || ev.dueDate).toISOString().slice(0,10);
+            const evDateStr = toLocalDateStr(new Date(ev.date || ev.dueDate));
             const label = daysUntil(evDateStr, todayStr);
             const isEventToday = evDateStr === todayStr;
             return (
@@ -231,16 +235,14 @@ export default function SchedulePage() {
   const today = new Date();
   const [year, setYear]                 = useState(today.getFullYear());
   const [month, setMonth]               = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState(
-  `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  );
+  const [selectedDate, setSelectedDate] = useState(toLocalDateStr(today));
   const [showAdd, setShowAdd]           = useState(false);
   const [showPanel, setShowPanel]       = useState(false);
   const [form, setForm] = useState({ title:'', emoji:'📅', time:'', assignedToId:'', notes:'', color:'#6366F1' });
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay    = new Date(year, month, 1).getDay();
-  const todayStr    = today.toISOString().slice(0, 10);
+  const todayStr = toLocalDateStr(today);
 
   // Convert chores with due dates into calendar-compatible items
   const choreEvents = (chores as any[])
@@ -249,7 +251,7 @@ export default function SchedulePage() {
       id:           'chore-' + c.id,
       title:        c.title,
       emoji:        c.emoji || '🧹',
-      date:         c.dueDate.slice(0, 10),
+      date:         toLocalDateStr(new Date(c.dueDate)),
       color:        '#F59E0B',
       isChore:      true,
       assignedToId: c.assignedToId,
@@ -373,7 +375,7 @@ export default function SchedulePage() {
               const dayEvents  = getEventsForDate(day);
               const isToday    = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
-              const isWeekend  = [0,6].includes(new Date(dateStr + 'T12:00:00').getDay());
+              const isWeekend  = [0,6].includes(new Date(dateStr).getDay());
               const hasEvents  = dayEvents.length > 0;
 
               return (
