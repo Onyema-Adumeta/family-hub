@@ -80,10 +80,12 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// DELETE /api/rules/:id — delete a rule (parent only)
+// DELETE /api/rules/:id
 router.delete('/:id', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
+    // Delete child records first
+    await prisma.ruleOutcome.deleteMany({ where: { ruleId: req.params.id } });
     await prisma.weeklyRule.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (e) {
