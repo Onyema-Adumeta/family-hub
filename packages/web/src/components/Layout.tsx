@@ -23,6 +23,7 @@ const BOTTOM_NAV = [
   { path:'/chores',   icon:'✅', label:'Chores'  },
   { path:'/chat',     icon:'💬', label:'Chat'    },
   { path:'/meals',    icon:'🍽', label:'Meals'   },
+  { path:'/trivia',  icon:'🧠', label:'Trivia' },
   { path:'/schedule', icon:'📅', label:'More'    },
 ];
 
