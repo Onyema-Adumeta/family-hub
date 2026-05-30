@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Family {
+  id               String        @id @default(cuid())
+  name             String
+  inviteCode       String        @unique
+  createdAt        DateTime      @default(now())
+  plan             String        @default("free")
+  stripeCustomerId String?       @unique
+  stripeSubId      String?       @unique
+  planExpiresAt    DateTime?
+  members          Member[]
+  chores           Chore[]
+  meals            Meal[]
+  events           Event[]
+  rewards          Reward[]
+  messages         Message[]
+  quests           Quest[]
+  notifications    Notification[]
+  automations      Automation[]
+  memories         Memory[]
+  groceryItems     GroceryItem[]
+  weeklyRules      WeeklyRule[]
+}
+
+model Member {
+  id              String        @id @default(cuid())
+  familyId        String
+  family          Family        @relation(fields: [familyId], references: [id])
+  name            String
+  emoji           String        @default("🙂")
+  color           String        @default("#6366F1")
+  avatarUrl       String?
+  role            String        @default("child")
+  stars           Int           @default(0)
+  password        String
+  email           String?
+  pushToken       String?
+  createdAt       DateTime      @default(now())
+  streakDays      Int           @default(0)
+  streakUpdatedAt DateTime?
+  totalChoresDone Int           @default(0)
+  badges          String[]      @default([])
+  lastLat         Float?
+  lastLng         Float?
+  lastSeenAt      DateTime?
+  chores          Chore[]       @relation("AssignedChores")
+  completedChores Chore[]       @relation("CompletedChores")
+  meals           Meal[]
+  events          Event[]
+  messages        Message[]
+  redemptions     Redemption[]
+  groceryAdded    GroceryItem[] @relation("GroceryAdded")
+  rulesAsTarget   WeeklyRule[]  @relation("RuleTarget")
+  rulesCreated    WeeklyRule[]  @relation("RuleCreator")
+  ruleOutcomes    RuleOutcome[]
+}
+
+enum ChoreStatus {
+  pending
+  in_progress
+  done
+}
+
+model Chore {
+  id            String      @id @default(cuid())
+  familyId      String
+  family        Family      @relation(fields: [familyId], references: [id])
+  title         String
+  emoji         String      @default("✅")
+  assignedToId  String?
+  assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
+  frequency     String      @default("daily")
+  stars         Int         @default(5)
+  status        ChoreStatus @default(pending)
+  proofRequired Boolean     @default(false)
+  proofUrl      String?
+  proofType     String?
+  priority  String  @default("normal")
+  notes     String?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  completedById String?
+  completedBy   Member?     @relation("CompletedChores", fields: [completedById], references: [id])
+  recurring     Boolean   @default(false)
+  weeklyStreak  Int       @default(0)
+  createdAt     DateTime    @default(now())
+}
+
+model Meal {
+  id           String   @id @default(cuid())
+  familyId     String
+  family       Family   @relation(fields: [familyId], references: [id])
+  day          String
+  slot         String   @default("dinner")
+  name         String
+  emoji        String   @default("🍽️")
+  notes        String?
+  assignedToId String?
+  assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
+  week         String
+  createdAt    DateTime @default(now())
+}
+
+model Event {
+  id           String   @id @default(cuid())
+  familyId     String
+  family       Family   @relation(fields: [familyId], references: [id])
+  title        String
+  emoji        String   @default("📅")
+  date         DateTime
+  time         String?
+  color        String?
+  notes        String?
+  assignedToId String?
+  assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model Reward {
+  id             String       @id @default(cuid())
+  familyId       String
+  family         Family       @relation(fields: [familyId], references: [id])
+  name           String
+  emoji          String       @default("🎁")
+  cost           Int
+  description    String?
+  availableCount Int?
+  redemptions    Redemption[]
+  createdAt      DateTime     @default(now())
+}
+
+model Redemption {
+  id        String   @id @default(cuid())
+  familyId  String
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  rewardId  String
+  status    String   @default("pending")
+  reward    Reward   @relation(fields: [rewardId], references: [id])
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  text      String?
+  mediaUrl  String?
+  mediaType String?
+  replyToId String?
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Quest {
+  id          String    @id @default(cuid())
+  familyId    String
+  family      Family    @relation(fields: [familyId], references: [id])
+  title       String
+  description String?
+  emoji       String    @default("⚔️")
+  type        String    @default("family")
+  goal        Int       @default(5)
+  progress    Int       @default(0)
+  reward      Int       @default(10)
+  deadline    DateTime?
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  memberId  String?
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Automation {
+  id         String    @id @default(cuid())
+  familyId   String
+  family     Family    @relation(fields: [familyId], references: [id])
+  name       String
+  trigger    String
+  conditions Json      @default("{}")
+  actions    Json      @default("[]")
+  active     Boolean   @default(true)
+  lastRanAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Memory {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  title     String
+  body      String?
+  mediaUrl  String?
+  mediaType String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+model GroceryItem {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  addedById String
+  addedBy   Member   @relation("GroceryAdded", fields: [addedById], references: [id])
+  name      String
+  qty       String?
+  category  String   @default("General")
+  listType  String   @default("grocery")
+  priority  String   @default("normal")
+  notes     String?
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model WeeklyRule {
+  id              String        @id @default(cuid())
+  familyId        String
+  family          Family        @relation(fields: [familyId], references: [id])
+  assignedToId    String
+  assignedTo      Member        @relation("RuleTarget",  fields: [assignedToId], references: [id])
+  createdById     String
+  createdBy       Member        @relation("RuleCreator", fields: [createdById],  references: [id])
+  label           String
+  minStars        Int
+  consequence     String        @default("reduce_screen_time")
+  consequenceNote String?
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  outcomes        RuleOutcome[]
+}
+
+model RuleOutcome {
+  id          String     @id @default(cuid())
+  ruleId      String
+  rule        WeeklyRule @relation(fields: [ruleId], references: [id])
+  memberId    String
+  member      Member     @relation(fields: [memberId], references: [id])
+  weekStart   String
+  starsEarned Int
+  passed      Boolean
+  notified    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+}
