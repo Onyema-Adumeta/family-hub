@@ -44,9 +44,10 @@ router.post('/generate', async (req: AuthRequest, res) => {
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `Generate 10 fun family trivia questions for the ${family?.name || 'family'} family. 
-Mix of: general knowledge, kids topics (animals, science, nature), pop culture, and fun facts.
-Make them appropriate for all ages including young children.
+          content: `Generate 10 challenging trivia questions for the ${family?.name || 'family'} family. 
+Mix of: history, science, geography, literature, math puzzles, and tricky general knowledge.
+Make them genuinely difficult — questions that require real thought, not just guessing.
+Avoid overly simple questions. Aim for a difficulty level that would challenge teens and adults.
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
 [
