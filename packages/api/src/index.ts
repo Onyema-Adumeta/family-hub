@@ -25,6 +25,7 @@ import { setupWebSocket } from './services/websocket';
 import { setupCron } from './services/cron';
 import rulesRoutes from './routes/rules';
 import { startWeeklyRulesCron } from './services/weeklyRulesCron';
+import triviaRoutes from './routes/trivia';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -79,6 +80,7 @@ app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
 app.use('/api/rules', authMiddleware, rulesRoutes);
+app.use('/api/trivia', authMiddleware, triviaRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));

@@ -14,6 +14,7 @@ import ReportPage from './pages/ReportPage';
 import QuestsPage from './pages/QuestsPage';
 import GroceryPage from './pages/GroceryPage';
 import SettingsPage from './pages/SettingsPage';
+import TriviaPage from './pages/TriviaPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token);
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="report" element={<ReportPage />} />
           <Route path="quests" element={<QuestsPage />} />
           <Route path="grocery" element={<GroceryPage />} />
+          <Route path="/trivia" element={<TriviaPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
