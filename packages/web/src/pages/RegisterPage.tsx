@@ -11,7 +11,6 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('👨');
   const [color, setColor] = useState('#6366F1');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
@@ -21,11 +20,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { familyName, name, emoji, color, password });
+      const { data } = await api.post('/auth/register', { familyName, name, emoji, color });
       setAuth(data.token, data.member, data.family);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.error || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -34,19 +33,22 @@ export default function RegisterPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 400 }}>
+
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🏠</div>
           <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Create your family
           </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>No passwords needed — just your family code!</p>
         </div>
 
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Family Name</label>
-            <input className="input" placeholder="The Smiths" value={familyName} onChange={e => setFamilyName(e.target.value)} required />
+            <input className="input" placeholder="The Smiths" value={familyName} onChange={e => setFamilyName(e.target.value)} required autoFocus />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Your Name</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Your Name (parent)</label>
             <input className="input" placeholder="Alex" value={name} onChange={e => setName(e.target.value)} required />
           </div>
 
@@ -61,21 +63,18 @@ export default function RegisterPage() {
 
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Your Color</label>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {COLORS.map(c => (
-                <button type="button" key={c} onClick={() => setColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: `3px solid ${color === c ? '#fff' : 'transparent'}`, cursor: 'pointer' }} />
+                <button type="button" key={c} onClick={() => setColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: `3px solid ${color === c ? '#fff' : 'transparent'}`, boxShadow: color === c ? `0 0 0 2px ${c}` : 'none', cursor: 'pointer' }} />
               ))}
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Password</label>
-            <input className="input" type="password" placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-          </div>
+          {error && (
+            <div style={{ padding: '10px 14px', background: 'rgba(248,113,113,0.1)', border: '1.5px solid rgba(248,113,113,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--danger)', fontWeight: 700 }}>{error}</div>
+          )}
 
-          {error && <div style={{ padding: '10px 14px', background: 'rgba(248,113,113,0.1)', border: '1.5px solid rgba(248,113,113,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--danger)', fontWeight: 700 }}>{error}</div>}
-
-          <button type="submit" className="btn btn-primary" disabled={loading}>
+          <button type="submit" className="btn btn-primary" style={{ padding: '14px', fontSize: 15, fontWeight: 800 }} disabled={loading}>
             {loading ? 'Creating...' : '🏠 Create Family'}
           </button>
         </form>
