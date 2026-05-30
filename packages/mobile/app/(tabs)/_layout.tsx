@@ -1,16 +1,4 @@
 // app/(tabs)/_layout.tsx
-// Add schedule and quests to the tab bar, or keep them as hidden screens
-// accessible via navigation from Home/Dashboard.
-//
-// Option A (shown here): 5-tab bar (Home, Chores, Rewards, Chat, More)
-//   "More" opens a drawer/sheet — avoids cramming 7 icons into the tab bar.
-//
-// Option B: register schedule + quests as hidden tabs and navigate to them
-//   with router.push('/(tabs)/schedule') from cards on the home screen.
-//
-// This file uses Option B — all screens registered, only 5 shown in the tab bar.
-// The home screen links to Schedule and Quests via cards.
-
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 
@@ -62,11 +50,15 @@ export default function TabsLayout() {
       {/* ── Hidden screens (navigable via router.push, no tab icon) ──────── */}
       <Tabs.Screen
         name="schedule"
-        options={{ href: null }} // hides from tab bar
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="quests"
-        options={{ href: null }} // hides from tab bar
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="trivia"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="report"
