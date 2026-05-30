@@ -10,8 +10,8 @@ export function useRealtime() {
   useEffect(() => {
     if (!token) return;
 
-    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${location.host}?token=${token}`);
+    const wsUrl = import.meta.env.VITE_WS_URL || `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+    const ws = new WebSocket(`${wsUrl}?token=${token}`);
     wsRef.current = ws;
 
     ws.onmessage = (e) => {
