@@ -17,8 +17,7 @@ function getLevel(stars: number) {
 
 const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
 const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽', label:'Meals'    },{ path:'/grocery',  icon:'🛍', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
-const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'⚔', label:'Quests'   },{ path:'/settings', icon:'⚙', label:'Settings'  }];
-
+const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'⚔', label:'Quests'   },{ path:'/trivia',   icon:'🧠', label:'Trivia'   },{ path:'/settings', icon:'⚙', label:'Settings'  }];
 const BOTTOM_NAV = [
   { path:'/',         icon:'🏠', label:'Home'    },
   { path:'/chores',   icon:'✅', label:'Chores'  },
