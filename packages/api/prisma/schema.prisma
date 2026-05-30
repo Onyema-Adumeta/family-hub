@@ -8,13 +8,13 @@ datasource db {
 }
 
 model Family {
-  id               String        @id @default(cuid())
+  id               String          @id @default(cuid())
   name             String
-  inviteCode       String        @unique
-  createdAt        DateTime      @default(now())
-  plan             String        @default("free")
-  stripeCustomerId String?       @unique
-  stripeSubId      String?       @unique
+  inviteCode       String          @unique
+  createdAt        DateTime        @default(now())
+  plan             String          @default("free")
+  stripeCustomerId String?         @unique
+  stripeSubId      String?         @unique
   planExpiresAt    DateTime?
   members          Member[]
   chores           Chore[]
@@ -28,39 +28,41 @@ model Family {
   memories         Memory[]
   groceryItems     GroceryItem[]
   weeklyRules      WeeklyRule[]
+  triviaSessions   TriviaSession[]
 }
 
 model Member {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   familyId        String
-  family          Family        @relation(fields: [familyId], references: [id])
+  family          Family         @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String        @default("🙂")
-  color           String        @default("#6366F1")
+  emoji           String         @default("🙂")
+  color           String         @default("#6366F1")
   avatarUrl       String?
-  role            String        @default("child")
-  stars           Int           @default(0)
+  role            String         @default("child")
+  stars           Int            @default(0)
   password        String
   email           String?
   pushToken       String?
-  createdAt       DateTime      @default(now())
-  streakDays      Int           @default(0)
+  createdAt       DateTime       @default(now())
+  streakDays      Int            @default(0)
   streakUpdatedAt DateTime?
-  totalChoresDone Int           @default(0)
-  badges          String[]      @default([])
+  totalChoresDone Int            @default(0)
+  badges          String[]       @default([])
   lastLat         Float?
   lastLng         Float?
   lastSeenAt      DateTime?
-  chores          Chore[]       @relation("AssignedChores")
-  completedChores Chore[]       @relation("CompletedChores")
+  chores          Chore[]        @relation("AssignedChores")
+  completedChores Chore[]        @relation("CompletedChores")
   meals           Meal[]
   events          Event[]
   messages        Message[]
   redemptions     Redemption[]
-  groceryAdded    GroceryItem[] @relation("GroceryAdded")
-  rulesAsTarget   WeeklyRule[]  @relation("RuleTarget")
-  rulesCreated    WeeklyRule[]  @relation("RuleCreator")
+  groceryAdded    GroceryItem[]  @relation("GroceryAdded")
+  rulesAsTarget   WeeklyRule[]   @relation("RuleTarget")
+  rulesCreated    WeeklyRule[]   @relation("RuleCreator")
   ruleOutcomes    RuleOutcome[]
+  triviaAnswers   TriviaAnswer[]
 }
 
 enum ChoreStatus {
@@ -83,14 +85,14 @@ model Chore {
   proofRequired Boolean     @default(false)
   proofUrl      String?
   proofType     String?
-  priority  String  @default("normal")
-  notes     String?
+  priority      String      @default("normal")
+  notes         String?
   dueDate       DateTime?
   completedAt   DateTime?
   completedById String?
   completedBy   Member?     @relation("CompletedChores", fields: [completedById], references: [id])
-  recurring     Boolean   @default(false)
-  weeklyStreak  Int       @default(0)
+  recurring     Boolean     @default(false)
+  weeklyStreak  Int         @default(0)
   createdAt     DateTime    @default(now())
 }
 
@@ -260,4 +262,38 @@ model RuleOutcome {
   passed      Boolean
   notified    Boolean    @default(false)
   createdAt   DateTime   @default(now())
+}
+
+model TriviaSession {
+  id        String           @id @default(cuid())
+  familyId  String
+  family    Family           @relation(fields: [familyId], references: [id])
+  status    String           @default("pending")
+  createdAt DateTime         @default(now())
+  questions TriviaQuestion[]
+  answers   TriviaAnswer[]
+}
+
+model TriviaQuestion {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   TriviaSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question  String
+  options   String[]
+  answer    String
+  order     Int
+  answers   TriviaAnswer[]
+}
+
+model TriviaAnswer {
+  id         String         @id @default(cuid())
+  sessionId  String
+  session    TriviaSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId String
+  question   TriviaQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member         @relation(fields: [memberId], references: [id])
+  answer     String
+  correct    Boolean
+  createdAt  DateTime       @default(now())
 }
