@@ -1,4 +1,4 @@
-{
+﻿{
   "expo": {
     "name": "Family Hub",
     "slug": "family-hub",
@@ -7,11 +7,28 @@
     "icon": "./assets/icon.png",
     "scheme": "familyhub",
     "userInterfaceStyle": "dark",
-    "splash": { "backgroundColor": "#0f0f13" },
+    "splash": {
+      "backgroundColor": "#0f0f13"
+    },
     "assetBundlePatterns": ["**/*"],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "com.familyhub.app" },
-    "android": { "adaptiveIcon": { "backgroundColor": "#0f0f13" }, "package": "com.familyhub.app" },
-    "plugins": ["expo-router", "expo-secure-store", ["expo-notifications", { "sounds": [] }]],
-    "extra": { "router": { "origin": false }, "eas": { "projectId": "your-eas-project-id" } }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.familyhub.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f0f13"
+      },
+      "package": "com.familyhub.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-notifications", { "sounds": [] }]
+    ],
+    "extra": {
+      "router": { "origin": false },
+      "eas": { "projectId": "0241a79b-69e9-4e3a-a6cb-4f3d4d2a3530" }
+    }
   }
 }
