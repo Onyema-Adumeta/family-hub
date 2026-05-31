@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
-import api from '../lib/api';
+import { api } from '../lib/api';
 
 function avatarSrc(url?: string | null) {
   if (!url) return null;
@@ -192,5 +192,6 @@ export default function WishlistPage() {
     </div>
   );
 }
+
 
 
