@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useChores, useMembers, useCreateChore, useUpdateChore, useDeleteChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
@@ -7,6 +7,8 @@ const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','�
 const FREQS = ['daily', 'weekly', 'once'] as const;
 const DAYS_OF_WEEK = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const DAY_SHORT    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 type Status = 'pending' | 'in_progress' | 'done';
 
@@ -271,6 +273,7 @@ export default function ChoresPage() {
   const createChore = useCreateChore();
   const updateChore = useUpdateChore();
   const deleteChore = useDeleteChore();
+  const { token } = useAuthStore();
 
   const [tab, setTab]             = useState<Status | 'all'>('all');
   const [showAdd, setShowAdd]     = useState(false);
@@ -279,6 +282,12 @@ export default function ChoresPage() {
   const [bulkMode, setBulkMode]   = useState(false);
   const [bulkAssignId, setBulkAssignId] = useState('');
   const [sortBy, setSortBy]       = useState<'created' | 'due' | 'stars' | 'priority'>('created');
+
+  // Track per-chore photo upload state
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<Record<string, string>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const [form, setForm] = useState({
     title: '', emoji: '🧹', assignedToId: '',
     frequency: 'daily' as typeof FREQS[number],
@@ -308,6 +317,37 @@ export default function ChoresPage() {
   const changeStatus  = (chore: any, status: Status) => updateChore.mutate({ id: chore.id, data: { status } });
   const reassign      = (chore: any, assignedToId: string) => updateChore.mutate({ id: chore.id, data: { assignedToId: assignedToId || null } });
   const setDueDateFn  = (chore: any, dueDate: string) => updateChore.mutate({ id: chore.id, data: { dueDate: dueDate || null } });
+
+  // ── Photo upload handler ──────────────────────────────────────────────────
+  const handlePhotoUpload = async (choreId: string, file: File) => {
+    setUploadingId(choreId);
+    try {
+      // Show local preview immediately
+      const localUrl = URL.createObjectURL(file);
+      setPhotoPreview(prev => ({ ...prev, [choreId]: localUrl }));
+
+      const form = new FormData();
+      form.append('photo', file);
+      const res = await fetch(`${API_BASE}/api/chores/${choreId}/photo`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const updated = await res.json();
+      // Replace local preview with server URL
+      if (updated.photoUrl) {
+        setPhotoPreview(prev => ({ ...prev, [choreId]: `${API_BASE}${updated.photoUrl}` }));
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Photo upload failed. Please try again.');
+      setPhotoPreview(prev => { const next = { ...prev }; delete next[choreId]; return next; });
+    } finally {
+      setUploadingId(null);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleDuplicate = async (chore: any) => {
     try {
@@ -443,6 +483,10 @@ export default function ChoresPage() {
         const isRecurring = chore.recurring && chore.frequency === 'weekly';
         const isEditing   = editingId === chore.id;
         const isSelected  = selected.has(chore.id);
+        const isUploading = uploadingId === chore.id;
+        // Show preview if just uploaded, otherwise fall back to DB value
+        const photoUrl = photoPreview[chore.id] || (chore.photoUrl ? `${API_BASE}${chore.photoUrl}` : null);
+        const needsProof = chore.proofRequired && !photoUrl;
 
         return (
           <div key={chore.id} style={{ background: isSelected ? 'rgba(124,111,247,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${isSelected ? 'rgba(124,111,247,0.5)' : overdue ? '#F87171' : isEditing ? 'rgba(124,111,247,0.5)' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
@@ -467,11 +511,44 @@ export default function ChoresPage() {
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
                   {assignee && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {assignee.emoji} {assignee.name}</span>}
                   {dueLabel && <span style={{ fontSize: 11, fontWeight: 700, color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', borderRadius: 6, padding: '1px 6px' }}>📅 {dueLabel}</span>}
+                  {needsProof && <span style={{ fontSize: 11, fontWeight: 700, color: '#F97316', background: 'rgba(249,115,22,0.12)', borderRadius: 6, padding: '1px 6px' }}>📸 proof needed</span>}
                 </div>
                 {chore.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {chore.notes}</div>}
               </div>
               {!bulkMode && (
                 <>
+                  {/* ── Camera button ── */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      style={{ display: 'none' }}
+                      ref={el => { fileInputRefs.current[chore.id] = el; }}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePhotoUpload(chore.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => fileInputRefs.current[chore.id]?.click()}
+                      disabled={isUploading}
+                      title={photoUrl ? 'Replace photo proof' : 'Add photo proof'}
+                      style={{
+                        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                        background: photoUrl ? 'rgba(74,222,128,0.15)' : needsProof ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.07)',
+                        border: `1px solid ${photoUrl ? 'rgba(74,222,128,0.4)' : needsProof ? 'rgba(249,115,22,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                        color: photoUrl ? '#4ADE80' : needsProof ? '#F97316' : 'var(--text-muted)',
+                        fontSize: 13, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: isUploading ? 0.5 : 1,
+                      }}
+                    >
+                      {isUploading ? '⏳' : photoUrl ? '✅' : '📷'}
+                    </button>
+                  </div>
+                  {/* ── End camera button ── */}
                   <button onClick={() => handleDuplicate(chore)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Duplicate">📋</button>
                   <button onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Edit">✏️</button>
                 </>
@@ -483,6 +560,23 @@ export default function ChoresPage() {
               </select>
               <button onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
+
+            {/* ── Photo thumbnail strip (shown when a photo exists) ── */}
+            {photoUrl && (
+              <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <img
+                  src={photoUrl}
+                  alt="Proof"
+                  style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: '2px solid rgba(74,222,128,0.4)', flexShrink: 0 }}
+                />
+                <div style={{ fontSize: 11, color: '#4ADE80', fontWeight: 700 }}>
+                  ✅ Photo proof submitted
+                  <div style={{ color: 'var(--text-muted)', fontWeight: 400, marginTop: 2 }}>Tap 📷 to replace</div>
+                </div>
+              </div>
+            )}
+            {/* ── End photo thumbnail ── */}
+
             {!isEditing && (
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <select value={chore.assignedToId || ''} onChange={e => reassign(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -498,7 +592,7 @@ export default function ChoresPage() {
       })}
 
       {list.length > 0 && !editingId && !bulkMode && (
-        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>📋 duplicate · ✏️ edit · ☑️ bulk select</p>
+        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>📋 duplicate · ✏️ edit · 📷 photo proof · ☑️ bulk select</p>
       )}
 
       <WeeklyRulesPanel />

@@ -132,8 +132,7 @@ function WeeklyGoalWidget() {
 
   if (!data || data.rules.length === 0) return null;
 
-  // Days remaining until Friday
-  const dayOfWeek = new Date().getDay(); // 0=Sun,1=Mon...5=Fri
+  const dayOfWeek = new Date().getDay();
   const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 6;
 
   return (
@@ -154,7 +153,6 @@ function WeeklyGoalWidget() {
             border: `1.5px solid ${passed ? 'rgba(74,222,128,0.35)' : 'rgba(251,191,36,0.35)'}`,
             boxShadow: passed ? '0 4px 20px rgba(74,222,128,0.1)' : '0 4px 20px rgba(251,191,36,0.1)',
           }}>
-            {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 3 }}>
@@ -175,8 +173,6 @@ function WeeklyGoalWidget() {
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>⭐ this week</div>
               </div>
             </div>
-
-            {/* Progress bar */}
             <div style={{ height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 10 }}>
               <div style={{
                 height: '100%', width: `${pct}%`, borderRadius: 99,
@@ -184,16 +180,12 @@ function WeeklyGoalWidget() {
                 transition: 'width 0.6s ease',
               }} />
             </div>
-
-            {/* Status */}
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
               {passed
                 ? '🎉 Goal achieved! Enjoy your weekend.'
                 : remaining === 0 ? '🎉 Just hit your goal!'
                 : `⭐ ${remaining} more star${remaining !== 1 ? 's' : ''} needed by Friday 4pm`}
             </div>
-
-            {/* Consequence warning */}
             {!passed && rule.consequenceNote && (
               <div style={{
                 marginTop: 8, padding: '8px 12px', borderRadius: 10,
@@ -203,8 +195,6 @@ function WeeklyGoalWidget() {
                 ⚠️ {rule.consequenceNote}
               </div>
             )}
-
-            {/* Last week result (only if from a previous week) */}
             {lastOutcome && !isThisWeek && (
               <div style={{
                 marginTop: 8, fontSize: 11, color: 'var(--text-muted)',
@@ -216,6 +206,90 @@ function WeeklyGoalWidget() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Upcoming Birthdays Widget ────────────────────────────────────────────────
+function UpcomingBirthdays({ members }: { members: any[] }) {
+  const withBirthdays = members
+    .filter(m => m.birthday)
+    .map(m => {
+      const bday = new Date(m.birthday);
+      const today = new Date();
+      const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
+      if (next < today) next.setFullYear(today.getFullYear() + 1);
+      const daysUntil = Math.ceil((next.getTime() - today.setHours(0,0,0,0)) / 86400000);
+      const age = next.getFullYear() - bday.getFullYear();
+      return { ...m, daysUntil, age, nextBirthday: next };
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .slice(0, 4);
+
+  if (withBirthdays.length === 0) return null;
+
+  const isToday    = (d: number) => d === 0;
+  const isSoon     = (d: number) => d <= 7 && d > 0;
+  const isThisMonth = (d: number) => d <= 30 && d > 7;
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: '16px', borderRadius: 20,
+      background: 'linear-gradient(135deg,rgba(244,114,182,0.15),rgba(167,139,250,0.08))',
+      border: '1.5px solid rgba(244,114,182,0.3)',
+      boxShadow: '0 4px 20px rgba(244,114,182,0.1)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 7 }}>
+          🎂 Upcoming Birthdays
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {withBirthdays.map(m => {
+          const today  = isToday(m.daysUntil);
+          const soon   = isSoon(m.daysUntil);
+          const month  = isThisMonth(m.daysUntil);
+          const src    = avatarSrc(m.avatarUrl);
+
+          const badgeColor = today ? '#4ADE80' : soon ? '#F472B6' : month ? '#FBBF24' : '#94A3B8';
+          const badgeBg    = today ? 'rgba(74,222,128,0.15)' : soon ? 'rgba(244,114,182,0.15)' : month ? 'rgba(251,191,36,0.15)' : 'rgba(148,163,184,0.1)';
+          const badgeText  = today ? '🎉 Today!' : soon ? `${m.daysUntil}d away` : `${m.daysUntil}d`;
+
+          return (
+            <div key={m.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 12px', borderRadius: 14,
+              background: today ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
+              border: `1.5px solid ${today ? 'rgba(74,222,128,0.3)' : 'rgba(244,114,182,0.15)'}`,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%', background: m.color || '#6366F1',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, overflow: 'hidden', flexShrink: 0,
+                border: `2px solid ${today ? '#4ADE80' : 'rgba(244,114,182,0.4)'}`,
+              }}>
+                {src
+                  ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : m.emoji || '🎂'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>{m.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {m.nextBirthday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  {m.age > 0 && ` · Turning ${m.age}`}
+                </div>
+              </div>
+              <div style={{
+                padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 800,
+                color: badgeColor, background: badgeBg,
+                border: `1px solid ${badgeColor}44`, flexShrink: 0,
+              }}>
+                {badgeText}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -324,8 +398,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Weekly Goal Widget (kids see their progress, parents see nothing here) ── */}
+      {/* ── Weekly Goal Widget ── */}
       {!isParent && <WeeklyGoalWidget />}
+
+      {/* ── Upcoming Birthdays ── */}
+      <UpcomingBirthdays members={allMembers} />
 
       {/* ── AI Tip ── */}
       <div style={{

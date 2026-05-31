@@ -41,6 +41,10 @@ export default function SettingsPage() {
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [removingId, setRemovingId]       = useState<string | null>(null);
 
+  // Birthday editing state: memberId -> value being edited
+  const [birthdayEdits, setBirthdayEdits] = useState<Record<string, string>>({});
+  const [savingBirthday, setSavingBirthday] = useState<string | null>(null);
+
   const isParent   = member?.role === 'parent';
   const inviteCode = family?.inviteCode || '';
   const inviteUrl  = `${window.location.origin}/join/${inviteCode}`;
@@ -113,6 +117,22 @@ export default function SettingsPage() {
       alert(e.response?.data?.error || 'Failed to remove member');
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function saveBirthday(memberId: string, value: string) {
+    setSavingBirthday(memberId);
+    try {
+      await api.patch(`/members/${memberId}`, { birthday: value || null });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      // If saving own birthday, update local member too
+      if (memberId === member?.id) {
+        setMember({ ...member, birthday: value || null } as any);
+      }
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to save birthday');
+    } finally {
+      setSavingBirthday(null);
     }
   }
 
@@ -260,7 +280,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Your color</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {COLORS.map(c => (
@@ -271,6 +291,31 @@ export default function SettingsPage() {
                 transition: 'all 0.15s',
               }} />
             ))}
+          </div>
+        </div>
+
+        {/* My birthday */}
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 5 }}>🎂 My birthday</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="date"
+              className="input"
+              style={{ flex: 1 }}
+              defaultValue={(member as any)?.birthday ? (member as any).birthday.substring(0, 10) : ''}
+              onChange={e => setBirthdayEdits(prev => ({ ...prev, [member!.id]: e.target.value }))}
+            />
+            <button
+              onClick={() => member && saveBirthday(member.id, birthdayEdits[member.id] ?? (member as any)?.birthday?.substring(0, 10) ?? '')}
+              disabled={savingBirthday === member?.id}
+              style={{
+                padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer',
+                opacity: savingBirthday === member?.id ? 0.6 : 1, flexShrink: 0,
+              }}
+            >
+              {savingBirthday === member?.id ? '...' : 'Save'}
+            </button>
           </div>
         </div>
 
@@ -299,92 +344,120 @@ export default function SettingsPage() {
           const badges: string[] = m.badges ?? [];
           const isMe         = m.id === member?.id;
           const isConfirming = confirmRemove === m.id;
+          const currentBday  = birthdayEdits[m.id] ?? (m.birthday ? m.birthday.substring(0, 10) : '');
 
           return (
             <div key={m.id} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 0',
+              paddingBottom: 14, marginBottom: 14,
               borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
-              {/* Avatar */}
-              <div style={{
-                width: 42, height: 42, borderRadius: '50%',
-                background: m.color || '#6366F1',
-                border: `2px solid ${m.color || '#6366F1'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', flexShrink: 0,
-              }}>
-                {src
-                  ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 20 }}>{m.emoji || '👤'}</span>}
-              </div>
-
-              {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 2 }}>
-                  <span style={{ textTransform: 'capitalize' }}>{m.role}</span>
-                  <span>· ⭐ {m.stars ?? 0}</span>
-                  {(m.streakDays ?? 0) > 0 && <span>· 🔥 {m.streakDays}d streak</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Avatar */}
+                <div style={{
+                  width: 42, height: 42, borderRadius: '50%',
+                  background: m.color || '#6366F1',
+                  border: `2px solid ${m.color || '#6366F1'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden', flexShrink: 0,
+                }}>
+                  {src
+                    ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ fontSize: 20 }}>{m.emoji || '👤'}</span>}
                 </div>
-                {badges.length > 0 && (
-                  <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-                    {badges.slice(0, 3).map(b => {
-                      const bm = BADGE_META[b] || { icon: '🏅', label: b, color: '#94A3B8' };
-                      return (
-                        <span key={b} style={{
-                          fontSize: 10, color: bm.color,
-                          background: `${bm.color}22`, borderRadius: 10, padding: '1px 6px',
-                        }}>{bm.icon} {bm.label}</span>
-                      );
-                    })}
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 2 }}>
+                    <span style={{ textTransform: 'capitalize' }}>{m.role}</span>
+                    <span>· ⭐ {m.stars ?? 0}</span>
+                    {(m.streakDays ?? 0) > 0 && <span>· 🔥 {m.streakDays}d streak</span>}
                   </div>
+                  {badges.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                      {badges.slice(0, 3).map(b => {
+                        const bm = BADGE_META[b] || { icon: '🏅', label: b, color: '#94A3B8' };
+                        return (
+                          <span key={b} style={{
+                            fontSize: 10, color: bm.color,
+                            background: `${bm.color}22`, borderRadius: 10, padding: '1px 6px',
+                          }}>{bm.icon} {bm.label}</span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: "You" badge OR remove controls */}
+                {isMe ? (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: 'var(--primary)',
+                    background: 'rgba(99,102,241,0.15)', borderRadius: 8, padding: '3px 8px',
+                    flexShrink: 0,
+                  }}>You</span>
+                ) : isParent && (
+                  isConfirming ? (
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleRemoveMember(m.id)}
+                        disabled={removingId === m.id}
+                        style={{
+                          padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.4)',
+                          color: '#F87171', cursor: 'pointer',
+                        }}
+                      >
+                        {removingId === m.id ? '…' : 'Remove'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmRemove(null)}
+                        style={{
+                          padding: '5px 10px', borderRadius: 8, fontSize: 12,
+                          background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
+                          color: 'var(--text-muted)', cursor: 'pointer',
+                        }}
+                      >Cancel</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRemove(m.id)}
+                      title={`Remove ${m.name}`}
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        fontSize: 16, padding: '6px', borderRadius: 8, lineHeight: 1,
+                        color: 'var(--text-muted)', flexShrink: 0, transition: 'color 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                    >🗑️</button>
+                  )
                 )}
               </div>
 
-              {/* Right: "You" badge OR remove controls (parents only, not yourself) */}
-              {isMe ? (
-                <span style={{
-                  fontSize: 10, fontWeight: 700, color: 'var(--primary)',
-                  background: 'rgba(99,102,241,0.15)', borderRadius: 8, padding: '3px 8px',
-                  flexShrink: 0,
-                }}>You</span>
-              ) : isParent && (
-                isConfirming ? (
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <button
-                      onClick={() => handleRemoveMember(m.id)}
-                      disabled={removingId === m.id}
-                      style={{
-                        padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                        background: 'rgba(239,68,68,0.15)', border: '1.5px solid rgba(239,68,68,0.4)',
-                        color: '#F87171', cursor: 'pointer',
-                      }}
-                    >
-                      {removingId === m.id ? '…' : 'Remove'}
-                    </button>
-                    <button
-                      onClick={() => setConfirmRemove(null)}
-                      style={{
-                        padding: '5px 10px', borderRadius: 8, fontSize: 12,
-                        background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-                        color: 'var(--text-muted)', cursor: 'pointer',
-                      }}
-                    >Cancel</button>
-                  </div>
-                ) : (
+              {/* ── Birthday row (parents can edit anyone's; kids can only edit their own) ── */}
+              {(isParent || isMe) && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>🎂</span>
+                  <input
+                    type="date"
+                    className="input"
+                    style={{ flex: 1, fontSize: 12, padding: '6px 10px' }}
+                    value={currentBday}
+                    onChange={e => setBirthdayEdits(prev => ({ ...prev, [m.id]: e.target.value }))}
+                  />
                   <button
-                    onClick={() => setConfirmRemove(m.id)}
-                    title={`Remove ${m.name}`}
+                    onClick={() => saveBirthday(m.id, currentBday)}
+                    disabled={savingBirthday === m.id}
                     style={{
-                      background: 'transparent', border: 'none', cursor: 'pointer',
-                      fontSize: 16, padding: '6px', borderRadius: 8, lineHeight: 1,
-                      color: 'var(--text-muted)', flexShrink: 0, transition: 'color 0.15s',
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      background: 'rgba(244,114,182,0.15)', border: '1px solid rgba(244,114,182,0.35)',
+                      color: '#F472B6', cursor: 'pointer', flexShrink: 0,
+                      opacity: savingBirthday === m.id ? 0.5 : 1,
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#F87171')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                  >🗑️</button>
-                )
+                  >
+                    {savingBirthday === m.id ? '...' : currentBday ? 'Update' : 'Set'}
+                  </button>
+                </div>
               )}
             </div>
           );
