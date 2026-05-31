@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -15,6 +15,7 @@ import QuestsPage from './pages/QuestsPage';
 import GroceryPage from './pages/GroceryPage';
 import SettingsPage from './pages/SettingsPage';
 import TriviaPage from './pages/TriviaPage';
+import WishlistPage from './pages/WishlistPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token);
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="quests" element={<QuestsPage />} />
           <Route path="grocery" element={<GroceryPage />} />
           <Route path="trivia" element={<TriviaPage />} />
+          <Route path="wishlist" element={<WishlistPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

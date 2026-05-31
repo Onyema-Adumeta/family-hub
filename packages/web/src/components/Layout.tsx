@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 import { useNotifications, useMembers } from '../hooks/useApi';
@@ -15,16 +15,16 @@ function getLevel(stars: number) {
   return             { level: 5, title: 'Legend',         next: 1000 };
 }
 
-const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
-const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽', label:'Meals'    },{ path:'/grocery',  icon:'🛍', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
-const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'⚔', label:'Quests'   },{ path:'/trivia',   icon:'🧠', label:'Trivia'   },{ path:'/settings', icon:'⚙', label:'Settings'  }];
+const NAV_PRIMARY   = [{ path:'/',         icon:'??', label:'Home'     },{ path:'/chat',     icon:'??', label:'Chat'     },{ path:'/schedule', icon:'??', label:'Schedule' },{ path:'/chores',   icon:'?', label:'Chores'   }];
+const NAV_SECONDARY = [{ path:'/meals',    icon:'??', label:'Meals'    },{ path:'/grocery',  icon:'??', label:'Grocery'  },{ path:'/rewards',  icon:'?', label:'Rewards'  }];
+const NAV_ADVANCED  = [{ path:'/report',   icon:'??', label:'Insights' },{ path:'/quests',   icon:'?', label:'Quests'   },{ path:'/trivia',   icon:'??', label:'Trivia'   },{ path:'/wishlist', icon:'??', label:'Wishlist' },{ path:'/settings', icon:'?', label:'Settings'  }];
 const BOTTOM_NAV = [
-  { path:'/',         icon:'🏠', label:'Home'    },
-  { path:'/chores',   icon:'✅', label:'Chores'  },
-  { path:'/chat',     icon:'💬', label:'Chat'    },
-  { path:'/meals',    icon:'🍽', label:'Meals'   },
-  { path:'/trivia',  icon:'🧠', label:'Trivia' },
-  { path:'/schedule', icon:'📅', label:'More'    },
+  { path:'/',         icon:'??', label:'Home'    },
+  { path:'/chores',   icon:'?', label:'Chores'  },
+  { path:'/chat',     icon:'??', label:'Chat'    },
+  { path:'/meals',    icon:'??', label:'Meals'   },
+  { path:'/trivia',  icon:'??', label:'Trivia' },{ path:'/wishlist', icon:'??', label:'Wishlist' },
+  { path:'/schedule', icon:'??', label:'More'    },
 ];
 
 function NavSection({ label, items, highlight }: { label: string; items: typeof NAV_PRIMARY; highlight?: string[] }) {
@@ -95,7 +95,7 @@ export default function Layout() {
     return () => { document.body.style.overflow = ''; };
   }, [sidebarOpen]);
 
-  // ── MOBILE LAYOUT ──────────────────────────────────────────────
+  // -- MOBILE LAYOUT ----------------------------------------------
   if (isMobile) {
     return (
       <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)', overflow:'hidden' }}>
@@ -126,7 +126,7 @@ export default function Layout() {
             >
               {avatarUrl
                 ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : member?.emoji || '👤'
+                : member?.emoji || '??'
               }
             </div>
           </div>
@@ -154,17 +154,17 @@ export default function Layout() {
                   }}>
                     {avatarUrl
                       ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                      : member?.emoji || '👤'
+                      : member?.emoji || '??'
                     }
                   </div>
                   <div>
                     <div style={{ fontWeight:900, fontSize:16 }}>{member?.name || 'You'}</div>
-                    <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800 }}>⭐ {stars}</div>
+                    <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800 }}>? {stars}</div>
                   </div>
                   <button
                     onClick={() => setSidebarOpen(false)}
                     style={{ marginLeft:'auto', background:'none', border:'none', color:'var(--text-muted)', fontSize:20, cursor:'pointer' }}
-                  >✕</button>
+                  >?</button>
                 </div>
                 <div style={{ fontSize:11, fontWeight:800, color:'var(--text-muted)', marginBottom:4, display:'flex', justifyContent:'space-between' }}>
                   <span>Lv.{level} {title}</span><span>{stars}/{next}</span>
@@ -205,7 +205,7 @@ export default function Layout() {
           <Outlet />
         </main>
 
-        {/* ── Bottom Nav Bar ── */}
+        {/* -- Bottom Nav Bar -- */}
         <nav style={{
           position:'fixed', bottom:0, left:0, right:0,
           background:'rgba(10,10,20,0.97)',
@@ -281,10 +281,10 @@ export default function Layout() {
     );
   }
 
-  // ── DESKTOP LAYOUT ─────────────────────────────────────────────
+  // -- DESKTOP LAYOUT ---------------------------------------------
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--bg)' }}>
-      <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>{sidebarOpen ? '✕' : '☰'}</button>
+      <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>{sidebarOpen ? '?' : '?'}</button>
       <div className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
       <aside
@@ -314,7 +314,7 @@ export default function Layout() {
             >
               {avatarUrl
                 ? <img src={avatarUrl} alt={member?.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                : member?.emoji || '👤'
+                : member?.emoji || '??'
               }
             </div>
             <div style={{ flex:1, minWidth:0 }}>
@@ -322,8 +322,8 @@ export default function Layout() {
                 {member?.name || 'You'}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
-                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>⭐ {stars}</span>
-                {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>🔥 {streak}</span>}
+                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>? {stars}</span>
+                {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>?? {streak}</span>}
               </div>
             </div>
           </div>
