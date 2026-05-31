@@ -159,7 +159,7 @@ export default function Layout() {
                   </div>
                   <div>
                     <div style={{ fontWeight:900, fontSize:16 }}>{member?.name || 'You'}</div>
-                    <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800 }}>? {stars}</div>
+                    <div style={{ fontSize:12, color:'#FBBF24', fontWeight:800 }}>⭐ {stars}</div>
                   </div>
                   <button
                     onClick={() => setSidebarOpen(false)}
@@ -322,7 +322,7 @@ export default function Layout() {
                 {member?.name || 'You'}
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
-                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>? {stars}</span>
+                <span style={{ fontSize:11, fontWeight:800, color:'#FBBF24' }}>⭐ {stars}</span>
                 {streak > 0 && <span style={{ fontSize:11, fontWeight:800, color:'#FB923C' }}>?? {streak}</span>}
               </div>
             </div>
