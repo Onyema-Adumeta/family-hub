@@ -11,7 +11,7 @@ router.get('/', async (req: AuthRequest, res) => {
 
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const event = await prisma.event.create({ data: { familyId: req.familyId!, ...req.body, date: new Date(req.body.date) }, include: { assignedTo: true } });
+    const event = await prisma.event.create({ data: { familyId: req.familyId!, ...req.body, date: new Date(req.body.date + "T12:00:00") }, include: { assignedTo: true } });
     broadcast(req.familyId!, { type: 'event:created', event });
     res.json(event);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
