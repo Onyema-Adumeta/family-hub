@@ -15,16 +15,16 @@ function getLevel(stars: number) {
   return             { level: 5, title: 'Legend',         next: 1000 };
 }
 
-const NAV_PRIMARY   = [{ path:'/',         icon:'??', label:'Home'     },{ path:'/chat',     icon:'??', label:'Chat'     },{ path:'/schedule', icon:'??', label:'Schedule' },{ path:'/chores',   icon:'?', label:'Chores'   }];
-const NAV_SECONDARY = [{ path:'/meals',    icon:'??', label:'Meals'    },{ path:'/grocery',  icon:'??', label:'Grocery'  },{ path:'/rewards',  icon:'?', label:'Rewards'  }];
-const NAV_ADVANCED  = [{ path:'/report',   icon:'??', label:'Insights' },{ path:'/quests',   icon:'?', label:'Quests'   },{ path:'/trivia',   icon:'??', label:'Trivia'   },{ path:'/wishlist', icon:'??', label:'Wishlist' },{ path:'/settings', icon:'?', label:'Settings'  }];
+const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
+const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽️', label:'Meals'    },{ path:'/grocery',  icon:'🛒', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
+const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'🎯', label:'Quests'   },{ path:'/trivia',   icon:'🧠', label:'Trivia'   },{ path:'/wishlist', icon:'🎁', label:'Wishlist' },{ path:'/settings', icon:'⚙️', label:'Settings'  }];
 const BOTTOM_NAV = [
-  { path:'/',         icon:'??', label:'Home'    },
-  { path:'/chores',   icon:'?', label:'Chores'  },
-  { path:'/chat',     icon:'??', label:'Chat'    },
-  { path:'/meals',    icon:'??', label:'Meals'   },
-  { path:'/trivia',  icon:'??', label:'Trivia' },{ path:'/wishlist', icon:'??', label:'Wishlist' },
-  { path:'/schedule', icon:'??', label:'More'    },
+  { path:'/',         icon:'🏠', label:'Home'    },
+  { path:'/chores',   icon:'✅', label:'Chores'  },
+  { path:'/chat',     icon:'💬', label:'Chat'    },
+  { path:'/meals',    icon:'🍽️', label:'Meals'   },
+  { path:'/trivia',   icon:'🧠', label:'Trivia'  },
+  { path:'/schedule', icon:'📅', label:'More'    },
 ];
 
 function NavSection({ label, items, highlight }: { label: string; items: typeof NAV_PRIMARY; highlight?: string[] }) {
