@@ -8,9 +8,6 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_NO_TYPESCRIPT_SETUP": "1"
       }
     },
     "production": {}
