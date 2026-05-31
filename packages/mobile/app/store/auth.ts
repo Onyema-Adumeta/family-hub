@@ -1,8 +1,9 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import type { Member, Family } from '@family-hub/shared';
 
 interface AuthState {
+  isParent: boolean;
   token: string | null;
   member: Member | null;
   family: Family | null;
@@ -15,12 +16,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   member: null,
   family: null,
+  isParent: false,
 
   setAuth: async (token, member, family) => {
     await SecureStore.setItemAsync('token', token);
     await SecureStore.setItemAsync('member', JSON.stringify(member));
     await SecureStore.setItemAsync('family', JSON.stringify(family));
-    set({ token, member, family });
+    set({ token, member, family, isParent: member.role === 'parent' });
   },
 
   logout: async () => {
@@ -36,8 +38,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       const memberStr = await SecureStore.getItemAsync('member');
       const familyStr = await SecureStore.getItemAsync('family');
       if (token && memberStr && familyStr) {
-        set({ token, member: JSON.parse(memberStr), family: JSON.parse(familyStr) });
+        const m = JSON.parse(memberStr);
+        set({ token, member: m, family: JSON.parse(familyStr), isParent: m.role === 'parent' });
       }
     } catch { /* ignore */ }
   }
 }));
+
