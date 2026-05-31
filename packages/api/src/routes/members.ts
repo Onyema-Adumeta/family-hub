@@ -20,7 +20,7 @@ router.get('/', async (req: AuthRequest, res) => {
 // PATCH /api/members/:id — update profile (name, emoji, color, avatar)
 router.patch('/:id', async (req: AuthRequest, res) => {
   const { id } = req.params;
-  const { name, emoji, color, avatar, pushToken } = req.body;
+  const { name, emoji, color, avatar, pushToken, birthday } = req.body;
 
   // Members can only edit themselves; parents can edit anyone
   if (req.memberId !== id && req.role !== 'parent') {
@@ -36,6 +36,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         ...(color     !== undefined && { color }),
         ...(avatar    !== undefined && { avatar }),
         ...(pushToken !== undefined && { pushToken }),
+        ...(birthday  !== undefined && { birthday: birthday ? new Date(birthday) : null }),
       },
     });
     res.json(updated);
