@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+﻿import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
@@ -47,9 +47,14 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Hey {member?.emoji} {member?.name}!</Text>
           <Text style={styles.subtitle}>{family?.name}</Text>
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         <View style={styles.starBadge}>
           <Text style={styles.starText}>⭐ {member?.stars}</Text>
         </View>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.gearBtn}>
+          <Text style={{ fontSize: 20 }}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
       </View>
 
       {/* Stats */}
@@ -153,6 +158,7 @@ const styles = StyleSheet.create({
   subtitle:    { fontSize: 12, color: 'rgba(240,240,245,0.4)', fontWeight: '700', marginTop: 2 },
   starBadge:   { backgroundColor: 'rgba(245,158,11,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(245,158,11,0.3)' },
   starText:    { color: '#F59E0B', fontWeight: '900', fontSize: 14 },
+  gearBtn: { backgroundColor: 'rgba(255,255,255,0.08)', width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   statsRow:    { flexDirection: 'row', gap: 8, marginBottom: 12 },
   statCard:    { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center' },
   statValue:   { fontSize: 18, fontWeight: '900' },
@@ -167,3 +173,5 @@ const styles = StyleSheet.create({
   memberStars: { color: '#F59E0B', fontWeight: '900', fontSize: 13 },
   badge:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
 });
+
+
