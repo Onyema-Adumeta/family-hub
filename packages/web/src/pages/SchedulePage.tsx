@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useEvents, useMembers, useCreateEvent, useDeleteEvent, useChores } from '../hooks/useApi';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -273,7 +273,7 @@ export default function SchedulePage() {
 
   const upcomingEvents = allItems
     .filter(e => { try { return (e.date || '').slice(0,10) >= todayStr; } catch { return false; } })
-    .sort((a,b) => { try { return new Date(a.date).getTime() - new Date(b.date).getTime(); } catch { return 0; } })
+    .sort((a,b) => { try { return new Date(a.date + "T12:00:00").getTime() - new Date(b.date + "T12:00:00").getTime(); } catch { return 0; } })
     .slice(0, 10);
 
   async function handleCreate() {
@@ -375,7 +375,7 @@ export default function SchedulePage() {
               const dayEvents  = getEventsForDate(day);
               const isToday    = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
-              const isWeekend  = [0,6].includes(new Date(dateStr).getDay());
+              const isWeekend  = [0,6].includes(new Date(dateStr + "T12:00:00").getDay());
               const hasEvents  = dayEvents.length > 0;
 
               return (
