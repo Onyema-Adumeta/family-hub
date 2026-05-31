@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 // GET /api/rewards
 router.get('/', async (req: AuthRequest, res) => {

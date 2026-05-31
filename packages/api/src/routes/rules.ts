@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 // GET /api/rules — list all rules for the family
 router.get('/', async (req: AuthRequest, res) => {

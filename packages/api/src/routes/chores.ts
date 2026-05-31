@@ -1,10 +1,14 @@
-ï»¿import { Router } from 'express';
+import { Router } from 'express';
 import { PrismaClient, ChoreStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
+const upload = multer({ dest: 'uploads/' });
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 // GET /api/chores
 router.get('/', async (req: AuthRequest, res) => {
@@ -31,7 +35,7 @@ router.post('/', async (req: AuthRequest, res) => {
       data: {
         familyId:     req.familyId!,
         title,
-        emoji:        emoji || 'âœ…',
+        emoji:        emoji || '?',
         frequency:    frequency || 'daily',
         stars:        stars ? parseInt(stars) : 5,
         proofRequired: proofRequired ?? false,
@@ -57,7 +61,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    // Only allow known fields â€” never spread raw body into Prisma
+    // Only allow known fields — never spread raw body into Prisma
     const {
       status,
       assignedToId,
@@ -112,7 +116,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
           data:  { stars: { increment: existing.stars } },
         });
 
-        // Check due date â€” if overdue, reset streak for assigned member
+        // Check due date — if overdue, reset streak for assigned member
         if (existing.dueDate && new Date() > existing.dueDate && existing.assignedToId) {
           await prisma.member.update({
             where: { id: existing.assignedToId },
@@ -123,12 +127,12 @@ router.patch('/:id', async (req: AuthRequest, res) => {
             data: {
               familyId: req.familyId!,
               memberId: existing.assignedToId,
-              title:    'â° Chore overdue!',
-              body:     `"${existing.title}" was completed late â€” streak reset.`,
+              title:    '? Chore overdue!',
+              body:     `"${existing.title}" was completed late — streak reset.`,
             },
           });
         } else if (existing.assignedToId) {
-          // On-time â€” increment streak
+          // On-time — increment streak
           await prisma.member.update({
             where: { id: existing.assignedToId },
             data:  {
@@ -160,6 +164,29 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   } catch (e: any) {
     console.error('PATCH /chores error:', e);
     res.status(400).json({ error: e.message });
+  }
+});
+
+// PATCH /api/chores/:id/photo
+router.patch('/:id/photo', authenticate, upload.single('photo'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+    // Save locally (swap for S3/Cloudinary in prod)
+    const ext = file.originalname.split('.').pop();
+    const newName = `chore-${req.params.id}-${Date.now()}.${ext}`;
+    const newPath = path.join('uploads', newName);
+    fs.renameSync(file.path, newPath);
+    const photoUrl = `/uploads/${newName}`;
+
+    const chore = await prisma.chore.update({
+      where: { id: req.params.id },
+      data: { photoUrl, photoedAt: new Date() }
+    });
+    res.json(chore);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 

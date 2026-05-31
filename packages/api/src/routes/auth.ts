@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
