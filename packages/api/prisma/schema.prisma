@@ -45,6 +45,8 @@ model Member {
   email           String?
   pushToken       String?
   createdAt       DateTime       @default(now())
+  birthday        DateTime?
+  wishlist        WishlistItem[]
   streakDays      Int            @default(0)
   streakUpdatedAt DateTime?
   totalChoresDone Int            @default(0)
@@ -298,4 +300,16 @@ model TriviaAnswer {
   answer     String
   correct    Boolean
   createdAt  DateTime       @default(now())
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  title      String
+  url        String?
+  price      Float?
+  claimed    Boolean  @default(false)
+  claimedBy  String?
+  createdAt  DateTime @default(now())
 }
