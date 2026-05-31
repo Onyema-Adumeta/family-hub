@@ -89,6 +89,8 @@ model Chore {
   notes         String?
   dueDate       DateTime?
   completedAt   DateTime?
+  photoUrl      String?
+  photoedAt     DateTime?
   completedById String?
   completedBy   Member?     @relation("CompletedChores", fields: [completedById], references: [id])
   recurring     Boolean     @default(false)

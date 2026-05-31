@@ -168,7 +168,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 });
 
 // PATCH /api/chores/:id/photo
-router.patch('/:id/photo', authenticate, upload.single('photo'), async (req, res) => {
+router.patch('/:id/photo', upload.single('photo'), async (req: AuthRequest, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
