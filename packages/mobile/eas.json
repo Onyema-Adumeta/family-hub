@@ -1,1 +1,19 @@
-{"build":{"preview":{"distribution":"internal","android":{"buildType":"apk"}},"production":{}},"submit":{"production":{}}}
+﻿{
+  "cli": {
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {},
+      "node": "20.18.0"
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {}
+  }
+}
