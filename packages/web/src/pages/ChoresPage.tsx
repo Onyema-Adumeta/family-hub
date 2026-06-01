@@ -93,7 +93,7 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div onClick={() => setRecurring(v => !v)} style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer', background: recurring ? '#FBBF24' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s' }}>
+            <div onClick={() => setRecurring((v: boolean) => !v)} style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer', background: recurring ? '#FBBF24' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s' }}>
               <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: recurring ? 21 : 3, transition: 'left 0.2s' }} />
             </div>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>🔁 Repeat every week</span>
@@ -117,7 +117,7 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
         <textarea value={notes} onChange={e => setNotes(e.target.value)} className="input" rows={2} placeholder="Add instructions..." style={{ width: '100%', resize: 'vertical' }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div onClick={() => setProof(v => !v)} style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer', background: proofRequired ? 'var(--primary)' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s' }}>
+        <div onClick={() => setProof((v: boolean) => !v)} style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: 'pointer', background: proofRequired ? 'var(--primary)' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s' }}>
           <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: proofRequired ? 21 : 3, transition: 'left 0.2s' }} />
         </div>
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>📸 Require photo proof</span>
@@ -284,7 +284,7 @@ export default function ChoresPage() {
   const [sortBy, setSortBy]       = useState<'created' | 'due' | 'stars' | 'priority'>('created');
 
   // Track per-chore photo upload state
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId]   = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<Record<string, string>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -296,11 +296,10 @@ export default function ChoresPage() {
     priority: 'normal', notes: '',
   });
 
-  const all = chores as any[];
-
+  const all    = chores as any[];
   const sorted = [...all].sort((a, b) => {
     if (sortBy === 'due') { if (!a.dueDate) return 1; if (!b.dueDate) return -1; return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(); }
-    if (sortBy === 'stars') return (b.stars || 0) - (a.stars || 0);
+    if (sortBy === 'stars')    return (b.stars || 0) - (a.stars || 0);
     if (sortBy === 'priority') { const p = { high: 0, normal: 1, low: 2 }; return (p[a.priority as keyof typeof p] ?? 1) - (p[b.priority as keyof typeof p] ?? 1); }
     return 0;
   });
@@ -314,34 +313,38 @@ export default function ChoresPage() {
   const overdueCount = all.filter(c => isOverdue(c.dueDate, c.status)).length;
   const list = tab === 'all' ? sorted : sorted.filter(c => (c.status || 'pending') === tab);
 
-  const changeStatus  = (chore: any, status: Status) => updateChore.mutate({ id: chore.id, data: { status } });
-  const reassign      = (chore: any, assignedToId: string) => updateChore.mutate({ id: chore.id, data: { assignedToId: assignedToId || null } });
-  const setDueDateFn  = (chore: any, dueDate: string) => updateChore.mutate({ id: chore.id, data: { dueDate: dueDate || null } });
+  const changeStatus = (chore: any, status: Status) => updateChore.mutate({ id: chore.id, data: { status } });
+  const reassign     = (chore: any, assignedToId: string) => updateChore.mutate({ id: chore.id, data: { assignedToId: assignedToId || null } });
+  const setDueDateFn = (chore: any, dueDate: string) => updateChore.mutate({ id: chore.id, data: { dueDate: dueDate || null } });
 
   // ── Photo upload handler ──────────────────────────────────────────────────
   const handlePhotoUpload = async (choreId: string, file: File) => {
     setUploadingId(choreId);
     try {
-      // Show local preview immediately
+      // Show local preview immediately while uploading
       const localUrl = URL.createObjectURL(file);
       setPhotoPreview(prev => ({ ...prev, [choreId]: localUrl }));
 
-      const form = new FormData();
-      form.append('photo', file);
+      // Use fd (not form) to avoid shadowing the component's form state
+      const fd = new FormData();
+      fd.append('photo', file);
       const res = await fetch(`${API_BASE}/api/chores/${choreId}/photo`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        // DO NOT set Content-Type — browser sets multipart boundary automatically
+        body: fd,
       });
       if (!res.ok) throw new Error('Upload failed');
       const updated = await res.json();
-      // Replace local preview with server URL
+
+      // Cloudinary returns an absolute URL — use it directly, no API_BASE prefix
       if (updated.photoUrl) {
-        setPhotoPreview(prev => ({ ...prev, [choreId]: `${API_BASE}${updated.photoUrl}` }));
+        setPhotoPreview(prev => ({ ...prev, [choreId]: updated.photoUrl }));
       }
     } catch (e) {
-      console.error(e);
+      console.error('Photo upload error:', e);
       alert('Photo upload failed. Please try again.');
+      // Remove broken preview on failure
       setPhotoPreview(prev => { const next = { ...prev }; delete next[choreId]; return next; });
     } finally {
       setUploadingId(null);
@@ -390,7 +393,7 @@ export default function ChoresPage() {
       if (form.frequency === 'weekly') {
         const dayIdx = DAYS_OF_WEEK.indexOf(form.dayOfWeek);
         const jsDay  = dayIdx === 6 ? 0 : dayIdx + 1;
-        const now = new Date();
+        const now  = new Date();
         const diff = (jsDay - now.getDay() + 7) % 7 || 7;
         const next = new Date(now); next.setDate(now.getDate() + diff);
         dueDate = next.toISOString().split('T')[0];
@@ -407,8 +410,8 @@ export default function ChoresPage() {
     } catch (e) { console.error(e); }
   };
 
-  const handleEdit = async (chore: any, data: any) => { await updateChore.mutateAsync({ id: chore.id, data }); setEditingId(null); };
-  const memberList = members as any[];
+  const handleEdit   = async (chore: any, data: any) => { await updateChore.mutateAsync({ id: chore.id, data }); setEditingId(null); };
+  const memberList   = members as any[];
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
@@ -445,12 +448,13 @@ export default function ChoresPage() {
         </div>
       )}
 
+      {/* Tab bar */}
       <div style={{ display: 'flex', gap: 6, margin: '14px 0 8px', overflowX: 'auto' }}>
         {[
-          { key: 'all', label: 'All', icon: '📋', color: '#94A3B8', count: counts.all },
-          { key: 'pending', label: 'Pending', icon: '⏳', color: '#94A3B8', count: counts.pending },
+          { key: 'all',         label: 'All',         icon: '📋', color: '#94A3B8', count: counts.all },
+          { key: 'pending',     label: 'Pending',     icon: '⏳', color: '#94A3B8', count: counts.pending },
           { key: 'in_progress', label: 'In Progress', icon: '🔥', color: '#FBBF24', count: counts.in_progress },
-          { key: 'done', label: 'Done', icon: '✅', color: '#4ADE80', count: counts.done },
+          { key: 'done',        label: 'Done',        icon: '✅', color: '#4ADE80', count: counts.done },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key as any)} style={{ flexShrink: 0, padding: '7px 12px', background: tab === t.key ? `${t.color}22` : 'rgba(255,255,255,0.05)', border: `1.5px solid ${tab === t.key ? t.color : 'rgba(255,255,255,0.1)'}`, borderRadius: 20, color: tab === t.key ? t.color : 'var(--text-muted)', fontSize: 12, fontWeight: tab === t.key ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <span>{t.icon}</span><span>{t.label}</span>
@@ -459,6 +463,7 @@ export default function ChoresPage() {
         ))}
       </div>
 
+      {/* Sort bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center' }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Sort:</span>
         {[{key:'created',label:'Latest'},{key:'due',label:'Due date'},{key:'stars',label:'Stars'},{key:'priority',label:'Priority'}].map(s => (
@@ -466,30 +471,36 @@ export default function ChoresPage() {
         ))}
       </div>
 
+      {/* Chore list */}
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading...</div>
       ) : list.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
-          {tab === 'all' ? <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button> : `No ${tab.replace('_', ' ')} chores`}
+          {tab === 'all'
+            ? <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button>
+            : `No ${tab.replace('_', ' ')} chores`}
         </div>
       ) : list.map((chore: any) => {
         const status: Status = chore.status || 'pending';
-        const meta      = STATUS_META[status];
-        const assignee  = memberList.find(m => m.id === (chore.assignedToId || chore.assignedTo?.id));
-        const overdue   = isOverdue(chore.dueDate, status);
-        const dueLabel  = dueDateLabel(chore.dueDate, status);
-        const streak    = chore.weeklyStreak ?? 0;
+        const meta        = STATUS_META[status];
+        const assignee    = memberList.find(m => m.id === (chore.assignedToId || chore.assignedTo?.id));
+        const overdue     = isOverdue(chore.dueDate, status);
+        const dueLabel    = dueDateLabel(chore.dueDate, status);
+        const streak      = chore.weeklyStreak ?? 0;
         const isRecurring = chore.recurring && chore.frequency === 'weekly';
         const isEditing   = editingId === chore.id;
         const isSelected  = selected.has(chore.id);
         const isUploading = uploadingId === chore.id;
-        // Show preview if just uploaded, otherwise fall back to DB value
-        const photoUrl = photoPreview[chore.id] || (chore.photoUrl ? `${API_BASE}${chore.photoUrl}` : null);
+
+        // Cloudinary URLs are absolute — use directly; no API_BASE prefix needed
+        const photoUrl  = photoPreview[chore.id] || chore.photoUrl || null;
         const needsProof = chore.proofRequired && !photoUrl;
 
         return (
           <div key={chore.id} style={{ background: isSelected ? 'rgba(124,111,247,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${isSelected ? 'rgba(124,111,247,0.5)' : overdue ? '#F87171' : isEditing ? 'rgba(124,111,247,0.5)' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
+
+            {/* ── Main chore row ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px' }}>
               {bulkMode && (
                 <div onClick={() => toggleSelect(chore.id)} style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `2px solid ${isSelected ? '#A78BFA' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? 'rgba(124,111,247,0.3)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}>
@@ -509,12 +520,13 @@ export default function ChoresPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>⭐{chore.stars}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
-                  {assignee && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {assignee.emoji} {assignee.name}</span>}
-                  {dueLabel && <span style={{ fontSize: 11, fontWeight: 700, color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', borderRadius: 6, padding: '1px 6px' }}>📅 {dueLabel}</span>}
+                  {assignee  && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {assignee.emoji} {assignee.name}</span>}
+                  {dueLabel  && <span style={{ fontSize: 11, fontWeight: 700, color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', borderRadius: 6, padding: '1px 6px' }}>📅 {dueLabel}</span>}
                   {needsProof && <span style={{ fontSize: 11, fontWeight: 700, color: '#F97316', background: 'rgba(249,115,22,0.12)', borderRadius: 6, padding: '1px 6px' }}>📸 proof needed</span>}
                 </div>
                 {chore.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {chore.notes}</div>}
               </div>
+
               {!bulkMode && (
                 <>
                   {/* ── Camera button ── */}
@@ -528,7 +540,7 @@ export default function ChoresPage() {
                       onChange={e => {
                         const file = e.target.files?.[0];
                         if (file) handlePhotoUpload(chore.id, file);
-                        e.target.value = '';
+                        e.target.value = ''; // reset so same file can be re-selected
                       }}
                     />
                     <button
@@ -537,9 +549,9 @@ export default function ChoresPage() {
                       title={photoUrl ? 'Replace photo proof' : 'Add photo proof'}
                       style={{
                         width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                        background: photoUrl ? 'rgba(74,222,128,0.15)' : needsProof ? 'rgba(249,115,22,0.15)' : 'rgba(255,255,255,0.07)',
+                        background:  photoUrl   ? 'rgba(74,222,128,0.15)'  : needsProof ? 'rgba(249,115,22,0.15)'  : 'rgba(255,255,255,0.07)',
                         border: `1px solid ${photoUrl ? 'rgba(74,222,128,0.4)' : needsProof ? 'rgba(249,115,22,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                        color: photoUrl ? '#4ADE80' : needsProof ? '#F97316' : 'var(--text-muted)',
+                        color:       photoUrl   ? '#4ADE80'                : needsProof ? '#F97316'                : 'var(--text-muted)',
                         fontSize: 13, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         opacity: isUploading ? 0.5 : 1,
@@ -549,10 +561,12 @@ export default function ChoresPage() {
                     </button>
                   </div>
                   {/* ── End camera button ── */}
+
                   <button onClick={() => handleDuplicate(chore)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Duplicate">📋</button>
                   <button onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Edit">✏️</button>
                 </>
               )}
+
               <select value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ padding: '6px 8px', background: meta.bg, border: `1.5px solid ${meta.color}66`, borderRadius: 10, color: meta.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                 <option value="pending">⏳ Pending</option>
                 <option value="in_progress">🔥 In Progress</option>
@@ -561,9 +575,9 @@ export default function ChoresPage() {
               <button onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
 
-            {/* ── Photo thumbnail strip (shown when a photo exists) ── */}
+            {/* ── Photo thumbnail (shown when a photo exists) ── */}
             {photoUrl && (
-              <div style={{ padding: '0 14px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ padding: '0 14px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img
                   src={photoUrl}
                   alt="Proof"
@@ -575,8 +589,8 @@ export default function ChoresPage() {
                 </div>
               </div>
             )}
-            {/* ── End photo thumbnail ── */}
 
+            {/* ── Quick-action bar (reassign + due date) ── */}
             {!isEditing && (
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
                 <select value={chore.assignedToId || ''} onChange={e => reassign(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -586,6 +600,7 @@ export default function ChoresPage() {
                 <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDateFn(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
               </div>
             )}
+
             {isEditing && <InlineEditForm chore={chore} members={memberList} onSave={(data) => handleEdit(chore, data)} onCancel={() => setEditingId(null)} />}
           </div>
         );
@@ -597,6 +612,7 @@ export default function ChoresPage() {
 
       <WeeklyRulesPanel />
 
+      {/* ── Add chore modal ── */}
       {showAdd && (
         <>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9998, backdropFilter: 'blur(4px)' }} onClick={() => setShowAdd(false)} />
@@ -604,12 +620,15 @@ export default function ChoresPage() {
             <div style={{ width: '100%', maxWidth: 520, background: '#1a1625', borderRadius: '24px 24px 0 0', border: '1.5px solid rgba(255,255,255,0.1)', borderBottom: 'none', padding: '8px 20px 48px', maxHeight: '92vh', overflowY: 'auto' }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '12px auto 20px' }} />
               <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800 }}>+ New Chore</h2>
+
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {CHORE_EMOJIS.map(e => (
                   <button key={e} onClick={() => setForm(f => ({ ...f, emoji: e }))} style={{ width: 42, height: 42, borderRadius: 10, fontSize: 22, background: form.emoji === e ? 'var(--primary)' : 'rgba(255,255,255,0.07)', border: form.emoji === e ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>{e}</button>
                 ))}
               </div>
+
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Chore name..." className="input" style={{ width: '100%', marginBottom: 12 }} autoFocus onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 700 }}>⚡ PRIORITY</div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -618,6 +637,7 @@ export default function ChoresPage() {
                   ))}
                 </div>
               </div>
+
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <select value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))} className="input" style={{ flex: 1 }}>
                   <option value="">Anyone</option>
@@ -627,6 +647,7 @@ export default function ChoresPage() {
                   {FREQS.map(f => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
                 </select>
               </div>
+
               {form.frequency === 'weekly' && (
                 <>
                   <div style={{ marginBottom: 12 }}>
@@ -650,28 +671,33 @@ export default function ChoresPage() {
                   </div>
                 </>
               )}
+
               {form.frequency !== 'weekly' && (
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>📅 Due date (optional)</label>
                   <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className="input" style={{ width: '100%' }} />
                 </div>
               )}
+
               <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Stars:</span>
                 {[1,2,3,5,8,10].map(n => (
                   <button key={n} onClick={() => setForm(f => ({ ...f, stars: n }))} style={{ padding: '4px 10px', borderRadius: 8, background: form.stars === n ? 'var(--primary)' : 'rgba(255,255,255,0.07)', border: form.stars === n ? '1px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)', color: form.stars === n ? '#fff' : 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>⭐{n}</button>
                 ))}
               </div>
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>📝 Notes (optional)</label>
                 <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="input" rows={2} placeholder="Add instructions..." style={{ width: '100%', resize: 'vertical' }} />
               </div>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: 'pointer' }}>
                 <div onClick={() => setForm(f => ({ ...f, proofRequired: !f.proofRequired }))} style={{ width: 44, height: 24, borderRadius: 12, flexShrink: 0, background: form.proofRequired ? 'var(--primary)' : 'rgba(255,255,255,0.12)', position: 'relative', transition: 'background 0.2s' }}>
                   <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: form.proofRequired ? 23 : 3, transition: 'left 0.2s' }} />
                 </div>
                 <span style={{ fontSize: 13 }}>📸 Require photo proof</span>
               </label>
+
               <div style={{ display: 'flex', gap: 8 }}>
                 <button style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)', cursor: 'pointer' }} onClick={() => setShowAdd(false)}>Cancel</button>
                 <button style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer', opacity: (!form.title.trim() || createChore.isPending) ? 0.5 : 1 }} onClick={handleAdd} disabled={!form.title.trim() || createChore.isPending}>

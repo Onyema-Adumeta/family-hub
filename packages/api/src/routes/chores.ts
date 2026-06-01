@@ -1,14 +1,30 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { PrismaClient, ChoreStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-const upload = multer({ dest: 'uploads/' });
 const router = Router();
 import { prisma } from '../db';
+
+// ─── Cloudinary config ───────────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder:          'family-hub/chores',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+  } as any,
+});
+
+const upload = multer({ storage });
 
 // GET /api/chores
 router.get('/', async (req: AuthRequest, res) => {
@@ -33,15 +49,15 @@ router.post('/', async (req: AuthRequest, res) => {
     const { title, emoji, frequency, stars, proofRequired, assignedToId, dueDate } = req.body;
     const chore = await prisma.chore.create({
       data: {
-        familyId:     req.familyId!,
+        familyId:      req.familyId!,
         title,
-        emoji:        emoji || '?',
-        frequency:    frequency || 'daily',
-        stars:        stars ? parseInt(stars) : 5,
+        emoji:         emoji || '?',
+        frequency:     frequency || 'daily',
+        stars:         stars ? parseInt(stars) : 5,
         proofRequired: proofRequired ?? false,
-        assignedToId: assignedToId || null,
-        dueDate:      dueDate ? new Date(dueDate) : null,
-        status:       ChoreStatus.pending,
+        assignedToId:  assignedToId || null,
+        dueDate:       dueDate ? new Date(dueDate) : null,
+        status:        ChoreStatus.pending,
       },
       include: {
         assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
@@ -61,7 +77,6 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
 
-    // Only allow known fields � never spread raw body into Prisma
     const {
       status,
       assignedToId,
@@ -80,24 +95,20 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 
     const updateData: any = {};
 
-    // Title / meta updates
-    if (title      !== undefined) updateData.title        = title;
-    if (emoji      !== undefined) updateData.emoji        = emoji;
-    if (frequency  !== undefined) updateData.frequency    = frequency;
-    if (stars      !== undefined) updateData.stars        = parseInt(stars);
+    if (title         !== undefined) updateData.title         = title;
+    if (emoji         !== undefined) updateData.emoji         = emoji;
+    if (frequency     !== undefined) updateData.frequency     = frequency;
+    if (stars         !== undefined) updateData.stars         = parseInt(stars);
     if (proofRequired !== undefined) updateData.proofRequired = proofRequired;
-    if (proofUrl   !== undefined) updateData.proofUrl     = proofUrl;
-    if (proofType  !== undefined) updateData.proofType    = proofType;
-    if (dueDate    !== undefined) updateData.dueDate      = dueDate ? new Date(dueDate) : null;
+    if (proofUrl      !== undefined) updateData.proofUrl      = proofUrl;
+    if (proofType     !== undefined) updateData.proofType     = proofType;
+    if (dueDate       !== undefined) updateData.dueDate       = dueDate ? new Date(dueDate) : null;
 
-    // Reassignment
     if (assignedToId !== undefined) {
       updateData.assignedToId = assignedToId || null;
     }
 
-    // Status transition
     if (status !== undefined) {
-      // Validate the status value
       const validStatuses = ['pending', 'in_progress', 'done'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: `Invalid status: ${status}` });
@@ -106,33 +117,28 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       updateData.status = status as ChoreStatus;
 
       if (status === 'done' && existing.status !== 'done') {
-        // Mark completion
         updateData.completedAt   = new Date();
         updateData.completedById = req.memberId;
 
-        // Award stars to completer
         await prisma.member.update({
           where: { id: req.memberId! },
           data:  { stars: { increment: existing.stars } },
         });
 
-        // Check due date � if overdue, reset streak for assigned member
         if (existing.dueDate && new Date() > existing.dueDate && existing.assignedToId) {
           await prisma.member.update({
             where: { id: existing.assignedToId },
             data:  { streakDays: 0 },
           });
-          // Notify the family
           await prisma.notification.create({
             data: {
               familyId: req.familyId!,
               memberId: existing.assignedToId,
               title:    '? Chore overdue!',
-              body:     `"${existing.title}" was completed late � streak reset.`,
+              body:     `"${existing.title}" was completed late — streak reset.`,
             },
           });
         } else if (existing.assignedToId) {
-          // On-time � increment streak
           await prisma.member.update({
             where: { id: existing.assignedToId },
             data:  {
@@ -144,7 +150,6 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         }
 
       } else if (status === 'pending') {
-        // Reset completion fields when sent back to pending
         updateData.completedAt   = null;
         updateData.completedById = null;
       }
@@ -170,22 +175,24 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 // PATCH /api/chores/:id/photo
 router.patch('/:id/photo', upload.single('photo'), async (req: AuthRequest, res) => {
   try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    // Save locally (swap for S3/Cloudinary in prod)
-    const ext = file.originalname.split('.').pop();
-    const newName = `chore-${req.params.id}-${Date.now()}.${ext}`;
-    const newPath = path.join('uploads', newName);
-    fs.renameSync(file.path, newPath);
-    const photoUrl = `/uploads/${newName}`;
+    // Cloudinary returns the permanent URL in req.file.path
+    const photoUrl = (req.file as any).path;
 
     const chore = await prisma.chore.update({
       where: { id: req.params.id },
-      data: { photoUrl, photoedAt: new Date() }
+      data:  { photoUrl, photoedAt: new Date() },
+      include: {
+        assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+        completedBy: { select: { id: true, name: true, emoji: true, color: true } },
+      },
     });
+
+    broadcast(req.familyId!, { type: 'chore:updated', chore });
     res.json(chore);
   } catch (e: any) {
+    console.error('PATCH /chores/:id/photo error:', e);
     res.status(500).json({ error: e.message });
   }
 });
