@@ -24,7 +24,15 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      ["expo-notifications", { "sounds": [] }]
+      ["expo-notifications", { "sounds": [] }],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.24"
+          }
+        }
+      ]
     ],
     "extra": {
       "router": { "origin": false },
