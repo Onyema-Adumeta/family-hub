@@ -9,12 +9,7 @@
         "buildType": "apk"
       },
       "node": "20.18.0",
-      "cache": {
-        "disabled": true
-      },
-      "environment": {
-        "YARN_ENABLE_IMMUTABLE_INSTALLS": "false"
-      }
+      "projectRoot": "packages/mobile"
     },
     "production": {}
   },
