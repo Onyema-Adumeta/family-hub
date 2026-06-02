@@ -12,8 +12,9 @@
       "cache": {
         "disabled": true
       },
-      "environment": {
-        "YARN_ENABLE_IMMUTABLE_INSTALLS": "false"
+      "env": {
+        "YARN_ENABLE_IMMUTABLE_INSTALLS": "false",
+        "NODE_PATH": "../../node_modules"
       }
     },
     "production": {}
