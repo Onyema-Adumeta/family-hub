@@ -1,7 +1,6 @@
-﻿# Android build
+# Android build
 android/
 packages/web/android/
-!packages/mobile/android/
 packages/web/*.apk
 packages/web/*.log
 *.log
@@ -21,6 +20,4 @@ packages/web/dist/
 
 # Misc
 @
-
-
-packages/mobile/android/
+!packages/mobile/android/
