@@ -1,3 +1,5 @@
+import Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
@@ -31,7 +33,7 @@ router.post('/', async (req: AuthRequest, res) => {
         name:      name.trim(),
         qty:       qty     || null,
         category:  category || 'General',
-        listType:  listType || 'grocery',   // ← key field
+        listType:  listType || 'grocery',   // Ã¢â€ Â key field
         priority:  priority || 'normal',
         notes:     notes    || null,
       },
@@ -83,4 +85,98 @@ router.delete('/checked/all', async (req: AuthRequest, res) => {
   }
 });
 
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// POST /api/grocery/suggest
+router.post('/suggest', async (req: AuthRequest, res) => {
+  try {
+    const { week } = req.body;
+
+    // Get this week's meals
+    const meals = await prisma.meal.findMany({
+      where: { familyId: req.familyId!, ...(week ? { week } : {}) },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (meals.length === 0) {
+      return res.json({ suggestions: [], message: 'No meals planned this week.' });
+    }
+
+    // Get existing grocery items to avoid duplicates
+    const existing = await prisma.groceryItem.findMany({
+      where: { familyId: req.familyId!, checked: false },
+      select: { name: true },
+    });
+    const existingNames = existing.map(i => i.name.toLowerCase());
+
+    const mealList = meals.map(m => `${m.day} ${m.slot}: ${m.name}${m.notes ? ` (${m.notes})` : ''}`).join('\n');
+    const existingList = existingNames.length > 0 ? `\nAlready on list: ${existingNames.join(', ')}` : '';
+
+    const prompt = `You are a helpful family meal planning assistant. Based on these planned meals, suggest the grocery items needed.
+
+Meals this week:
+${mealList}
+${existingList}
+
+Return ONLY a JSON array of grocery suggestions. Do not include items already on the list. Group by category. Format:
+[
+  { "name": "item name", "qty": "amount", "category": "Produce|Meat|Dairy|Pantry|Frozen|Bakery|Beverages|Other" },
+  ...
+]
+
+Be practical and specific. Include quantities where helpful (e.g. "2 lbs", "1 dozen"). No markdown, no explanation, just the JSON array.`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '[]';
+    const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+    res.json({ suggestions, mealCount: meals.length });
+  } catch (e: any) {
+    console.error('Grocery suggest error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/grocery/suggest — AI suggestions from meal plan
+router.post('/suggest', async (req: AuthRequest, res) => {
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { week } = req.body;
+    const meals = await prisma.meal.findMany({
+      where: { familyId: req.familyId!, ...(week ? { week } : {}) },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (meals.length === 0) return res.json({ suggestions: [], message: 'No meals planned this week.' });
+
+    const existing = await prisma.groceryItem.findMany({
+      where: { familyId: req.familyId!, checked: false },
+      select: { name: true },
+    });
+    const existingNames = existing.map(i => i.name.toLowerCase());
+    const mealList = meals.map(m => `${m.day} ${m.slot}: ${m.name}${m.notes ? ` (${m.notes})` : ''}`).join('\n');
+    const existingList = existingNames.length > 0 ? `\nAlready on list: ${existingNames.join(', ')}` : '';
+
+    const prompt = `You are a helpful family meal planning assistant. Based on these planned meals, suggest the grocery items needed.\n\nMeals this week:\n${mealList}${existingList}\n\nReturn ONLY a JSON array. Do not include items already on the list. Format:\n[\n  { "name": "item name", "qty": "amount", "category": "Produce|Meat & Fish|Dairy|Pantry|Frozen|Bakery|Drinks|Snacks|Household|Other" }\n]\n\nBe practical and specific. Include quantities where helpful. No markdown, no explanation, just the JSON array.`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '[]';
+    const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim());
+    res.json({ suggestions, mealCount: meals.length });
+  } catch (e: any) {
+    console.error('Grocery suggest error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
 export default router;
