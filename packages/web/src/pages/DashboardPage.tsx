@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChores, useMembers, useMeals, useEvents, useMessages } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
@@ -219,7 +219,8 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
       const today = new Date();
       const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
       if (next < today) next.setFullYear(today.getFullYear() + 1);
-      const daysUntil = Math.ceil((next.getTime() - today.setHours(0,0,0,0)) / 86400000);
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const daysUntil = Math.ceil((next.getTime() - todayMidnight.getTime()) / 86400000);
       const age = next.getFullYear() - bday.getFullYear();
       return { ...m, daysUntil, age, nextBirthday: next };
     })
