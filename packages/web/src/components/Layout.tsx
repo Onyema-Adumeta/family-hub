@@ -144,7 +144,7 @@ export default function Layout() {
           transition: background 0.3s ease;
         }
         .drawer-backdrop.open {
-          background: rgba(0,0,0,0.6);
+          background: rgba(0,0,0,0.75);
           pointer-events: all;
         }
         .drawer-panel {
