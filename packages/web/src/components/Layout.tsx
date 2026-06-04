@@ -150,7 +150,7 @@ export default function Layout() {
         .drawer-panel {
           position: fixed; top: 0; right: 0; bottom: 0;
           width: 280px; z-index: 201;
-          background: var(--bg-secondary);
+          background: linear-gradient(180deg, #0f1729 0%, #131c35 100%);
           border-left: 1.5px solid rgba(255,255,255,0.08);
           display: flex; flex-direction: column;
           transform: translateX(100%);
@@ -166,7 +166,7 @@ export default function Layout() {
         {/* ── DESKTOP SIDEBAR ── */}
         <aside className="fh-sidebar" style={{
           width: 220, flexDirection: 'column',
-          background: 'rgba(255,255,255,0.02)', borderRight: '1.5px solid var(--border)',
+          background: 'linear-gradient(180deg, #0f1729 0%, #131c35 100%)', borderRight: '1.5px solid rgba(255,255,255,0.06)',
           height: '100vh', flexShrink: 0, overflowY: 'auto',
         }}>
           <div style={{ padding: '16px 14px 10px', borderBottom: '1px solid var(--border)' }}>
@@ -225,7 +225,7 @@ export default function Layout() {
         <header className="fh-topbar" style={{
           alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px', borderBottom: '1px solid var(--border)',
-          background: 'rgba(255,255,255,0.02)', flexShrink: 0, zIndex: 10,
+          background: 'linear-gradient(135deg, #0f1729 0%, #131c35 100%)', flexShrink: 0, zIndex: 10,
         }}>
           <div>
             <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Family Hub</div>
@@ -258,7 +258,7 @@ export default function Layout() {
         {/* ── MOBILE BOTTOM NAV ── */}
         <nav className="fh-bottomnav" style={{
           borderTop: '1px solid var(--border)',
-          background: 'rgba(255,255,255,0.02)', flexShrink: 0, zIndex: 50,
+          background: 'linear-gradient(180deg, #0f1729 0%, #131c35 100%)', flexShrink: 0, zIndex: 50,
         }}>
           {BOTTOM_NAV.map(({ path, icon, label }) => {
             const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
