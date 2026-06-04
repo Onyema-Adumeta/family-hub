@@ -1,11 +1,16 @@
 pluginManagement {
-  includeBuild("../../../node_modules/@react-native/gradle-plugin")
-  repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-  }
+    includeBuild("../../../node_modules/@react-native/gradle-plugin")
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
-plugins { id("com.facebook.react.settings") }
-rootProject.name = 'Family Hub'
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+rootProject.name = 'FamilyHub'
 include ':app'
+include ':expo-modules-core'
+project(':expo-modules-core').projectDir = new File('../../../node_modules/expo-modules-core/android')
