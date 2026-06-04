@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 import { prisma } from '../db';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getWeekStart() {
@@ -14,17 +15,17 @@ function getWeekStart() {
   return d;
 }
 
-// GET /api/report — full weekly report with AI insights
-router.get('/', async (req: any, res) => {
+// GET /api/report Ã¢â‚¬â€ full weekly report with AI insights
+router.get('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const familyId = req.user?.familyId;
+    const familyId = req.familyId;
     if (!familyId) return res.status(401).json({ error: 'Unauthorized' });
 
     const weekStart = getWeekStart();
     const weekEnd   = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 7);
 
-    // ── Fetch all data in parallel ──────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Fetch all data in parallel Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const [members, allChores, completedThisWeek, messages, meals] = await Promise.all([
       prisma.member.findMany({
         where: { familyId },
@@ -52,7 +53,7 @@ router.get('/', async (req: any, res) => {
       }),
     ]);
 
-    // ── Compute per-member stats ────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Compute per-member stats Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const memberStats = members.map(m => {
       const assigned  = allChores.filter(c => c.assignedToId === m.id);
       const doneThisWeek = completedThisWeek.filter(c => c.completedById === m.id);
@@ -71,7 +72,7 @@ router.get('/', async (req: any, res) => {
       };
     });
 
-    // ── Overall family stats ────────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Overall family stats Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const totalChores    = allChores.length;
     const doneChores     = allChores.filter(c => c.status === 'done').length;
     const familyPct      = totalChores > 0 ? Math.round((doneChores / totalChores) * 100) : 0;
@@ -80,7 +81,7 @@ router.get('/', async (req: any, res) => {
     const streakLeader   = [...memberStats].sort((a, b) => (b.streakDays || 0) - (a.streakDays || 0))[0];
     const mealsPlanned   = meals.length;
 
-    // ── AI Insights from Claude ─────────────────────────────────
+    // Ã¢â€â‚¬Ã¢â€â‚¬ AI Insights from Claude Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     let aiInsights = '';
     let aiTips: string[] = [];
 
@@ -121,17 +122,17 @@ Respond in JSON format only, no markdown:
       } catch (e) {
         aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way with ${topMember.starsEarned} stars!` : ''} Keep building those good habits!`;
         aiTips = [
-          'Celebrate small wins — even one completed chore deserves recognition.',
+          'Celebrate small wins Ã¢â‚¬â€ even one completed chore deserves recognition.',
           'Consistency beats perfection. A daily routine builds lasting habits.',
-          'Let kids choose their own chores sometimes — ownership increases motivation.',
+          'Let kids choose their own chores sometimes Ã¢â‚¬â€ ownership increases motivation.',
         ];
       }
     } else {
       aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way!` : ''} Great effort all around!`;
       aiTips = [
-        'Celebrate small wins — even one completed chore deserves recognition.',
+        'Celebrate small wins Ã¢â‚¬â€ even one completed chore deserves recognition.',
         'Consistency beats perfection. A daily routine builds lasting habits.',
-        'Let kids choose their own chores sometimes — ownership increases motivation.',
+        'Let kids choose their own chores sometimes Ã¢â‚¬â€ ownership increases motivation.',
       ];
     }
 
