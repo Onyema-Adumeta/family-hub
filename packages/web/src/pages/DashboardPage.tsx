@@ -19,7 +19,7 @@ function getWeekStart() {
 const TODAY_DAY = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
 const TODAY_STR = new Date().toISOString().split('T')[0];
 
-// â”€â”€â”€ Stat Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, gradient, shadow, onClick }: {
   icon: string; label: string; value: string | number; gradient: string; shadow: string; onClick?: () => void;
 }) {
@@ -42,7 +42,7 @@ function StatCard({ icon, label, value, gradient, shadow, onClick }: {
   );
 }
 
-// â”€â”€â”€ Section Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Section Title ────────────────────────────────────────────────────────────
 function SectionTitle({ icon, title, action, onAction }: {
   icon: string; title: string; action?: string; onAction?: () => void;
 }) {
@@ -56,7 +56,7 @@ function SectionTitle({ icon, title, action, onAction }: {
           fontSize: 12, fontWeight: 700, color: '#fff',
           background: 'rgba(124,111,247,0.25)', border: '1px solid rgba(124,111,247,0.4)',
           borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
-        }}>{action} â†’</button>
+        }}>{action} →</button>
       )}
     </div>
   );
@@ -70,7 +70,7 @@ function Empty({ icon, text }: { icon: string; text: string }) {
   );
 }
 
-// â”€â”€â”€ Progress Ring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Progress Ring ────────────────────────────────────────────────────────────
 function ProgressRing({ done, total }: { done: number; total: number }) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const r = 28, circ = 2 * Math.PI * r;
@@ -93,7 +93,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
   );
 }
 
-// â”€â”€â”€ Quick Action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Quick Action ─────────────────────────────────────────────────────────────
 function QuickAction({ icon, label, color, onClick }: {
   icon: string; label: string; color: string; onClick: () => void;
 }) {
@@ -113,7 +113,7 @@ function QuickAction({ icon, label, color, onClick }: {
   );
 }
 
-// â”€â”€â”€ Weekly Goal Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Weekly Goal Widget ───────────────────────────────────────────────────────
 interface MyRuleData {
   rules: {
     id: string; label: string; minStars: number; consequenceNote?: string;
@@ -156,12 +156,12 @@ function WeeklyGoalWidget() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 3 }}>
-                  ðŸ“‹ WEEKLY GOAL
+                  📋 WEEKLY GOAL
                 </div>
                 <div style={{ fontWeight: 800, fontSize: 14 }}>{rule.label}</div>
                 {daysUntilFriday > 0 && !passed && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                    â° {daysUntilFriday} day{daysUntilFriday !== 1 ? 's' : ''} until Friday check
+                    ⏰ {daysUntilFriday} day{daysUntilFriday !== 1 ? 's' : ''} until Friday check
                   </div>
                 )}
               </div>
@@ -170,7 +170,7 @@ function WeeklyGoalWidget() {
                   {data.starsThisWeek}
                   <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>/{rule.minStars}</span>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>â­ this week</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>⭐ this week</div>
               </div>
             </div>
             <div style={{ height: 10, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 10 }}>
@@ -182,9 +182,9 @@ function WeeklyGoalWidget() {
             </div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
               {passed
-                ? 'ðŸŽ‰ Goal achieved! Enjoy your weekend.'
-                : remaining === 0 ? 'ðŸŽ‰ Just hit your goal!'
-                : `â­ ${remaining} more star${remaining !== 1 ? 's' : ''} needed by Friday 4pm`}
+                ? '🎉 Goal achieved! Enjoy your weekend.'
+                : remaining === 0 ? '🎉 Just hit your goal!'
+                : `⭐ ${remaining} more star${remaining !== 1 ? 's' : ''} needed by Friday 4pm`}
             </div>
             {!passed && rule.consequenceNote && (
               <div style={{
@@ -192,7 +192,7 @@ function WeeklyGoalWidget() {
                 background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
                 fontSize: 11, color: '#F87171', fontWeight: 600,
               }}>
-                âš ï¸ {rule.consequenceNote}
+                ⚠️ {rule.consequenceNote}
               </div>
             )}
             {lastOutcome && !isThisWeek && (
@@ -200,7 +200,7 @@ function WeeklyGoalWidget() {
                 marginTop: 8, fontSize: 11, color: 'var(--text-muted)',
                 padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)',
               }}>
-                Last week: {lastOutcome.starsEarned} â­ â€” {lastOutcome.passed ? 'âœ… Passed' : 'âŒ Missed'}
+                Last week: {lastOutcome.starsEarned} ⭐ — {lastOutcome.passed ? '✅ Passed' : '❌ Missed'}
               </div>
             )}
           </div>
@@ -210,7 +210,7 @@ function WeeklyGoalWidget() {
   );
 }
 
-// â”€â”€â”€ Upcoming Birthdays Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Upcoming Birthdays Widget ────────────────────────────────────────────────
 function UpcomingBirthdays({ members }: { members: any[] }) {
   const withBirthdays = members
     .filter(m => m.birthday)
@@ -242,7 +242,7 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 15, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 7 }}>
-          ðŸŽ‚ Upcoming Birthdays
+          🎂 Upcoming Birthdays
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -254,7 +254,7 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
 
           const badgeColor = today ? '#4ADE80' : soon ? '#F472B6' : month ? '#FBBF24' : '#94A3B8';
           const badgeBg    = today ? 'rgba(74,222,128,0.15)' : soon ? 'rgba(244,114,182,0.15)' : month ? 'rgba(251,191,36,0.15)' : 'rgba(148,163,184,0.1)';
-          const badgeText  = today ? 'ðŸŽ‰ Today!' : soon ? `${m.daysUntil}d away` : `${m.daysUntil}d`;
+          const badgeText  = today ? '🎉 Today!' : soon ? `${m.daysUntil}d away` : `${m.daysUntil}d`;
 
           return (
             <div key={m.id} style={{
@@ -271,13 +271,13 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
               }}>
                 {src
                   ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : m.emoji || 'ðŸŽ‚'}
+                  : m.emoji || '🎂'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 13 }}>{m.name}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                   {m.nextBirthday.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                  {m.age > 0 && ` Â· Turning ${m.age}`}
+                  {m.age > 0 && ` · Turning ${m.age}`}
                 </div>
               </div>
               <div style={{
@@ -295,7 +295,7 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
   );
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { member } = useAuthStore();
   const navigate = useNavigate();
@@ -308,12 +308,12 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState('Good day');
   const [tipIdx] = useState(() => Math.floor(Date.now() / 86400000) % 6);
   const tips = [
-    'Try completing all daily chores for a streak bonus! ðŸ”¥',
-    'Kids who help with chores are more confident at school. ðŸ“š',
-    'Set a family goal this week â€” pick a reward together. ðŸŽ¯',
-    'Consistent routines reduce family stress significantly. ðŸ§˜',
-    'Celebrate small wins â€” every completed chore counts! ðŸŽ‰',
-    'A tidy home starts with everyone doing their part. ðŸ ',
+    'Try completing all daily chores for a streak bonus! 🔥',
+    'Kids who help with chores are more confident at school. 📚',
+    'Set a family goal this week — pick a reward together. 🎯',
+    'Consistent routines reduce family stress significantly. 🧘',
+    'Celebrate small wins — every completed chore counts! 🎉',
+    'A tidy home starts with everyone doing their part. 🏠',
   ];
 
   useEffect(() => {
@@ -347,11 +347,11 @@ export default function DashboardPage() {
     .slice(0, 3)
     .forEach(c => {
       const who = allMembers.find(m => m.id === c.completedById);
-      activity.push({ icon: c.emoji || 'âœ…', text: `${who?.name || 'Someone'} completed "${c.title}"`, color: '#4ADE80' });
+      activity.push({ icon: c.emoji || '✅', text: `${who?.name || 'Someone'} completed "${c.title}"`, color: '#4ADE80' });
     });
   recentMsgs.slice(0, 2).forEach(msg => {
     const who = allMembers.find(m => m.id === msg.memberId);
-    activity.push({ icon: 'ðŸ’¬', text: `${who?.name || 'Family'}: "${(msg.content || '').slice(0, 50)}"`, color: '#7C6FF7' });
+    activity.push({ icon: '💬', text: `${who?.name || 'Family'}: "${(msg.content || '').slice(0, 50)}"`, color: '#7C6FF7' });
   });
 
   const isParent = member?.role === 'parent';
@@ -359,11 +359,11 @@ export default function DashboardPage() {
   return (
     <div style={{ width: '100%', maxWidth: 1100, paddingBottom: 90 }} className="animate-fadeIn">
 
-      {/* â”€â”€ Header â”€â”€ */}
+      {/* ── Header ── */}
       <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5, margin: 0 }}>
-            {greeting}, {member?.name?.split(' ')[0] || 'Friend'} {member?.emoji || 'ðŸ‘‹'}
+            {greeting}, {member?.name?.split(' ')[0] || 'Friend'} {member?.emoji || '👋'}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, marginBottom: 0 }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -374,19 +374,19 @@ export default function DashboardPage() {
           background: 'linear-gradient(135deg,rgba(124,58,237,0.2),rgba(167,139,250,0.1))',
           border: '1.5px solid rgba(167,139,250,0.3)',
         }}>
-          <span style={{ fontSize: 18 }}>â­</span>
+          <span style={{ fontSize: 18 }}>⭐</span>
           <span style={{ fontSize: 20, fontWeight: 900, color: '#A78BFA' }}>{member?.stars || 0}</span>
         </div>
       </div>
 
-      {/* â”€â”€ Overdue Alert â”€â”€ */}
+      {/* ── Overdue Alert ── */}
       {overdue.length > 0 && (
         <div onClick={() => navigate('/chores')} style={{
           marginBottom: 16, padding: '12px 16px', borderRadius: 14,
           background: 'rgba(239,68,68,0.12)', border: '1.5px solid rgba(239,68,68,0.35)',
           display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
         }}>
-          <span style={{ fontSize: 22 }}>âš ï¸</span>
+          <span style={{ fontSize: 22 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 13, color: '#F87171' }}>
               {overdue.length} overdue {overdue.length === 1 ? 'chore' : 'chores'}!
@@ -395,17 +395,17 @@ export default function DashboardPage() {
               {overdue.slice(0, 2).map((c: any) => c.title).join(', ')}{overdue.length > 2 ? ` +${overdue.length - 2} more` : ''}
             </div>
           </div>
-          <span style={{ fontSize: 12, color: '#F87171', fontWeight: 700 }}>View â†’</span>
+          <span style={{ fontSize: 12, color: '#F87171', fontWeight: 700 }}>View →</span>
         </div>
       )}
 
-      {/* â”€â”€ Weekly Goal Widget â”€â”€ */}
+      {/* ── Weekly Goal Widget ── */}
       {!isParent && <WeeklyGoalWidget />}
 
-      {/* â”€â”€ Upcoming Birthdays â”€â”€ */}
+      {/* ── Upcoming Birthdays ── */}
       <UpcomingBirthdays members={allMembers} />
 
-      {/* â”€â”€ AI Tip â”€â”€ */}
+      {/* ── AI Tip ── */}
       <div style={{
         marginBottom: 20, padding: '14px 16px', borderRadius: 18,
         background: 'linear-gradient(135deg,rgba(124,111,247,0.2),rgba(167,139,250,0.1))',
@@ -413,7 +413,7 @@ export default function DashboardPage() {
         display: 'flex', alignItems: 'center', gap: 14,
         boxShadow: '0 4px 20px rgba(124,111,247,0.15)',
       }}>
-        <span style={{ fontSize: 24, flexShrink: 0 }}>ðŸ¤–</span>
+        <span style={{ fontSize: 24, flexShrink: 0 }}>🤖</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 10, fontWeight: 900, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 3 }}>Daily Tip</div>
           <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{tips[tipIdx]}</div>
@@ -423,37 +423,37 @@ export default function DashboardPage() {
           background: 'linear-gradient(135deg,#7C6FF7,#A78BFA)',
           border: 'none', borderRadius: 20, color: '#fff', cursor: 'pointer',
           boxShadow: '0 4px 12px rgba(124,111,247,0.4)',
-        }}>Report â†’</button>
+        }}>Report →</button>
       </div>
 
-      {/* â”€â”€ Stats â”€â”€ */}
+      {/* ── Stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))', gap: 10, marginBottom: 20 }}>
-        <StatCard icon="â±ï¸" label="Pending"     value={pending.length}     gradient="linear-gradient(135deg,#F59E0B,#D97706)" shadow="0 8px 24px rgba(245,158,11,0.4)"  onClick={() => navigate('/chores')} />
-        <StatCard icon="ðŸ”¥" label="In Progress" value={inProg.length}      gradient="linear-gradient(135deg,#F97316,#EC4899)" shadow="0 8px 24px rgba(249,115,22,0.4)"  onClick={() => navigate('/chores')} />
-        <StatCard icon="âœ…" label="Done Today"  value={doneToday.length}   gradient="linear-gradient(135deg,#10B981,#059669)" shadow="0 8px 24px rgba(16,185,129,0.4)"  onClick={() => navigate('/chores')} />
-        <StatCard icon="ðŸ“…" label="Events"      value={todayEvents.length} gradient="linear-gradient(135deg,#3B82F6,#6366F1)" shadow="0 8px 24px rgba(59,130,246,0.4)"  onClick={() => navigate('/schedule')} />
-        <StatCard icon="ðŸ‘¨â€ðŸ‘©â€ðŸ‘§" label="Members"   value={allMembers.length}  gradient="linear-gradient(135deg,#7C3AED,#A78BFA)" shadow="0 8px 24px rgba(124,58,237,0.4)" onClick={() => navigate('/settings')} />
+        <StatCard icon="⏱️" label="Pending"     value={pending.length}     gradient="linear-gradient(135deg,#F59E0B,#D97706)" shadow="0 8px 24px rgba(245,158,11,0.4)"  onClick={() => navigate('/chores')} />
+        <StatCard icon="🔥" label="In Progress" value={inProg.length}      gradient="linear-gradient(135deg,#F97316,#EC4899)" shadow="0 8px 24px rgba(249,115,22,0.4)"  onClick={() => navigate('/chores')} />
+        <StatCard icon="✅" label="Done Today"  value={doneToday.length}   gradient="linear-gradient(135deg,#10B981,#059669)" shadow="0 8px 24px rgba(16,185,129,0.4)"  onClick={() => navigate('/chores')} />
+        <StatCard icon="📅" label="Events"      value={todayEvents.length} gradient="linear-gradient(135deg,#3B82F6,#6366F1)" shadow="0 8px 24px rgba(59,130,246,0.4)"  onClick={() => navigate('/schedule')} />
+        <StatCard icon="👨‍👩‍👧" label="Members"   value={allMembers.length}  gradient="linear-gradient(135deg,#7C3AED,#A78BFA)" shadow="0 8px 24px rgba(124,58,237,0.4)" onClick={() => navigate('/settings')} />
       </div>
 
-      {/* â”€â”€ Quick Actions â”€â”€ */}
+      {/* ── Quick Actions ── */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 10 }}>âš¡ QUICK ACTIONS</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 10 }}>⚡ QUICK ACTIONS</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <QuickAction icon="âž•" label="Add Chore"   color="#F59E0B" onClick={() => navigate('/chores')} />
-          <QuickAction icon="ðŸ½ï¸" label="Plan Meals"  color="#FB923C" onClick={() => navigate('/meals')} />
-          <QuickAction icon="ðŸ“…" label="Add Event"   color="#38BDF8" onClick={() => navigate('/schedule')} />
-          <QuickAction icon="ðŸ’¬" label="Family Chat" color="#A78BFA" onClick={() => navigate('/chat')} />
-          <QuickAction icon="ðŸŽ" label="Rewards"     color="#4ADE80" onClick={() => navigate('/rewards')} />
-          {isParent && <QuickAction icon="ðŸ“Š" label="Report" color="#F472B6" onClick={() => navigate('/report')} />}
+          <QuickAction icon="➕" label="Add Chore"   color="#F59E0B" onClick={() => navigate('/chores')} />
+          <QuickAction icon="🍽️" label="Plan Meals"  color="#FB923C" onClick={() => navigate('/meals')} />
+          <QuickAction icon="📅" label="Add Event"   color="#38BDF8" onClick={() => navigate('/schedule')} />
+          <QuickAction icon="💬" label="Family Chat" color="#A78BFA" onClick={() => navigate('/chat')} />
+          <QuickAction icon="🎁" label="Rewards"     color="#4ADE80" onClick={() => navigate('/rewards')} />
+          {isParent && <QuickAction icon="📊" label="Report" color="#F472B6" onClick={() => navigate('/report')} />}
         </div>
       </div>
 
-      {/* â”€â”€ Main Grid â”€â”€ */}
+      {/* ── Main Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14 }}>
 
         {/* Chores card */}
         <div className="card animate-fadeIn" style={{ borderRadius: 20, border: '1.5px solid rgba(255,255,255,0.08)' }}>
-          <SectionTitle icon="âœ…" title="Today's Chores" action="View all" onAction={() => navigate('/chores')} />
+          <SectionTitle icon="✅" title="Today's Chores" action="View all" onAction={() => navigate('/chores')} />
           <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 14, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
             <ProgressRing done={doneToday.length} total={Math.max(doneToday.length + pending.length + inProg.length, 1)} />
           </div>
@@ -466,18 +466,18 @@ export default function DashboardPage() {
                   padding: '10px 12px', borderRadius: 12, cursor: 'pointer', marginBottom: 6,
                   background: 'rgba(124,111,247,0.1)', border: '1.5px solid rgba(124,111,247,0.25)',
                 }}>
-                  <span style={{ fontSize: 20 }}>{c.emoji || 'ðŸ“‹'}</span>
+                  <span style={{ fontSize: 20 }}>{c.emoji || '📋'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 13 }}>{c.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>â­ {c.stars} stars</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>⭐ {c.stars} stars</div>
                   </div>
-                  <span style={{ fontSize: 18 }}>â†’</span>
+                  <span style={{ fontSize: 18 }}>→</span>
                 </div>
               ))}
             </div>
           )}
           {pending.length === 0 && inProg.length === 0
-            ? <Empty icon="ðŸŽ‰" text="All caught up! Great work." />
+            ? <Empty icon="🎉" text="All caught up! Great work." />
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[...inProg, ...pending].filter(c => c.assignedToId !== member?.id).slice(0, 3).map((c: any) => {
                   const a = allMembers.find(m => m.id === c.assignedToId);
@@ -489,10 +489,10 @@ export default function DashboardPage() {
                       background: isActive ? 'rgba(251,191,36,0.1)' : 'var(--bg-secondary)',
                       border: `1.5px solid ${isActive ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`,
                     }}>
-                      <span style={{ fontSize: 22 }}>{c.emoji || 'ðŸ“‹'}</span>
+                      <span style={{ fontSize: 22 }}>{c.emoji || '📋'}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 800, fontSize: 13 }}>{c.title}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{a?.name || 'Anyone'} Â· â­ {c.stars}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{a?.name || 'Anyone'} · ⭐ {c.stars}</div>
                       </div>
                       <span style={{
                         fontSize: 10, fontWeight: 800, padding: '4px 10px', borderRadius: 20,
@@ -514,11 +514,11 @@ export default function DashboardPage() {
             background: 'linear-gradient(135deg,rgba(251,146,60,0.18),rgba(239,68,68,0.08))',
             border: '1.5px solid rgba(251,146,60,0.25)',
           }}>
-            <SectionTitle icon="ðŸ½ï¸" title="Today's Meals" action="Plan" onAction={() => navigate('/meals')} />
+            <SectionTitle icon="🍽️" title="Today's Meals" action="Plan" onAction={() => navigate('/meals')} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { meal: tonightBreakfast, icon: 'ðŸŒ…', label: 'Breakfast' },
-                { meal: tonightMeal,      icon: 'ðŸŒ™', label: 'Dinner'    },
+                { meal: tonightBreakfast, icon: '🌅', label: 'Breakfast' },
+                { meal: tonightMeal,      icon: '🌙', label: 'Dinner'    },
               ].map(({ meal, icon, label }) => (
                 <div key={label} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
@@ -529,7 +529,7 @@ export default function DashboardPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.06em' }}>{label.toUpperCase()}</div>
                     {meal
-                      ? <div style={{ fontWeight: 800, fontSize: 13, marginTop: 2 }}>{meal.emoji || 'ðŸ´'} {meal.name}</div>
+                      ? <div style={{ fontWeight: 800, fontSize: 13, marginTop: 2 }}>{meal.emoji || '🍴'} {meal.name}</div>
                       : <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Not planned</div>}
                   </div>
                 </div>
@@ -542,9 +542,9 @@ export default function DashboardPage() {
             background: 'linear-gradient(135deg,rgba(56,189,248,0.15),rgba(99,102,241,0.08))',
             border: '1.5px solid rgba(56,189,248,0.25)',
           }}>
-            <SectionTitle icon="ðŸ“…" title="Schedule" action="Calendar" onAction={() => navigate('/schedule')} />
+            <SectionTitle icon="📅" title="Schedule" action="Calendar" onAction={() => navigate('/schedule')} />
             {todayEvents.length === 0 && upcomingEvents.length === 0
-              ? <Empty icon="ðŸ“­" text="Nothing scheduled." />
+              ? <Empty icon="📭" text="Nothing scheduled." />
               : <>
                   {todayEvents.slice(0, 2).map((ev: any) => (
                     <div key={ev.id} style={{
@@ -552,10 +552,10 @@ export default function DashboardPage() {
                       borderRadius: 12, background: 'rgba(56,189,248,0.1)', marginBottom: 6,
                       border: '1px solid rgba(56,189,248,0.2)',
                     }}>
-                      <span style={{ fontSize: 20 }}>{ev.emoji || 'ðŸ“…'}</span>
+                      <span style={{ fontSize: 20 }}>{ev.emoji || '📅'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 800, fontSize: 13 }}>{ev.title}</div>
-                        <div style={{ fontSize: 11, color: '#38BDF8', marginTop: 2, fontWeight: 700 }}>Today{ev.time ? ` Â· ${ev.time}` : ''}</div>
+                        <div style={{ fontSize: 11, color: '#38BDF8', marginTop: 2, fontWeight: 700 }}>Today{ev.time ? ` · ${ev.time}` : ''}</div>
                       </div>
                     </div>
                   ))}
@@ -565,7 +565,7 @@ export default function DashboardPage() {
                       borderRadius: 12, background: 'rgba(255,255,255,0.05)', marginBottom: 6,
                       border: '1px solid rgba(56,189,248,0.1)',
                     }}>
-                      <span style={{ fontSize: 20 }}>{ev.emoji || 'ðŸ“…'}</span>
+                      <span style={{ fontSize: 20 }}>{ev.emoji || '📅'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 800, fontSize: 13 }}>{ev.title}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -581,12 +581,12 @@ export default function DashboardPage() {
 
         {/* Leaderboard */}
         <div className="card animate-fadeIn" style={{ borderRadius: 20, border: '1.5px solid rgba(255,255,255,0.08)' }}>
-          <SectionTitle icon="ðŸ†" title="Leaderboard" action="Rewards" onAction={() => navigate('/rewards')} />
+          <SectionTitle icon="🏆" title="Leaderboard" action="Rewards" onAction={() => navigate('/rewards')} />
           {leaderboard.length === 0
-            ? <Empty icon="ðŸ‘¨â€ðŸ‘©â€ðŸ‘§" text="No members yet." />
+            ? <Empty icon="👨‍👩‍👧" text="No members yet." />
             : leaderboard.map((m: any, i: number) => {
                 const src = avatarSrc(m.avatarUrl);
-                const medals = ['ðŸ¥‡','ðŸ¥ˆ','ðŸ¥‰','4ï¸âƒ£','5ï¸âƒ£'];
+                const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
                 const isTop = i === 0;
                 const isMe  = m.id === member?.id;
                 return (
@@ -608,13 +608,13 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 900, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {m.name}{isMe ? ' ðŸ‘ˆ' : ''}
+                        {m.name}{isMe ? ' 👈' : ''}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        â­ {m.stars || 0}{(m.streakDays || 0) > 0 ? `  ðŸ”¥ ${m.streakDays}d` : ''}{(m.badges?.length || 0) > 0 ? `  ðŸ… ${m.badges.length}` : ''}
+                        ⭐ {m.stars || 0}{(m.streakDays || 0) > 0 ? `  🔥 ${m.streakDays}d` : ''}{(m.badges?.length || 0) > 0 ? `  🏅 ${m.badges.length}` : ''}
                       </div>
                     </div>
-                    {isTop && <span style={{ fontSize: 18 }}>ðŸ‘‘</span>}
+                    {isTop && <span style={{ fontSize: 18 }}>👑</span>}
                   </div>
                 );
               })
@@ -623,9 +623,9 @@ export default function DashboardPage() {
 
         {/* Recent Messages */}
         <div className="card animate-fadeIn" style={{ borderRadius: 20, border: '1.5px solid rgba(255,255,255,0.08)' }}>
-          <SectionTitle icon="ðŸ’¬" title="Recent Messages" action="Open chat" onAction={() => navigate('/chat')} />
+          <SectionTitle icon="💬" title="Recent Messages" action="Open chat" onAction={() => navigate('/chat')} />
           {recentMsgs.length === 0
-            ? <Empty icon="ðŸ’­" text="No messages yet. Say hello!" />
+            ? <Empty icon="💭" text="No messages yet. Say hello!" />
             : recentMsgs.map((msg: any) => {
                 const sender = allMembers.find(m => m.id === msg.memberId);
                 const src = avatarSrc(sender?.avatarUrl);
@@ -642,7 +642,7 @@ export default function DashboardPage() {
                       fontSize: 14, flexShrink: 0, overflow: 'hidden',
                       border: '2px solid rgba(255,255,255,0.1)',
                     }}>
-                      {src ? <img src={src} alt={sender?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji || 'ðŸ‘¤'}
+                      {src ? <img src={src} alt={sender?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji || '👤'}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: sender?.color || '#A78BFA', marginBottom: 3 }}>{sender?.name || 'Family'}</div>
@@ -657,7 +657,7 @@ export default function DashboardPage() {
         {/* Activity Feed */}
         {activity.length > 0 && (
           <div className="card animate-fadeIn" style={{ gridColumn: '1 / -1', borderRadius: 20, border: '1.5px solid rgba(255,255,255,0.08)' }}>
-            <SectionTitle icon="âš¡" title="Family Activity" />
+            <SectionTitle icon="⚡" title="Family Activity" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {activity.map((a, i) => (
                 <div key={i} style={{
