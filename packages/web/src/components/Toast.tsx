@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info';
 interface Toast { id: string; message: string; type: ToastType; icon?: string; leaving?: boolean; }

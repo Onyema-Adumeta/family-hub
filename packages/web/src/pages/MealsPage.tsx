@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useMeals, useCreateMeal, useDeleteMeal, useMembers } from '../hooks/useApi';
 import { api } from '../lib/api';
 

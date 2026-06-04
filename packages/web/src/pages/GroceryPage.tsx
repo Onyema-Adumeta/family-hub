@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useGrocery, useCreateGroceryItem, useUpdateGroceryItem, useDeleteGroceryItem } from '../hooks/useApi';
 
 const GROCERY_CATS = ['Produce','Dairy','Meat & Fish','Bakery','Frozen','Pantry','Drinks','Snacks','Household','Personal Care','Other'];
