@@ -15,16 +15,31 @@ function getLevel(stars: number) {
   return             { level: 5, title: 'Legend',         next: 1000 };
 }
 
-const NAV_PRIMARY   = [{ path:'/',         icon:'🏠', label:'Home'     },{ path:'/chat',     icon:'💬', label:'Chat'     },{ path:'/schedule', icon:'📅', label:'Schedule' },{ path:'/chores',   icon:'✅', label:'Chores'   }];
-const NAV_SECONDARY = [{ path:'/meals',    icon:'🍽️', label:'Meals'    },{ path:'/grocery',  icon:'🛒', label:'Grocery'  },{ path:'/rewards',  icon:'⭐', label:'Rewards'  }];
-const NAV_ADVANCED  = [{ path:'/report',   icon:'📊', label:'Insights' },{ path:'/quests',   icon:'🎯', label:'Quests'   },{ path:'/trivia',   icon:'🧠', label:'Trivia'   },{ path:'/wishlist', icon:'🎁', label:'Wishlist' },{ path:'/settings', icon:'⚙️', label:'Settings'  }];
+const NAV_PRIMARY   = [
+  { path:'/',         icon:'🏠', label:'Home'     },
+  { path:'/chat',     icon:'💬', label:'Chat'     },
+  { path:'/schedule', icon:'📅', label:'Schedule' },
+  { path:'/chores',   icon:'✅', label:'Chores'   },
+];
+const NAV_SECONDARY = [
+  { path:'/meals',    icon:'🍽️', label:'Meals'    },
+  { path:'/grocery',  icon:'🛒', label:'Grocery'  },
+  { path:'/rewards',  icon:'⭐', label:'Rewards'  },
+];
+const NAV_ADVANCED  = [
+  { path:'/report',   icon:'📊', label:'Insights' },
+  { path:'/quests',   icon:'🗯️', label:'Quests'   },
+  { path:'/trivia',   icon:'🧠', label:'Trivia'   },
+  { path:'/wishlist', icon:'🎁', label:'Wishlist' },
+  { path:'/settings', icon:'⚙️', label:'Settings'  },
+];
 const BOTTOM_NAV = [
-  { path:'/',         icon:'🏠', label:'Home'    },
-  { path:'/chores',   icon:'✅', label:'Chores'  },
-  { path:'/chat',     icon:'💬', label:'Chat'    },
-  { path:'/meals',    icon:'🍽️', label:'Meals'   },
-  { path:'/trivia',   icon:'🧠', label:'Trivia'  },
-  { path:'/schedule', icon:'📅', label:'More'    },
+  { path:'/',         icon:'🏠', label:'Home'     },
+  { path:'/chores',   icon:'✅', label:'Chores'   },
+  { path:'/chat',     icon:'💬', label:'Chat'     },
+  { path:'/meals',    icon:'🍽️', label:'Meals'    },
+  { path:'/schedule', icon:'📅', label:'Schedule' },
+  { path:'/trivia',   icon:'🧠', label:'Trivia'   },
 ];
 
 function NavSection({ label, items, highlight, onNav }: { label: string; items: typeof NAV_PRIMARY; highlight?: string[]; onNav?: () => void }) {
@@ -89,28 +104,24 @@ export default function Layout() {
   const unread   = (notifications as any[]).filter((n: any) => !n.read).length;
   const avatarUrl = avatarSrc(member?.avatarUrl);
 
-  // Close drawer on navigation
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
-  // Keyboard close
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setSidebarOpen(false); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, []);
 
-  // Lock body scroll when drawer open
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [sidebarOpen]);
 
-  // ── MOBILE LAYOUT ─────────────────────────────────────────────
+  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
 
-        {/* Drawer transition styles */}
         <style>{`
           .drawer-backdrop {
             position: fixed; inset: 0; z-index: 200;
@@ -152,16 +163,14 @@ export default function Layout() {
             {unread > 0 && (
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
             )}
-            {/* Avatar button opens drawer */}
             <button
               onClick={() => setSidebarOpen(true)}
               style={{
                 width: 38, height: 38, borderRadius: '50%', padding: 0,
                 background: member?.color || 'var(--primary)',
-                border: `2.5px solid ${member?.color || 'var(--primary)'}`,
+                border: `2px solid ${member?.color || 'var(--primary)'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 18, overflow: 'hidden', cursor: 'pointer',
-                flexShrink: 0,
               }}
             >
               {avatarUrl
@@ -172,84 +181,114 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Backdrop — always rendered, opacity driven by class */}
+        {/* Page content */}
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '16px' }}>
+          <Outlet />
+        </main>
+
+        {/* Bottom nav */}
+        <nav style={{
+          display: 'flex', borderTop: '1px solid var(--border)',
+          background: 'rgba(255,255,255,0.02)', flexShrink: 0, zIndex: 50,
+        }}>
+          {BOTTOM_NAV.map(({ path, icon, label }) => {
+            const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+            return (
+              <NavLink
+                key={path}
+                to={path}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  padding: '8px 4px', textDecoration: 'none',
+                  color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                  fontSize: 10, fontWeight: 800, gap: 2,
+                  position: 'relative',
+                }}
+              >
+                {path === '/chat' && unread > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 6, right: '50%', transform: 'translateX(10px)',
+                    width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)',
+                  }} />
+                )}
+                <span style={{ fontSize: 20 }}>{icon}</span>
+                <span>{label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <QuickActionFAB />
+
+        {/* Drawer backdrop */}
         <div
           className={`drawer-backdrop${sidebarOpen ? ' open' : ''}`}
           onClick={() => setSidebarOpen(false)}
         />
 
-        {/* Drawer panel — always rendered, slides via CSS transform */}
+        {/* Drawer panel */}
         <div className={`drawer-panel${sidebarOpen ? ' open' : ''}`}>
+          {/* Drawer header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
+          }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Menu</div>
+              <div style={{ fontWeight: 900, fontSize: 14 }}>{member?.name || 'You'}</div>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                width: 32, height: 32, borderRadius: '50%', border: 'none',
+                background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)',
+                fontSize: 18, cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
 
-          {/* Profile header */}
-          <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          {/* Member info */}
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <div style={{
-                width: 48, height: 48, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                width: 40, height: 40, borderRadius: '50%',
                 background: member?.color || 'var(--primary)',
-                border: `2.5px solid ${member?.color || 'var(--primary)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, overflow: 'hidden', flexShrink: 0,
               }}>
                 {avatarUrl
                   ? <img src={avatarUrl} alt={member?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span>{member?.emoji || '👤'}</span>
                 }
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 900, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {member?.name || 'You'}
-                </div>
-                <div style={{ fontSize: 12, color: '#FBBF24', fontWeight: 800, marginTop: 1 }}>
-                  ⭐ {stars} &nbsp;·&nbsp; Lv.{level} {title}
-                </div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 13 }}>{member?.name}</div>
+                <div style={{ fontSize: 11, color: '#FBBF24', fontWeight: 800 }}>⭐ {stars} stars</div>
               </div>
-              {/* Close button — plain X text, no emoji */}
-              <button
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)',
-                  fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, flexShrink: 0, lineHeight: 1,
-                }}
-                aria-label="Close menu"
-              >
-                ✕
-              </button>
             </div>
-
-            {/* Level progress */}
-            <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
-              <span>{stars} stars</span><span>{next} to next level</span>
+            <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+              <span>Lv.{level} {title}</span><span>{stars}/{next}</span>
             </div>
-            <div style={{ height: 5, borderRadius: 4, background: 'rgba(255,255,255,0.08)' }}>
-              <div style={{ height: '100%', borderRadius: 4, width: `${levelPct}%`, background: 'var(--primary)', transition: 'width 0.6s ease' }} />
-            </div>
-            <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
-              <span className="badge badge-primary" style={{ fontSize: 10 }}>
-                {member?.role === 'parent' ? 'Parent' : 'Member'}
-              </span>
-              {streak >= 3 && (
-                <span className="badge badge-warning" style={{ fontSize: 10 }}>
-                  🔥 {streak}d streak
-                </span>
-              )}
-            </div>
+            <div className="progress-bar"><div className="progress-fill" style={{ width: `${levelPct}%` }} /></div>
           </div>
 
-          {/* Nav links */}
-          <nav style={{ flex: 1, padding: '8px 10px', overflowY: 'auto' }}>
+          {/* Nav sections */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
             <NavSection label="Main"   items={NAV_PRIMARY}   highlight={unread > 0 ? ['/chat'] : []} onNav={() => setSidebarOpen(false)} />
             <NavSection label="Family" items={NAV_SECONDARY} onNav={() => setSidebarOpen(false)} />
             <NavSection label="More"   items={NAV_ADVANCED}  onNav={() => setSidebarOpen(false)} />
-          </nav>
+          </div>
 
           {/* Sign out */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+          <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
             <button
               onClick={() => { logout(); navigate('/login'); }}
               style={{
-                width: '100%', padding: '10px', borderRadius: 10, cursor: 'pointer',
+                width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer',
                 background: 'transparent', border: '1.5px solid rgba(248,113,113,0.25)',
                 color: 'var(--danger)', fontSize: 13, fontWeight: 800,
               }}
@@ -258,85 +297,13 @@ export default function Layout() {
             </button>
           </div>
         </div>
-
-        {/* Page content */}
-        <main style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingBottom: 90 }}>
-          <Outlet />
-        </main>
-
-        {/* Bottom Nav Bar */}
-        <nav style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: 'rgba(10,10,20,0.97)',
-          backdropFilter: 'blur(20px)',
-          borderTop: '2px solid rgba(124,111,247,0.4)',
-          display: 'flex',
-          paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.7)',
-        }}>
-          {BOTTOM_NAV.map(({ path, icon, label: lbl }) => {
-            const isActive  = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
-            const showBadge = lbl === 'Chat' && unread > 0;
-            return (
-              <NavLink
-                key={path}
-                to={path}
-                style={{
-                  flex: 1, display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  padding: '10px 0 6px', textDecoration: 'none',
-                  position: 'relative', gap: 3,
-                }}
-              >
-                {isActive && (
-                  <span style={{
-                    position: 'absolute', top: 0, left: '15%', right: '15%',
-                    height: 3, borderRadius: '0 0 6px 6px',
-                    background: 'linear-gradient(90deg,#7C6FF7,#A78BFA)',
-                    boxShadow: '0 0 12px #7C6FF7, 0 0 24px rgba(124,111,247,0.4)',
-                  }} />
-                )}
-                <span style={{
-                  fontSize: 24, display: 'block', lineHeight: 1,
-                  transform: isActive ? 'scale(1.2) translateY(-1px)' : 'scale(1)',
-                  transition: 'transform 0.2s ease',
-                  filter: isActive ? 'drop-shadow(0 0 6px rgba(167,139,250,0.8))' : 'grayscale(0.15) opacity(0.7)',
-                }}>
-                  {icon}
-                </span>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: isActive ? 900 : 600,
-                  color: isActive ? '#C4B5FD' : 'rgba(255,255,255,0.35)',
-                  letterSpacing: isActive ? 0.5 : 0.2,
-                  transition: 'color 0.2s ease',
-                }}>
-                  {lbl}
-                </span>
-                {showBadge && (
-                  <span style={{
-                    position: 'absolute', top: 6, right: '18%',
-                    width: 9, height: 9, borderRadius: '50%',
-                    background: '#F87171', boxShadow: '0 0 8px #F87171',
-                    border: '1.5px solid rgba(10,10,20,0.97)',
-                  }} />
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <QuickActionFAB />
       </div>
     );
   }
 
-  // ── DESKTOP LAYOUT ────────────────────────────────────────────
+  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
-      <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>{sidebarOpen ? '←' : '→'}</button>
-      <div className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
-
+    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)', overflow: 'hidden' }}>
       <aside
         className={`sidebar${sidebarOpen ? ' open' : ''}`}
         style={{
