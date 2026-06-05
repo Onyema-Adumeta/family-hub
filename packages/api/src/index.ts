@@ -1,7 +1,6 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import rateLimit from 'express-rate-limit';
@@ -52,7 +51,7 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ── Global rate limit: 200 req / 15 min per IP ────────────────────────────────
+// ── Global rate limit: 500 req / 15 min per IP ───────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
@@ -62,9 +61,8 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// ── Body parsing ──────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// ── Body parsing (50kb max — uploads go via Cloudinary) ──────────────────────
+app.use(express.json({ limit: '50kb' }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
@@ -82,8 +80,7 @@ app.use('/api/upload',        authMiddleware, uploadRoutes);
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
 app.use('/api/rules',         authMiddleware, rulesRoutes);
 app.use('/api/trivia',        authMiddleware, triviaRoutes);
-app.use('/uploads',           express.static('uploads'));
-app.use('/api/wishlist',      wishlistRouter);
+app.use('/api/wishlist',      authMiddleware, wishlistRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));
