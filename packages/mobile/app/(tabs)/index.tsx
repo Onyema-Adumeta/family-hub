@@ -1,11 +1,22 @@
-﻿import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
 import { router } from 'expo-router';
 
+/** Safely parse any date string to a local Date — strips timezone noise */
+function parseDate(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const datePart = raw.split('T')[0].split(' ')[0];
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+const TODAY_STR = new Date().toISOString().split('T')[0];
+
 export default function HomeScreen() {
-  const { member, family, logout } = useAuthStore();
+  const { member, family } = useAuthStore();
 
   const { data: chores = [], refetch: refetchChores, isRefetching } = useQuery({
     queryKey: ['chores'], queryFn: () => api.get('/chores').then(r => r.data)
@@ -19,23 +30,34 @@ export default function HomeScreen() {
 
   const pending  = (chores as any[]).filter(c => !c.done);
   const done     = (chores as any[]).filter(c => c.done);
-  const upcoming = (events as any[]).filter(e => new Date(e.date) >= new Date()).slice(0, 3);
 
-  // ── Upcoming birthdays ──────────────────────────────────────────────────────
+  // Safe event date string — strips time/timezone
+  const evDateStr = (ev: any): string => (ev.date || ev.startsAt || '').split('T')[0].split(' ')[0];
+
+  const upcoming = (events as any[])
+    .filter(e => evDateStr(e) >= TODAY_STR)
+    .sort((a, b) => evDateStr(a).localeCompare(evDateStr(b)))
+    .slice(0, 3);
+
+  // Upcoming birthdays — fixed date mutation bug
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
   const upcomingBirthdays = (members as any[])
     .filter(m => m.birthday)
     .map(m => {
-      const bday  = new Date(m.birthday);
-      const today = new Date();
-      const next  = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
-      if (next < today) next.setFullYear(today.getFullYear() + 1);
-      const daysUntil = Math.ceil((next.getTime() - new Date().setHours(0,0,0,0)) / 86400000);
-      const age = next.getFullYear() - bday.getFullYear();
+      const bday = parseDate(m.birthday);
+      if (!bday) return null;
+      const thisYear  = new Date(todayMidnight.getFullYear(), bday.getMonth(), bday.getDate());
+      const nextYear  = new Date(todayMidnight.getFullYear() + 1, bday.getMonth(), bday.getDate());
+      const next      = thisYear >= todayMidnight ? thisYear : nextYear;
+      const daysUntil = Math.round((next.getTime() - todayMidnight.getTime()) / 86400000);
+      const age       = next.getFullYear() - bday.getFullYear();
       return { ...m, daysUntil, age, nextBirthday: next };
     })
-    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.daysUntil - b.daysUntil)
     .slice(0, 4);
-  // ───────────────────────────────────────────────────────────────────────────
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
@@ -48,13 +70,13 @@ export default function HomeScreen() {
           <Text style={styles.subtitle}>{family?.name}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={styles.starBadge}>
-          <Text style={styles.starText}>⭐ {member?.stars}</Text>
+          <View style={styles.starBadge}>
+            <Text style={styles.starText}>⭐ {member?.stars}</Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.gearBtn}>
+            <Text style={{ fontSize: 20 }}>⚙️</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.gearBtn}>
-          <Text style={{ fontSize: 20 }}>⚙️</Text>
-        </TouchableOpacity>
-      </View>
       </View>
 
       {/* Stats */}
@@ -73,16 +95,16 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* ── Upcoming Birthdays ── */}
+      {/* Upcoming Birthdays */}
       {upcomingBirthdays.length > 0 && (
         <View style={[styles.card, { borderColor: 'rgba(244,114,182,0.3)', backgroundColor: 'rgba(244,114,182,0.06)' }]}>
           <Text style={styles.cardTitle}>🎂 Upcoming Birthdays</Text>
-          {upcomingBirthdays.map(m => {
-            const isToday = m.daysUntil === 0;
-            const isSoon  = m.daysUntil <= 7 && m.daysUntil > 0;
+          {upcomingBirthdays.map((m: any) => {
+            const isToday    = m.daysUntil === 0;
+            const isSoon     = m.daysUntil <= 7 && m.daysUntil > 0;
             const badgeColor = isToday ? '#4ADE80' : isSoon ? '#F472B6' : '#FBBF24';
             const badgeText  = isToday ? '🎉 Today!' : `${m.daysUntil}d`;
-            const dateStr = m.nextBirthday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateStr    = m.nextBirthday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return (
               <View key={m.id} style={styles.birthdayRow}>
                 <View style={[styles.avatar, { backgroundColor: m.color || '#6366F1' }]}>
@@ -121,7 +143,9 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text style={styles.cardTitle}>📋 Today's chores</Text>
-            <TouchableOpacity onPress={() => router.push('/chores')}><Text style={{ color: '#6366F1', fontWeight: '800', fontSize: 12 }}>View all →</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/chores')}>
+              <Text style={{ color: '#6366F1', fontWeight: '800', fontSize: 12 }}>View all →</Text>
+            </TouchableOpacity>
           </View>
           {pending.slice(0, 4).map((c: any) => (
             <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 }}>
@@ -137,15 +161,25 @@ export default function HomeScreen() {
       {upcoming.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📅 Upcoming</Text>
-          {upcoming.map((ev: any) => (
-            <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }}>
-              <Text>{ev.emoji}</Text>
-              <Text style={{ flex: 1, color: '#f0f0f5', fontWeight: '700', fontSize: 13 }}>{ev.title}</Text>
-              <Text style={{ color: 'rgba(240,240,245,0.4)', fontSize: 11, fontWeight: '700' }}>{new Date(ev.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</Text>
-            </View>
-          ))}
+          {upcoming.map((ev: any) => {
+            const evDate = parseDate(ev.date || ev.startsAt);
+            const label  = evDate
+              ? evDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : '';
+            const isToday = evDateStr(ev) === TODAY_STR;
+            return (
+              <View key={ev.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }}>
+                <Text>{ev.emoji || '📅'}</Text>
+                <Text style={{ flex: 1, color: '#f0f0f5', fontWeight: '700', fontSize: 13 }}>{ev.title}</Text>
+                <Text style={{ color: isToday ? '#38BDF8' : 'rgba(240,240,245,0.4)', fontSize: 11, fontWeight: '700' }}>
+                  {isToday ? 'Today' : label}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       )}
+
     </ScrollView>
   );
 }
@@ -158,7 +192,7 @@ const styles = StyleSheet.create({
   subtitle:    { fontSize: 12, color: 'rgba(240,240,245,0.4)', fontWeight: '700', marginTop: 2 },
   starBadge:   { backgroundColor: 'rgba(245,158,11,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(245,158,11,0.3)' },
   starText:    { color: '#F59E0B', fontWeight: '900', fontSize: 14 },
-  gearBtn: { backgroundColor: 'rgba(255,255,255,0.08)', width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  gearBtn:     { backgroundColor: 'rgba(255,255,255,0.08)', width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   statsRow:    { flexDirection: 'row', gap: 8, marginBottom: 12 },
   statCard:    { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center' },
   statValue:   { fontSize: 18, fontWeight: '900' },
@@ -173,5 +207,3 @@ const styles = StyleSheet.create({
   memberStars: { color: '#F59E0B', fontWeight: '900', fontSize: 13 },
   badge:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
 });
-
-
