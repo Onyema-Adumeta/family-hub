@@ -386,7 +386,7 @@ export default function DashboardPage() {
   const tonightBreakfast = (meals as any[]).find(m => m.day === TODAY_DAY && m.slot === 'breakfast');
 
   // Safe event date extraction — always take the date part only
-  const evDateStr = (ev: any): string => (ev.date || ev.startsAt || '').split('T')[0].split(' ')[0];
+  const evDateStr = (ev: any): string => { const raw = ev.date || ev.startsAt || ''; console.log('EVENT RAW DATE:', raw, 'KEYS:', Object.keys(ev).join(',')); return raw.split('T')[0].split(' ')[0]; };
 
   const todayEvents    = (events as any[]).filter(e => evDateStr(e) === TODAY_STR);
   const upcomingEvents = (events as any[])
