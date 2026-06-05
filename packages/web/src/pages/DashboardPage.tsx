@@ -14,8 +14,27 @@ function getWeekStart() {
   const d = new Date();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day + (day === 0 ? -6 : 1));
+  return mon.toISOString().split('T')[0];
 }
+
+/** Safely parse any date string (ISO, YYYY-MM-DD, etc.) to a local Date */
+function parseDate(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  // Take only the date part — strips time & timezone noise
+  const datePart = raw.split('T')[0].split(' ')[0];
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+/** Format a date string safely for display */
+function fmtDate(raw: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+  const d = parseDate(raw);
+  if (!d) return '';
+  return d.toLocaleDateString('en-US', opts);
+}
+
 const TODAY_DAY = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
 const TODAY_STR = new Date().toISOString().split('T')[0];
 
@@ -110,6 +129,39 @@ function QuickAction({ icon, label, color, onClick }: {
       <span style={{ fontSize: 24 }}>{icon}</span>
       <span style={{ fontSize: 11, fontWeight: 800, color, textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
     </button>
+  );
+}
+
+// ─── Weather-style Family Mood Banner ────────────────────────────────────────
+function FamilyPulseBanner({ members, chores }: { members: any[]; chores: any[] }) {
+  const doneToday = chores.filter(c => c.status === 'done' && c.completedAt?.startsWith(TODAY_STR)).length;
+  const total     = chores.length;
+  const pct       = total === 0 ? 0 : Math.round((doneToday / total) * 100);
+  const topStar   = [...members].sort((a, b) => (b.stars || 0) - (a.stars || 0))[0];
+
+  const mood = pct >= 80 ? { emoji: '🔥', label: 'On fire!', color: '#F97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.3)' }
+    : pct >= 50          ? { emoji: '💪', label: 'Good momentum', color: '#4ADE80', bg: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.3)' }
+    : pct > 0            ? { emoji: '⚡', label: 'Getting started', color: '#FBBF24', bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.3)' }
+    :                      { emoji: '😴', label: 'Nothing done yet', color: '#94A3B8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.2)' };
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: '14px 18px', borderRadius: 18,
+      background: mood.bg, border: `1.5px solid ${mood.border}`,
+      display: 'flex', alignItems: 'center', gap: 14,
+    }}>
+      <span style={{ fontSize: 32 }}>{mood.emoji}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: mood.color, textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 2 }}>
+          Family Pulse · Today
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-primary)' }}>{mood.label}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+          {doneToday} of {total} chores done · {pct}% complete
+          {topStar ? `  ·  ⭐ ${topStar.name} leads with ${topStar.stars} stars` : ''}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -212,25 +264,29 @@ function WeeklyGoalWidget() {
 
 // ─── Upcoming Birthdays Widget ────────────────────────────────────────────────
 function UpcomingBirthdays({ members }: { members: any[] }) {
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
   const withBirthdays = members
     .filter(m => m.birthday)
     .map(m => {
-      const bday = new Date(m.birthday);
-      const today = new Date();
-      const next = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
-      if (next < today) next.setFullYear(today.getFullYear() + 1);
-      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const daysUntil = Math.ceil((next.getTime() - todayMidnight.getTime()) / 86400000);
-      const age = next.getFullYear() - bday.getFullYear();
+      const bday = parseDate(m.birthday);
+      if (!bday) return null;
+      const thisYear  = new Date(todayMidnight.getFullYear(), bday.getMonth(), bday.getDate());
+      const nextYear  = new Date(todayMidnight.getFullYear() + 1, bday.getMonth(), bday.getDate());
+      const next      = thisYear >= todayMidnight ? thisYear : nextYear;
+      const daysUntil = Math.round((next.getTime() - todayMidnight.getTime()) / 86400000);
+      const age       = next.getFullYear() - bday.getFullYear();
       return { ...m, daysUntil, age, nextBirthday: next };
     })
-    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.daysUntil - b.daysUntil)
     .slice(0, 4);
 
   if (withBirthdays.length === 0) return null;
 
-  const isToday    = (d: number) => d === 0;
-  const isSoon     = (d: number) => d <= 7 && d > 0;
+  const isToday     = (d: number) => d === 0;
+  const isSoon      = (d: number) => d <= 7 && d > 0;
   const isThisMonth = (d: number) => d <= 30 && d > 7;
 
   return (
@@ -246,15 +302,14 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {withBirthdays.map(m => {
-          const today  = isToday(m.daysUntil);
-          const soon   = isSoon(m.daysUntil);
-          const month  = isThisMonth(m.daysUntil);
-          const src    = avatarSrc(m.avatarUrl);
+        {withBirthdays.map((m: any) => {
+          const today = isToday(m.daysUntil);
+          const soon  = isSoon(m.daysUntil);
+          const src   = avatarSrc(m.avatarUrl);
 
-          const badgeColor = today ? '#4ADE80' : soon ? '#F472B6' : month ? '#FBBF24' : '#94A3B8';
-          const badgeBg    = today ? 'rgba(74,222,128,0.15)' : soon ? 'rgba(244,114,182,0.15)' : month ? 'rgba(251,191,36,0.15)' : 'rgba(148,163,184,0.1)';
-          const badgeText  = today ? '🎉 Today!' : soon ? `${m.daysUntil}d away` : `${m.daysUntil}d`;
+          const badgeColor = today ? '#4ADE80' : soon ? '#F472B6' : isThisMonth(m.daysUntil) ? '#FBBF24' : '#94A3B8';
+          const badgeBg    = today ? 'rgba(74,222,128,0.15)' : soon ? 'rgba(244,114,182,0.15)' : isThisMonth(m.daysUntil) ? 'rgba(251,191,36,0.15)' : 'rgba(148,163,184,0.1)';
+          const badgeText  = today ? '🎉 Today!' : `${m.daysUntil}d away`;
 
           return (
             <div key={m.id} style={{
@@ -269,9 +324,7 @@ function UpcomingBirthdays({ members }: { members: any[] }) {
                 fontSize: 18, overflow: 'hidden', flexShrink: 0,
                 border: `2px solid ${today ? '#4ADE80' : 'rgba(244,114,182,0.4)'}`,
               }}>
-                {src
-                  ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : m.emoji || '🎂'}
+                {src ? <img src={src} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : m.emoji || '🎂'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 13 }}>{m.name}</div>
@@ -328,13 +381,19 @@ export default function DashboardPage() {
   const pending    = allChores.filter(c => (c.status || 'pending') === 'pending');
   const inProg     = allChores.filter(c => c.status === 'in_progress');
   const doneToday  = allChores.filter(c => c.status === 'done' && c.completedAt?.startsWith(TODAY_STR));
+
   const tonightMeal      = (meals as any[]).find(m => m.day === TODAY_DAY && m.slot === 'dinner');
   const tonightBreakfast = (meals as any[]).find(m => m.day === TODAY_DAY && m.slot === 'breakfast');
-  const todayEvents    = (events as any[]).filter(e => (e.date || e.startsAt || '').startsWith(TODAY_STR));
+
+  // Safe event date extraction — always take the date part only
+  const evDateStr = (ev: any): string => (ev.date || ev.startsAt || '').split('T')[0].split(' ')[0];
+
+  const todayEvents    = (events as any[]).filter(e => evDateStr(e) === TODAY_STR);
   const upcomingEvents = (events as any[])
-    .filter(e => (e.date || e.startsAt || '') > TODAY_STR)
-    .sort((a, b) => (a.date || a.startsAt || '').localeCompare(b.date || b.startsAt || ''))
+    .filter(e => evDateStr(e) > TODAY_STR)
+    .sort((a, b) => evDateStr(a).localeCompare(evDateStr(b)))
     .slice(0, 2);
+
   const recentMsgs  = [...(messages as any[])].reverse().slice(0, 3);
   const leaderboard = [...allMembers].sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 5);
   const overdue     = allChores.filter(c => c.status !== 'done' && c.dueDate && c.dueDate < TODAY_STR);
@@ -398,6 +457,9 @@ export default function DashboardPage() {
           <span style={{ fontSize: 12, color: '#F87171', fontWeight: 700 }}>View →</span>
         </div>
       )}
+
+      {/* ── Family Pulse ── */}
+      <FamilyPulseBanner members={allMembers} chores={allChores} />
 
       {/* ── Weekly Goal Widget ── */}
       {!isParent && <WeeklyGoalWidget />}
@@ -555,25 +617,31 @@ export default function DashboardPage() {
                       <span style={{ fontSize: 20 }}>{ev.emoji || '📅'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 800, fontSize: 13 }}>{ev.title}</div>
-                        <div style={{ fontSize: 11, color: '#38BDF8', marginTop: 2, fontWeight: 700 }}>Today{ev.time ? ` · ${ev.time}` : ''}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {upcomingEvents.map((ev: any) => (
-                    <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                      borderRadius: 12, background: 'rgba(255,255,255,0.05)', marginBottom: 6,
-                      border: '1px solid rgba(56,189,248,0.1)',
-                    }}>
-                      <span style={{ fontSize: 20 }}>{ev.emoji || '📅'}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: 13 }}>{ev.title}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {new Date((ev.date || ev.startsAt).replace(/-/g, '/')).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        <div style={{ fontSize: 11, color: '#38BDF8', marginTop: 2, fontWeight: 700 }}>
+                          Today{ev.time ? ` · ${ev.time}` : ''}
                         </div>
                       </div>
                     </div>
                   ))}
+                  {upcomingEvents.map((ev: any) => {
+                    const evDate = parseDate(ev.date || ev.startsAt);
+                    const label  = evDate
+                      ? evDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      : 'Upcoming';
+                    return (
+                      <div key={ev.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                        borderRadius: 12, background: 'rgba(255,255,255,0.05)', marginBottom: 6,
+                        border: '1px solid rgba(56,189,248,0.1)',
+                      }}>
+                        <span style={{ fontSize: 20 }}>{ev.emoji || '📅'}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: 13 }}>{ev.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </>
             }
           </div>
