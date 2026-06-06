@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from './store/auth';
 import { familySocket } from './lib/socket';
-import { useAuthStore } from './store/auth';
 
 // Boot WebSocket on app load
 const token = useAuthStore.getState().token;
