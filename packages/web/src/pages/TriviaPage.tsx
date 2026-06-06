@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
+import { useSocket } from '../hooks/useSocket';
 
 interface TriviaQuestion {
   id: string; question: string; options: string[]; answer: string; order: number;
@@ -15,7 +16,7 @@ interface TriviaSession {
   answers: TriviaAnswer[];
 }
 
-const QUESTION_TIME = 20; // seconds per question
+const QUESTION_TIME = 20;
 
 function Leaderboard({ session, members, highlight }: { session: TriviaSession; members: any[]; highlight?: string }) {
   const scores: Record<string, { member: any; correct: number; total: number }> = {};
@@ -57,15 +58,15 @@ function Leaderboard({ session, members, highlight }: { session: TriviaSession; 
 export default function TriviaPage() {
   const { member } = useAuthStore();
   const isParent = member?.role === 'parent';
-  const [session, setSession]         = useState<TriviaSession | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [generating, setGenerating]   = useState(false);
-  const [currentQ, setCurrentQ]       = useState(0);
-  const [selected, setSelected]       = useState<Record<string, string>>({});
-  const [revealed, setRevealed]       = useState<Record<string, boolean>>({});
-  const [timeLeft, setTimeLeft]       = useState(QUESTION_TIME);
-  const [finishing, setFinishing]     = useState(false);
-  const [view, setView]               = useState<'play' | 'leaderboard'>('play');
+  const [session, setSession]       = useState<TriviaSession | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [currentQ, setCurrentQ]     = useState(0);
+  const [selected, setSelected]     = useState<Record<string, string>>({});
+  const [revealed, setRevealed]     = useState<Record<string, boolean>>({});
+  const [timeLeft, setTimeLeft]     = useState(QUESTION_TIME);
+  const [finishing, setFinishing]   = useState(false);
+  const [view, setView]             = useState<'play' | 'leaderboard'>('play');
   const timerRef = useRef<any>(null);
 
   async function fetchSession() {
@@ -79,21 +80,28 @@ export default function TriviaPage() {
 
   useEffect(() => { fetchSession(); }, []);
 
-  // WebSocket updates
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'trivia:started') { setSession(msg.session); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); }
-        if (msg.type === 'trivia:answer')  { setSession(prev => prev ? { ...prev, answers: [...prev.answers, msg.answer] } : prev); }
-        if (msg.type === 'trivia:finished'){ setSession(msg.session); setView('leaderboard'); }
-      } catch { /* ignore */ }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
+  // ── Real WebSocket updates ─────────────────────────────────────────────────
+  useSocket((msg) => {
+    if (msg.type === 'trivia:started') {
+      setSession(msg.session);
+      setCurrentQ(0);
+      setSelected({});
+      setRevealed({});
+      setView('play');
+    }
+    if (msg.type === 'trivia:answer') {
+      setSession(prev => prev
+        ? { ...prev, answers: [...prev.answers, msg.answer] }
+        : prev
+      );
+    }
+    if (msg.type === 'trivia:finished') {
+      setSession(msg.session);
+      setView('leaderboard');
+    }
+  });
 
-  // Timer per question
+  // ── Timer per question ────────────────────────────────────────────────────
   useEffect(() => {
     if (!session || session.status !== 'active' || view !== 'play') return;
     const q = session.questions[currentQ];
@@ -137,7 +145,10 @@ export default function TriviaPage() {
 
     try {
       const { data } = await api.post(`/trivia/${session.id}/answer`, { questionId, answer });
-      setSession(prev => prev ? { ...prev, answers: [...prev.answers.filter(a => !(a.questionId === questionId && a.memberId === member?.id)), data.answer] } : prev);
+      setSession(prev => prev
+        ? { ...prev, answers: [...prev.answers.filter(a => !(a.questionId === questionId && a.memberId === member?.id)), data.answer] }
+        : prev
+      );
     } catch (e: any) {
       alert(e.response?.data?.error || 'Failed to submit answer');
     }
@@ -246,9 +257,7 @@ export default function TriviaPage() {
   const myAnswer      = session.answers.find(a => a.questionId === currentQuestion.id && a.memberId === member?.id);
   const isRevealed    = revealed[currentQuestion.id] || !!myAnswer;
   const selectedOption = selected[currentQuestion.id] || myAnswer?.answer;
-
-  // Count how many family members answered this question
-  const answersForQ = session.answers.filter(a => a.questionId === currentQuestion.id);
+  const answersForQ   = session.answers.filter(a => a.questionId === currentQuestion.id);
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
