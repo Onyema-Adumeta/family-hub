@@ -3,6 +3,16 @@ import { Stack, router } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from './store/auth';
+import { familySocket } from './lib/socket';
+import { useAuthStore } from './store/auth';
+
+// Boot WebSocket on app load
+const token = useAuthStore.getState().token;
+if (token) familySocket.connect();
+useAuthStore.subscribe((state) => {
+  if (state.token) familySocket.connect();
+  else familySocket.disconnect();
+});
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } }
