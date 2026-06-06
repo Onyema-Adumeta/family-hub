@@ -60,6 +60,7 @@ model Member {
   events          Event[]
   messages        Message[]
   redemptions     Redemption[]
+  quests          Quest[]
   groceryAdded    GroceryItem[]  @relation("GroceryAdded")
   rulesAsTarget   WeeklyRule[]   @relation("RuleTarget")
   rulesCreated    WeeklyRule[]   @relation("RuleCreator")
@@ -173,12 +174,14 @@ model Quest {
   id          String    @id @default(cuid())
   familyId    String
   family      Family    @relation(fields: [familyId], references: [id])
+  memberId    String?
+  member      Member?   @relation(fields: [memberId], references: [id])
   title       String
   description String?
   emoji       String    @default("⚔️")
-  type        String    @default("family")
-  goal        Int       @default(5)
-  progress    Int       @default(0)
+  difficulty  String    @default("easy")
+  stages      Json      @default("[]")
+  stars       Int       @default(10)
   reward      Int       @default(10)
   deadline    DateTime?
   completed   Boolean   @default(false)
