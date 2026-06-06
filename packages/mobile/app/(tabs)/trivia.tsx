@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { useSocket } from '../hooks/useSocket';
@@ -10,21 +9,23 @@ interface TriviaAnswer   { id: string; questionId: string; memberId: string; ans
 interface TriviaSession  { id: string; status: 'pending'|'active'|'finished'; questions: TriviaQuestion[]; answers: TriviaAnswer[]; }
 
 const QUESTION_TIME = 20;
+const CATEGORY_NAMES = ['Science & Nature','Pop Culture & Entertainment','History & Geography','Food, Sports & Life','Math, Logic & Language','Mixed Bag'];
 
 export default function TriviaScreen() {
   const { member } = useAuthStore();
   const isParent = member?.role === 'parent';
-  const qc = useQueryClient();
 
-  const [session, setSession]       = useState<TriviaSession | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [currentQ, setCurrentQ]     = useState(0);
-  const [selected, setSelected]     = useState<Record<string, string>>({});
-  const [revealed, setRevealed]     = useState<Record<string, boolean>>({});
-  const [timeLeft, setTimeLeft]     = useState(QUESTION_TIME);
-  const [finishing, setFinishing]   = useState(false);
-  const [view, setView]             = useState<'play'|'leaderboard'>('play');
+  const [session, setSession]           = useState<TriviaSession | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [generating, setGenerating]     = useState(false);
+  const [currentQ, setCurrentQ]         = useState(0);
+  const [selected, setSelected]         = useState<Record<string, string>>({});
+  const [revealed, setRevealed]         = useState<Record<string, boolean>>({});
+  const [timeLeft, setTimeLeft]         = useState(QUESTION_TIME);
+  const [finishing, setFinishing]       = useState(false);
+  const [view, setView]                 = useState<'play'|'leaderboard'>('play');
+  const [showReview, setShowReview]     = useState(false);
+  const [sessionCount, setSessionCount] = useState(0);
   const timerRef = useRef<any>(null);
 
   async function fetchSession() {
@@ -38,14 +39,18 @@ export default function TriviaScreen() {
 
   useEffect(() => { fetchSession(); }, []);
 
-  // Real WebSocket updates
   useSocket((msg) => {
-    if (msg.type === 'trivia:started') { setSession(msg.session); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); }
-    if (msg.type === 'trivia:answer')  { setSession(prev => prev ? { ...prev, answers: [...prev.answers, msg.answer] } : prev); }
-    if (msg.type === 'trivia:finished'){ setSession(msg.session); setView('leaderboard'); }
+    if (msg.type === 'trivia:started') {
+      setSession(msg.session); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); setShowReview(false);
+    }
+    if (msg.type === 'trivia:answer') {
+      setSession(prev => prev ? { ...prev, answers: [...prev.answers, msg.answer] } : prev);
+    }
+    if (msg.type === 'trivia:finished') {
+      setSession(msg.session); setView('leaderboard');
+    }
   });
 
-  // Timer
   useEffect(() => {
     if (!session || session.status !== 'active' || view !== 'play') return;
     const q = session.questions[currentQ];
@@ -66,7 +71,8 @@ export default function TriviaScreen() {
     setGenerating(true);
     try {
       const { data } = await api.post('/trivia/generate');
-      setSession(data); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play');
+      setSession(data); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); setShowReview(false);
+      setSessionCount(c => c + 1);
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.error || 'Failed to generate trivia');
     } finally { setGenerating(false); }
@@ -98,7 +104,7 @@ export default function TriviaScreen() {
     if (!session) return;
     try {
       await api.delete(`/trivia/${session.id}`);
-      setSession(null); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play');
+      setSession(null); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); setShowReview(false);
     } catch { /* ignore */ }
   }
 
@@ -110,7 +116,7 @@ export default function TriviaScreen() {
     </SafeAreaView>
   );
 
-  // ── Lobby ─────────────────────────────────────────────────────────────────
+  // ── Lobby ──────────────────────────────────────────────────────────────────
   if (!session || session.status === 'pending') return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
@@ -119,12 +125,23 @@ export default function TriviaScreen() {
           <Text style={s.title}>Family Trivia Night</Text>
           <Text style={s.subtitle}>10 AI questions · Live leaderboard · Winner gets ⭐ bonus stars</Text>
         </View>
+
         <View style={s.card}>
           <Text style={s.cardTitle}>HOW IT WORKS</Text>
-          {['🤖 AI generates 10 fun mixed questions', '📱 Everyone answers on their own device', '⏱️ 20 seconds per question', '🏆 Winner gets 3 bonus stars'].map((t, i) => (
+          {['🤖 AI questions tailored to your family ages', '📱 Everyone answers on their own device', '⏱️ 20 seconds per question', '🏆 Winner gets 3 bonus stars', '📋 Review all answers when game ends'].map((t, i) => (
             <Text key={i} style={{ color: '#f0f0f5', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>{t}</Text>
           ))}
         </View>
+
+        {/* Category preview */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 1.5, borderColor: 'rgba(99,102,241,0.2)', marginBottom: 16 }}>
+          <Text style={{ fontSize: 20 }}>🎯</Text>
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(240,240,245,0.4)' }}>NEXT CATEGORY</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#f0f0f5' }}>{CATEGORY_NAMES[sessionCount % 6]}</Text>
+          </View>
+        </View>
+
         {isParent ? (
           <TouchableOpacity style={s.startBtn} onPress={handleGenerate} disabled={generating}>
             <Text style={s.startBtnText}>{generating ? '🤖 Generating...' : '🎮 Start Trivia Night!'}</Text>
@@ -145,7 +162,7 @@ export default function TriviaScreen() {
   const myAnswers = session.answers.filter(a => a.memberId === member?.id);
   const allDone = myAnswers.length >= questions.length;
 
-  // ── Leaderboard ───────────────────────────────────────────────────────────
+  // ── Leaderboard ────────────────────────────────────────────────────────────
   if (view === 'leaderboard' || session.status === 'finished') {
     const scores: Record<string, { member: any; correct: number }> = {};
     for (const a of session.answers) {
@@ -154,17 +171,47 @@ export default function TriviaScreen() {
     }
     const ranked = Object.values(scores).sort((a, b) => b.correct - a.correct);
     const medals = ['🥇','🥈','🥉'];
+    const myScore = scores[member?.id || ''];
 
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={s.content}>
           <View style={{ alignItems: 'center', marginBottom: 24, marginTop: 20 }}>
-            <Text style={{ fontSize: 56, marginBottom: 8 }}>🏆</Text>
+            <Text style={{ fontSize: 56, marginBottom: 8 }}>{session.status === 'finished' ? '🏆' : '📊'}</Text>
             <Text style={s.title}>{session.status === 'finished' ? 'Final Results!' : 'Live Leaderboard'}</Text>
           </View>
+
+          {/* Personal score card */}
+          {myScore && (
+            <View style={{
+              padding: 16, borderRadius: 16, marginBottom: 16, alignItems: 'center',
+              backgroundColor: myScore.correct >= questions.length * 0.7 ? 'rgba(74,222,128,0.1)' : 'rgba(99,102,241,0.1)',
+              borderWidth: 1.5,
+              borderColor: myScore.correct >= questions.length * 0.7 ? 'rgba(74,222,128,0.3)' : 'rgba(99,102,241,0.3)',
+            }}>
+              <Text style={{ fontSize: 32, marginBottom: 6 }}>
+                {myScore.correct === questions.length ? '🏆' :
+                 myScore.correct >= questions.length * 0.7 ? '🎉' :
+                 myScore.correct >= questions.length * 0.4 ? '👍' : '💪'}
+              </Text>
+              <Text style={{ fontSize: 28, fontWeight: '900', color: '#f0f0f5' }}>
+                {myScore.correct}/{questions.length}
+              </Text>
+              <Text style={{ fontSize: 13, color: 'rgba(240,240,245,0.5)', fontWeight: '600', marginTop: 4 }}>
+                {myScore.correct === questions.length ? 'Perfect score! Amazing!' :
+                 myScore.correct >= questions.length * 0.7 ? 'Great job!' :
+                 myScore.correct >= questions.length * 0.4 ? 'Good effort!' : 'Keep practicing!'}
+              </Text>
+            </View>
+          )}
+
+          {/* Rankings */}
           {ranked.length === 0 && <Text style={{ color: 'rgba(240,240,245,0.4)', textAlign: 'center' }}>No answers yet</Text>}
           {ranked.map((r, i) => (
-            <View key={r.member.id} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }]}>
+            <View key={r.member.id} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10,
+              backgroundColor: r.member.id === member?.id ? 'rgba(124,111,247,0.15)' : 'rgba(255,255,255,0.04)',
+              borderColor: r.member.id === member?.id ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.08)',
+            }]}>
               <Text style={{ fontSize: 22, width: 32, textAlign: 'center' }}>{medals[i] || `#${i+1}`}</Text>
               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: r.member.color, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 18 }}>{r.member.emoji}</Text>
@@ -176,21 +223,83 @@ export default function TriviaScreen() {
               <Text style={{ fontSize: 22, fontWeight: '900', color: i === 0 ? '#FBBF24' : '#f0f0f5' }}>{r.correct}</Text>
             </View>
           ))}
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+
+          {/* Question review toggle */}
+          {session.status === 'finished' && (
+            <TouchableOpacity onPress={() => setShowReview(v => !v)} style={{
+              padding: 12, borderRadius: 12, marginTop: 4, marginBottom: 10, alignItems: 'center',
+              backgroundColor: showReview ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)',
+              borderWidth: 1.5, borderColor: showReview ? '#6366f1' : 'rgba(255,255,255,0.1)',
+            }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: showReview ? '#A78BFA' : 'rgba(240,240,245,0.5)' }}>
+                {showReview ? '▲ Hide Review' : '📋 Review All Questions & Answers'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Question review */}
+          {showReview && session.status === 'finished' && questions.map((q, i) => {
+            const myAns = session.answers.find(a => a.questionId === q.id && a.memberId === member?.id);
+            return (
+              <View key={q.id} style={{ padding: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 10 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(240,240,245,0.4)', marginBottom: 6 }}>Q{i+1}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#f0f0f5', marginBottom: 10, lineHeight: 18 }}>{q.question}</Text>
+                {q.options.map(opt => {
+                  const isCorrect = opt === q.answer;
+                  const isMine = opt === myAns?.answer;
+                  return (
+                    <View key={opt} style={{
+                      padding: 8, borderRadius: 8, marginBottom: 4, flexDirection: 'row', alignItems: 'center', gap: 6,
+                      backgroundColor: isCorrect ? 'rgba(74,222,128,0.1)' : isMine && !isCorrect ? 'rgba(248,113,113,0.1)' : 'transparent',
+                      borderWidth: 1, borderColor: isCorrect ? 'rgba(74,222,128,0.3)' : isMine && !isCorrect ? 'rgba(248,113,113,0.3)' : 'transparent',
+                    }}>
+                      <Text style={{ fontSize: 12 }}>{isCorrect ? '✅' : isMine && !isCorrect ? '❌' : '  '}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', flex: 1, color: isCorrect ? '#4ADE80' : isMine && !isCorrect ? '#F87171' : 'rgba(240,240,245,0.5)' }}>
+                        {opt.replace(/^[A-D]\) /, '')}
+                      </Text>
+                      {isCorrect && <Text style={{ fontSize: 10, fontWeight: '800', color: '#4ADE80' }}>CORRECT</Text>}
+                    </View>
+                  );
+                })}
+                {!myAns && <Text style={{ fontSize: 11, color: 'rgba(240,240,245,0.4)', marginTop: 6 }}>⏰ Not answered</Text>}
+              </View>
+            );
+          })}
+
+          {/* Controls */}
+          <View style={{ gap: 10, marginTop: 10 }}>
             {session.status === 'active' && (
-              <TouchableOpacity style={[s.navBtn, { flex: 1, backgroundColor: '#6366f1' }]} onPress={() => setView('play')}>
-                <Text style={{ color: '#fff', fontWeight: '800' }}>← Questions</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={[s.navBtn, { flex: 1, backgroundColor: '#6366f1' }]} onPress={() => setView('play')}>
+                  <Text style={{ color: '#fff', fontWeight: '800' }}>← Questions</Text>
+                </TouchableOpacity>
+                {isParent && (
+                  <TouchableOpacity style={[s.navBtn, { flex: 1, backgroundColor: 'rgba(74,222,128,0.15)', borderWidth: 1.5, borderColor: '#4ADE80' }]} onPress={handleFinish} disabled={finishing}>
+                    <Text style={{ color: '#4ADE80', fontWeight: '800' }}>{finishing ? 'Finishing...' : '🏁 End & Award'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
-            {isParent && session.status === 'active' && (
-              <TouchableOpacity style={[s.navBtn, { flex: 1, backgroundColor: 'rgba(74,222,128,0.15)', borderWidth: 1.5, borderColor: '#4ADE80' }]} onPress={handleFinish} disabled={finishing}>
-                <Text style={{ color: '#4ADE80', fontWeight: '800' }}>{finishing ? 'Finishing...' : '🏁 End & Award'}</Text>
-              </TouchableOpacity>
-            )}
-            {isParent && session.status === 'finished' && (
-              <TouchableOpacity style={[s.startBtn, { flex: 1 }]} onPress={handleNewGame}>
-                <Text style={s.startBtnText}>🎮 New Game</Text>
-              </TouchableOpacity>
+
+            {/* New game — always shown when finished */}
+            {session.status === 'finished' && (
+              <View style={{ borderRadius: 16, padding: 20, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: 'rgba(240,240,245,0.5)', fontWeight: '600', marginBottom: 6 }}>
+                  🎉 Game over! Ready for another round?
+                </Text>
+                <Text style={{ fontSize: 12, color: '#6366f1', fontWeight: '700', marginBottom: 14 }}>
+                  Next up: {CATEGORY_NAMES[(sessionCount + 1) % 6]} 🎯
+                </Text>
+                {isParent ? (
+                  <TouchableOpacity onPress={handleNewGame} style={{ width: '100%', padding: 14, borderRadius: 12, backgroundColor: '#6366f1', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '900' }}>🎮 Start New Game</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={{ fontSize: 13, color: 'rgba(240,240,245,0.4)', fontWeight: '600' }}>
+                    Ask a parent to start a new game! 🙌
+                  </Text>
+                )}
+              </View>
             )}
           </View>
         </ScrollView>
@@ -198,13 +307,14 @@ export default function TriviaScreen() {
     );
   }
 
-  // ── Play ──────────────────────────────────────────────────────────────────
+  // ── Play ───────────────────────────────────────────────────────────────────
   if (!currentQuestion) return null;
-  const myAnswer      = session.answers.find(a => a.questionId === currentQuestion.id && a.memberId === member?.id);
-  const isRevealed    = revealed[currentQuestion.id] || !!myAnswer;
+  const myAnswer       = session.answers.find(a => a.questionId === currentQuestion.id && a.memberId === member?.id);
+  const isRevealed     = revealed[currentQuestion.id] || !!myAnswer;
   const selectedOption = selected[currentQuestion.id] || myAnswer?.answer;
-  const answersForQ   = session.answers.filter(a => a.questionId === currentQuestion.id);
-  const letters       = ['A','B','C','D'];
+  const answersForQ    = session.answers.filter(a => a.questionId === currentQuestion.id);
+  const letters        = ['A','B','C','D'];
+  const timerPct       = (timeLeft / QUESTION_TIME) * 100;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -221,7 +331,7 @@ export default function TriviaScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Progress */}
+        {/* Progress bar */}
         <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 16, overflow: 'hidden' }}>
           <View style={{ height: '100%', borderRadius: 2, backgroundColor: '#6366f1', width: `${((currentQ + 1) / questions.length) * 100}%` }} />
         </View>
@@ -234,8 +344,7 @@ export default function TriviaScreen() {
               <TouchableOpacity key={q.id} onPress={() => setCurrentQ(i)} style={{
                 width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
                 backgroundColor: i === currentQ ? '#6366f1' : ans ? (ans.correct ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)') : 'rgba(255,255,255,0.08)',
-                borderWidth: 2,
-                borderColor: i === currentQ ? '#6366f1' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'rgba(255,255,255,0.12)',
+                borderWidth: 2, borderColor: i === currentQ ? '#6366f1' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'rgba(255,255,255,0.12)',
               }}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: i === currentQ ? '#fff' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'rgba(240,240,245,0.5)' }}>
                   {ans ? (ans.correct ? '✓' : '✗') : i + 1}
@@ -245,11 +354,20 @@ export default function TriviaScreen() {
           })}
         </View>
 
-        {/* Timer */}
+        {/* Timer — circular ring */}
         {!isRevealed && (
           <View style={{ alignItems: 'center', marginBottom: 14 }}>
-            <View style={{ paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: timeLeft <= 5 ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', borderWidth: 1.5, borderColor: timeLeft <= 5 ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.1)' }}>
-              <Text style={{ fontSize: 16, fontWeight: '900', color: timeLeft <= 5 ? '#F87171' : '#f0f0f5' }}>{timeLeft}s</Text>
+            <View style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Background ring */}
+              <View style={{ position: 'absolute', width: 64, height: 64, borderRadius: 32, borderWidth: 4, borderColor: 'rgba(255,255,255,0.08)' }} />
+              {/* Timer number */}
+              <Text style={{ fontSize: 20, fontWeight: '900', color: timeLeft <= 5 ? '#F87171' : timeLeft <= 10 ? '#f59e0b' : '#f0f0f5' }}>
+                {timeLeft}
+              </Text>
+              {/* Color indicator bar below */}
+              <View style={{ position: 'absolute', bottom: -8, height: 3, width: 48, borderRadius: 2, backgroundColor: timeLeft <= 5 ? '#F87171' : timeLeft <= 10 ? '#f59e0b' : '#6366f1' }}>
+                <View style={{ height: '100%', borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', width: `${100 - timerPct}%` }} />
+              </View>
             </View>
           </View>
         )}
@@ -263,14 +381,11 @@ export default function TriviaScreen() {
         {currentQuestion.options.map((option, i) => {
           const isCorrect  = option === currentQuestion.answer;
           const isSelected = option === selectedOption;
-          let bg = 'rgba(255,255,255,0.05)';
-          let border = 'rgba(255,255,255,0.1)';
-          let color = '#f0f0f5';
+          let bg = 'rgba(255,255,255,0.05)', border = 'rgba(255,255,255,0.1)', color = '#f0f0f5';
           if (isRevealed) {
             if (isCorrect) { bg = 'rgba(74,222,128,0.15)'; border = '#4ADE80'; color = '#4ADE80'; }
             else if (isSelected) { bg = 'rgba(248,113,113,0.15)'; border = '#F87171'; color = '#F87171'; }
           } else if (isSelected) { bg = 'rgba(99,102,241,0.2)'; border = '#6366F1'; color = '#A78BFA'; }
-
           return (
             <TouchableOpacity key={option} onPress={() => !isRevealed && handleAnswer(currentQuestion.id, option)} disabled={isRevealed}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: bg, borderWidth: 1.5, borderColor: border, marginBottom: 10 }}>
@@ -312,8 +427,11 @@ export default function TriviaScreen() {
               <Text style={{ color: '#fff', fontWeight: '800' }}>Next →</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={() => setView('leaderboard')} style={[s.navBtn, { flex: 2, backgroundColor: allDone ? 'rgba(74,222,128,0.2)' : '#6366f1', borderWidth: allDone ? 1.5 : 0, borderColor: '#4ADE80' }]}>
-              <Text style={{ color: allDone ? '#4ADE80' : '#fff', fontWeight: '800' }}>{allDone ? '🏆 Leaderboard!' : '📊 Scores'}</Text>
+            <TouchableOpacity onPress={() => setView('leaderboard')}
+              style={[s.navBtn, { flex: 2, backgroundColor: allDone ? 'rgba(74,222,128,0.2)' : '#6366f1', borderWidth: allDone ? 1.5 : 0, borderColor: '#4ADE80' }]}>
+              <Text style={{ color: allDone ? '#4ADE80' : '#fff', fontWeight: '800' }}>
+                {allDone ? '🏆 Leaderboard!' : '📊 Scores'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -322,27 +440,28 @@ export default function TriviaScreen() {
         {isParent && (
           <TouchableOpacity onPress={handleFinish} disabled={finishing}
             style={{ marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: 'rgba(74,222,128,0.1)', borderWidth: 1.5, borderColor: 'rgba(74,222,128,0.3)', alignItems: 'center' }}>
-            <Text style={{ color: '#4ADE80', fontWeight: '800', fontSize: 13 }}>{finishing ? 'Finishing...' : '🏁 End Game & Award Winner'}</Text>
+            <Text style={{ color: '#4ADE80', fontWeight: '800', fontSize: 13 }}>
+              {finishing ? 'Finishing...' : '🏁 End Game & Award Winner'}
+            </Text>
           </TouchableOpacity>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f0f13' },
-  content: { padding: 16, paddingBottom: 40 },
-  title: { fontSize: 20, fontWeight: '900', color: '#f0f0f5' },
-  subtitle: { fontSize: 13, color: 'rgba(240,240,245,0.5)', fontWeight: '600', textAlign: 'center', marginTop: 6 },
-  card: { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 },
-  cardTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(240,240,245,0.4)', marginBottom: 10, letterSpacing: 0.5 },
-  startBtn: { backgroundColor: '#6366f1', padding: 16, borderRadius: 16, alignItems: 'center' },
+  safe:         { flex: 1, backgroundColor: '#0f0f13' },
+  content:      { padding: 16, paddingBottom: 40 },
+  title:        { fontSize: 20, fontWeight: '900', color: '#f0f0f5' },
+  subtitle:     { fontSize: 13, color: 'rgba(240,240,245,0.5)', fontWeight: '600', textAlign: 'center', marginTop: 6 },
+  card:         { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 },
+  cardTitle:    { fontSize: 11, fontWeight: '800', color: 'rgba(240,240,245,0.4)', marginBottom: 10, letterSpacing: 0.5 },
+  startBtn:     { backgroundColor: '#6366f1', padding: 16, borderRadius: 16, alignItems: 'center' },
   startBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  waitCard: { padding: 20, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
-  scoresBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  waitCard:     { padding: 20, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
+  scoresBtn:    { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   questionCard: { padding: 20, borderRadius: 20, backgroundColor: 'rgba(99,102,241,0.08)', borderWidth: 1.5, borderColor: 'rgba(99,102,241,0.25)', marginBottom: 16, alignItems: 'center' },
   questionText: { fontSize: 17, fontWeight: '800', color: '#f0f0f5', textAlign: 'center', lineHeight: 24 },
-  navBtn: { flex: 1, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' },
+  navBtn:       { flex: 1, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center' },
 });
