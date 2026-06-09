@@ -47,14 +47,13 @@ const CATEGORY_PACKS = [
 function getAgeLabel(birthday: Date | null): string {
   if (!birthday) return 'unknown age';
   const age = Math.floor((Date.now() - birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  if (age < 7)  return ${age}-year-old (very young child);
-  if (age < 11) return ${age}-year-old (young child);
-  if (age < 14) return ${age}-year-old (preteen);
-  if (age < 18) return ${age}-year-old (teenager);
-  return ${age}-year-old (adult);
+  if (age < 7)  return `${age}-year-old (very young child)`;
+  if (age < 11) return `${age}-year-old (young child)`;
+  if (age < 14) return `${age}-year-old (preteen)`;
+  if (age < 18) return `${age}-year-old (teenager)`;
+  return `${age}-year-old (adult)`;
 }
 
-// ── GET /api/trivia/current ───────────────────────────────────────────────────
 router.get('/current', async (req: AuthRequest, res) => {
   try {
     const session = await prisma.triviaSession.findFirst({
@@ -71,7 +70,6 @@ router.get('/current', async (req: AuthRequest, res) => {
   }
 });
 
-// ── POST /api/trivia/generate ─────────────────────────────────────────────────
 router.post('/generate', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
 
@@ -82,7 +80,7 @@ router.post('/generate', async (req: AuthRequest, res) => {
     });
 
     const memberDescriptions = members.map(m =>
-      ${m.name} ()
+      `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
     ).join(', ');
 
     const kids   = members.filter(m => m.role === 'child');
@@ -111,25 +109,25 @@ router.post('/generate', async (req: AuthRequest, res) => {
       orderBy: { createdAt: 'desc' },
       include: { questions: { select: { question: true } } },
     });
-    const recentQuestions = lastSession?.questions.map(q => - ).join('\n') || 'None';
+    const recentQuestions = lastSession?.questions.map(q => `- ${q.question}`).join('\n') || 'None';
 
-    const prompt = Generate 10 trivia questions for a family game night.
+    const prompt = `Generate 10 trivia questions for a family game night.
 
-Family members: 
+Family members: ${memberDescriptions}
 
-Today's category theme: 
+Today's category theme: ${pack.name}
 
 Difficulty breakdown:
--  EASY questions — topics: 
--  MEDIUM questions — topics: 
--  HARD questions — topics: 
+- ${easyCount} EASY questions - topics: ${pack.easy}
+- ${mediumCount} MEDIUM questions - topics: ${pack.medium}
+- ${hardCount} HARD questions - topics: ${pack.hard}
 
 Rules:
 1. Tailor question difficulty so every family member can answer at least 1-2 questions correctly
 2. Make questions fun, engaging, and family-friendly
-3. Vary the question format — some factual, some "which of these", some "who was the first to..."
+3. Vary the question format - some factual, some "which of these", some "who was the first to..."
 4. DO NOT repeat any of these recent questions:
-
+${recentQuestions}
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
 [
@@ -141,7 +139,7 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
   }
 ]
 
-Make sure the answer exactly matches one of the options.;
+Make sure the answer exactly matches one of the options.`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -162,7 +160,7 @@ Make sure the answer exactly matches one of the options.;
 
     let questions: any[] = [];
     try {
-      const clean = text.replace(/`json|`/g, '').trim();
+      const clean = text.replace(/```json|```/g, '').trim();
       questions = JSON.parse(clean);
     } catch {
       return res.status(500).json({ error: 'Failed to parse AI questions' });
@@ -192,8 +190,8 @@ Make sure the answer exactly matches one of the options.;
     await prisma.notification.create({
       data: {
         familyId: req.familyId!,
-        title: 🎮 Trivia Night — !,
-        body: A new  trivia session has started — join now and answer 10 questions!,
+        title: `Trivia Night - ${pack.name}!`,
+        body: `A new ${pack.name} trivia session has started - join now and answer 10 questions!`,
       },
     });
 
@@ -205,7 +203,6 @@ Make sure the answer exactly matches one of the options.;
   }
 });
 
-// ── POST /api/trivia/:sessionId/answer ────────────────────────────────────────
 router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
   const { sessionId } = req.params;
   const { questionId, answer } = req.body;
@@ -238,8 +235,7 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
   }
 });
 
-// ── POST /api/trivia/:sessionId/finish ────────────────────────────────────────
-// Parents can finish at any time. Members can finish if they've answered all questions.
+// Parents can finish at any time. Members can finish only after answering all questions.
 router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
   try {
     const sessionWithQuestions = await prisma.triviaSession.findUnique({
@@ -253,7 +249,6 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
     if (!sessionWithQuestions) return res.status(404).json({ error: 'Session not found' });
     if (sessionWithQuestions.status !== 'active') return res.status(400).json({ error: 'Session already finished' });
 
-    // Non-parents can only finish if they've personally answered all questions
     if (req.role !== 'parent') {
       const myAnswerCount = sessionWithQuestions.answers.filter(a => a.memberId === req.memberId).length;
       const totalQuestions = sessionWithQuestions.questions.length;
@@ -288,8 +283,8 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
       await prisma.notification.create({
         data: {
           familyId: req.familyId!,
-          title: 🏆   wins trivia night!,
-          body: ${winner.member.name} got / correct and earned  bonus ⭐!,
+          title: `${winner.member.name} wins trivia night!`,
+          body: `${winner.member.name} got ${winner.correct}/${session.questions.length} correct and earned ${bonusStars} bonus stars!`,
         },
       });
     }
@@ -301,7 +296,6 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
   }
 });
 
-// ── DELETE /api/trivia/:sessionId ─────────────────────────────────────────────
 router.delete('/:sessionId', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
