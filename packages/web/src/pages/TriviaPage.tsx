@@ -37,7 +37,7 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         <div style={{
           padding: '16px', borderRadius: 16, marginBottom: 4, textAlign: 'center',
           background: myScore.correct >= session.questions.length * 0.7 ? 'rgba(74,222,128,0.1)' : 'rgba(99,102,241,0.1)',
-          border: 1.5px solid ,
+          border: `1.5px solid ${myScore.correct >= session.questions.length * 0.7 ? 'rgba(74,222,128,0.3)' : 'rgba(99,102,241,0.3)'}`,
         }}>
           <div style={{ fontSize: 32, marginBottom: 6 }}>
             {myScore.correct === session.questions.length ? '🏆' :
@@ -62,7 +62,7 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         <div key={s.member.id} style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14,
           background: s.member.id === highlight ? 'rgba(124,111,247,0.15)' : 'rgba(255,255,255,0.04)',
-          border: 1.5px solid ,
+          border: `1.5px solid \`,
         }}>
           <span style={{ fontSize: 22, width: 32, textAlign: 'center' }}>{medals[i] || #}</span>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: s.member.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{s.member.emoji}</div>
@@ -81,7 +81,7 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         <button onClick={onToggleReview} style={{
           marginTop: 8, padding: '10px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer',
           background: showReview ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)',
-          border: 1.5px solid ,
+          border: `1.5px solid \`,
           color: showReview ? 'var(--primary)' : 'var(--text-muted)',
         }}>
           {showReview ? '▲ Hide Question Review' : '📋 Review All Questions & Answers'}
@@ -413,7 +413,7 @@ export default function TriviaPage() {
             else if (isSelected && !isCorrect) { bg = 'rgba(248,113,113,0.15)'; border = '#F87171'; color = '#F87171'; }
           } else if (isSelected) { bg = 'rgba(99,102,241,0.2)'; border = '#6366F1'; color = '#A78BFA'; }
           return (
-            <button key={option} onClick={() => !isRevealed && handleAnswer(currentQuestion.id, option)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: bg, border: 1.5px solid , color, fontWeight: 700, fontSize: 14, cursor: isRevealed ? 'default' : 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
+            <button key={option} onClick={() => !isRevealed && handleAnswer(currentQuestion.id, option)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: bg, border: `1.5px solid \`, color, fontWeight: 700, fontSize: 14, cursor: isRevealed ? 'default' : 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
               <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isRevealed && isCorrect ? '#4ADE80' : isRevealed && isSelected ? '#F87171' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isRevealed ? '#fff' : 'var(--text-muted)' }}>{letters[i]}</div>
               <span>{option.replace(/^[A-D]\) /, '')}</span>
               {isRevealed && isCorrect && <span style={{ marginLeft: 'auto', fontSize: 18 }}>✅</span>}
