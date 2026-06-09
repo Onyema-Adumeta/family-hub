@@ -104,12 +104,16 @@ router.post('/generate', async (req: AuthRequest, res) => {
     const sessionCount = await prisma.triviaSession.count({ where: { familyId: req.familyId! } });
     const pack = CATEGORY_PACKS[sessionCount % CATEGORY_PACKS.length];
 
-    const lastSession = await prisma.triviaSession.findFirst({
+    // Fetch last 3 sessions worth of questions to avoid repeats
+    const recentSessions = await prisma.triviaSession.findMany({
       where: { familyId: req.familyId! },
       orderBy: { createdAt: 'desc' },
+      take: 3,
       include: { questions: { select: { question: true } } },
     });
-    const recentQuestions = lastSession?.questions.map(q => `- ${q.question}`).join('\n') || 'None';
+    const recentQuestions = recentSessions
+      .flatMap(s => s.questions.map(q => `- ${q.question}`))
+      .join('\n') || 'None';
 
     const prompt = `Generate 10 trivia questions for a family game night.
 
@@ -126,7 +130,7 @@ Rules:
 1. Tailor question difficulty so every family member can answer at least 1-2 questions correctly
 2. Make questions fun, engaging, and family-friendly
 3. Vary the question format - some factual, some "which of these", some "who was the first to..."
-4. DO NOT repeat any of these recent questions:
+4. IMPORTANT - Do NOT use any of these questions that were used recently - create completely different questions:
 ${recentQuestions}
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
