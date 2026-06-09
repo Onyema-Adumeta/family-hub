@@ -5,7 +5,6 @@ import { broadcast } from '../services/websocket';
 const router = Router();
 import { prisma } from '../db';
 
-// ── Category packs — rotated each session to ensure variety ──────────────────
 const CATEGORY_PACKS = [
   {
     name: 'Science & Nature',
@@ -48,11 +47,11 @@ const CATEGORY_PACKS = [
 function getAgeLabel(birthday: Date | null): string {
   if (!birthday) return 'unknown age';
   const age = Math.floor((Date.now() - birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  if (age < 7)  return `${age}-year-old (very young child)`;
-  if (age < 11) return `${age}-year-old (young child)`;
-  if (age < 14) return `${age}-year-old (preteen)`;
-  if (age < 18) return `${age}-year-old (teenager)`;
-  return `${age}-year-old (adult)`;
+  if (age < 7)  return ${age}-year-old (very young child);
+  if (age < 11) return ${age}-year-old (young child);
+  if (age < 14) return ${age}-year-old (preteen);
+  if (age < 18) return ${age}-year-old (teenager);
+  return ${age}-year-old (adult);
 }
 
 // ── GET /api/trivia/current ───────────────────────────────────────────────────
@@ -77,20 +76,18 @@ router.post('/generate', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
 
   try {
-    // Get family members with their actual ages
     const members = await prisma.member.findMany({
       where: { familyId: req.familyId! },
       select: { name: true, role: true, birthday: true },
     });
 
     const memberDescriptions = members.map(m =>
-      `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
+      ${m.name} ()
     ).join(', ');
 
-    // Count how many kids vs adults to calibrate difficulty split
     const kids   = members.filter(m => m.role === 'child');
     const adults = members.filter(m => m.role === 'parent');
-    const hasYoungKids  = kids.some(m => {
+    const hasYoungKids = kids.some(m => {
       if (!m.birthday) return false;
       const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
       return age < 11;
@@ -101,41 +98,38 @@ router.post('/generate', async (req: AuthRequest, res) => {
       return age >= 11 && age < 18;
     });
 
-    // Calibrate difficulty split based on family composition
     let easyCount = 2, mediumCount = 4, hardCount = 4;
     if (hasYoungKids)  { easyCount = 4; mediumCount = 4; hardCount = 2; }
     else if (hasTeens) { easyCount = 2; mediumCount = 5; hardCount = 3; }
     if (adults.length === 0) { hardCount = Math.max(1, hardCount - 1); easyCount++; }
 
-    // Rotate category pack based on total session count to ensure variety
     const sessionCount = await prisma.triviaSession.count({ where: { familyId: req.familyId! } });
     const pack = CATEGORY_PACKS[sessionCount % CATEGORY_PACKS.length];
 
-    // Fetch last session's questions to avoid repeats
     const lastSession = await prisma.triviaSession.findFirst({
       where: { familyId: req.familyId! },
       orderBy: { createdAt: 'desc' },
       include: { questions: { select: { question: true } } },
     });
-    const recentQuestions = lastSession?.questions.map(q => `- ${q.question}`).join('\n') || 'None';
+    const recentQuestions = lastSession?.questions.map(q => - ).join('\n') || 'None';
 
-    const prompt = `Generate 10 trivia questions for a family game night.
+    const prompt = Generate 10 trivia questions for a family game night.
 
-Family members: ${memberDescriptions}
+Family members: 
 
-Today's category theme: ${pack.name}
+Today's category theme: 
 
 Difficulty breakdown:
-- ${easyCount} EASY questions — topics: ${pack.easy}
-- ${mediumCount} MEDIUM questions — topics: ${pack.medium}  
-- ${hardCount} HARD questions — topics: ${pack.hard}
+-  EASY questions — topics: 
+-  MEDIUM questions — topics: 
+-  HARD questions — topics: 
 
 Rules:
 1. Tailor question difficulty so every family member can answer at least 1-2 questions correctly
 2. Make questions fun, engaging, and family-friendly
 3. Vary the question format — some factual, some "which of these", some "who was the first to..."
 4. DO NOT repeat any of these recent questions:
-${recentQuestions}
+
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
 [
@@ -147,7 +141,7 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
   }
 ]
 
-Make sure the answer exactly matches one of the options.`;
+Make sure the answer exactly matches one of the options.;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -168,7 +162,7 @@ Make sure the answer exactly matches one of the options.`;
 
     let questions: any[] = [];
     try {
-      const clean = text.replace(/```json|```/g, '').trim();
+      const clean = text.replace(/`json|`/g, '').trim();
       questions = JSON.parse(clean);
     } catch {
       return res.status(500).json({ error: 'Failed to parse AI questions' });
@@ -176,7 +170,6 @@ Make sure the answer exactly matches one of the options.`;
 
     if (!questions.length) return res.status(500).json({ error: 'No questions generated' });
 
-    // Create session + questions
     const session = await prisma.triviaSession.create({
       data: {
         familyId: req.familyId!,
@@ -199,8 +192,8 @@ Make sure the answer exactly matches one of the options.`;
     await prisma.notification.create({
       data: {
         familyId: req.familyId!,
-        title: `🎮 Trivia Night — ${pack.name}!`,
-        body: `A new ${pack.name} trivia session has started — join now and answer 10 questions!`,
+        title: 🎮 Trivia Night — !,
+        body: A new  trivia session has started — join now and answer 10 questions!,
       },
     });
 
@@ -246,10 +239,29 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
 });
 
 // ── POST /api/trivia/:sessionId/finish ────────────────────────────────────────
+// Parents can finish at any time. Members can finish if they've answered all questions.
 router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
-  if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
-
   try {
+    const sessionWithQuestions = await prisma.triviaSession.findUnique({
+      where: { id: req.params.sessionId },
+      include: {
+        questions: true,
+        answers: { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
+      },
+    });
+
+    if (!sessionWithQuestions) return res.status(404).json({ error: 'Session not found' });
+    if (sessionWithQuestions.status !== 'active') return res.status(400).json({ error: 'Session already finished' });
+
+    // Non-parents can only finish if they've personally answered all questions
+    if (req.role !== 'parent') {
+      const myAnswerCount = sessionWithQuestions.answers.filter(a => a.memberId === req.memberId).length;
+      const totalQuestions = sessionWithQuestions.questions.length;
+      if (myAnswerCount < totalQuestions) {
+        return res.status(403).json({ error: 'Answer all questions before finishing' });
+      }
+    }
+
     const session = await prisma.triviaSession.update({
       where: { id: req.params.sessionId },
       data:  { status: 'finished' },
@@ -276,8 +288,8 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
       await prisma.notification.create({
         data: {
           familyId: req.familyId!,
-          title: `🏆 ${winner.member.emoji} ${winner.member.name} wins trivia night!`,
-          body: `${winner.member.name} got ${winner.correct}/${session.questions.length} correct and earned ${bonusStars} bonus ⭐!`,
+          title: 🏆   wins trivia night!,
+          body: ${winner.member.name} got / correct and earned  bonus ⭐!,
         },
       });
     }

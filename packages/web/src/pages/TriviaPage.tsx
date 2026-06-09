@@ -33,13 +33,11 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Personal score card */}
       {myScore && (
         <div style={{
           padding: '16px', borderRadius: 16, marginBottom: 4, textAlign: 'center',
-          background: myScore.correct >= session.questions.length * 0.7
-            ? 'rgba(74,222,128,0.1)' : 'rgba(99,102,241,0.1)',
-          border: `1.5px solid ${myScore.correct >= session.questions.length * 0.7 ? 'rgba(74,222,128,0.3)' : 'rgba(99,102,241,0.3)'}`,
+          background: myScore.correct >= session.questions.length * 0.7 ? 'rgba(74,222,128,0.1)' : 'rgba(99,102,241,0.1)',
+          border: 1.5px solid ,
         }}>
           <div style={{ fontSize: 32, marginBottom: 6 }}>
             {myScore.correct === session.questions.length ? '🏆' :
@@ -57,7 +55,6 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         </div>
       )}
 
-      {/* Rankings */}
       {ranked.length === 0 && (
         <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 20, fontSize: 13 }}>No answers yet</div>
       )}
@@ -65,9 +62,9 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         <div key={s.member.id} style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14,
           background: s.member.id === highlight ? 'rgba(124,111,247,0.15)' : 'rgba(255,255,255,0.04)',
-          border: `1.5px solid ${s.member.id === highlight ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.08)'}`,
+          border: 1.5px solid ,
         }}>
-          <span style={{ fontSize: 22, width: 32, textAlign: 'center' }}>{medals[i] || `#${i+1}`}</span>
+          <span style={{ fontSize: 22, width: 32, textAlign: 'center' }}>{medals[i] || #}</span>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: s.member.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{s.member.emoji}</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>{s.member.name}</div>
@@ -80,19 +77,17 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
         </div>
       ))}
 
-      {/* Review toggle */}
       {session.status === 'finished' && (
         <button onClick={onToggleReview} style={{
           marginTop: 8, padding: '10px', borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: 'pointer',
           background: showReview ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)',
-          border: `1.5px solid ${showReview ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}`,
+          border: 1.5px solid ,
           color: showReview ? 'var(--primary)' : 'var(--text-muted)',
         }}>
           {showReview ? '▲ Hide Question Review' : '📋 Review All Questions & Answers'}
         </button>
       )}
 
-      {/* Question review */}
       {showReview && session.status === 'finished' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
           {session.questions.map((q, i) => {
@@ -109,7 +104,7 @@ function Leaderboard({ session, highlight, showReview, onToggleReview }: {
                       <div key={opt} style={{
                         padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                         background: isCorrect ? 'rgba(74,222,128,0.1)' : isMine && !isCorrect ? 'rgba(248,113,113,0.1)' : 'transparent',
-                        border: `1px solid ${isCorrect ? 'rgba(74,222,128,0.3)' : isMine && !isCorrect ? 'rgba(248,113,113,0.3)' : 'transparent'}`,
+                        border: 1px solid ,
                         color: isCorrect ? '#4ADE80' : isMine && !isCorrect ? '#F87171' : 'var(--text-muted)',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
@@ -153,14 +148,6 @@ export default function TriviaPage() {
       if (data?.status === 'finished') setView('leaderboard');
     } catch { /* no session yet */ }
     finally { setLoading(false); }
-  }
-
-  async function fetchSessionCount() {
-    try {
-      // Use session count mod 6 to derive current category
-      const { data } = await api.get('/trivia/current');
-      // Category rotates — we just show the index-derived name
-    } catch { /* ignore */ }
   }
 
   useEffect(() => { fetchSession(); }, []);
@@ -210,7 +197,7 @@ export default function TriviaPage() {
     clearInterval(timerRef.current);
     setRevealed(prev => ({ ...prev, [questionId]: true }));
     try {
-      const { data } = await api.post(`/trivia/${session.id}/answer`, { questionId, answer });
+      const { data } = await api.post(/trivia//answer, { questionId, answer });
       setSession(prev => prev
         ? { ...prev, answers: [...prev.answers.filter(a => !(a.questionId === questionId && a.memberId === member?.id)), data.answer] }
         : prev);
@@ -221,7 +208,7 @@ export default function TriviaPage() {
     if (!session) return;
     setFinishing(true);
     try {
-      await api.post(`/trivia/${session.id}/finish`);
+      await api.post(/trivia//finish);
       await fetchSession();
       setView('leaderboard');
     } catch (e: any) { alert(e.response?.data?.error || 'Failed to finish session'); }
@@ -231,7 +218,7 @@ export default function TriviaPage() {
   async function handleNewGame() {
     if (!session) return;
     try {
-      await api.delete(`/trivia/${session.id}`);
+      await api.delete(/trivia/);
       setSession(null); setCurrentQ(0); setSelected({}); setRevealed({}); setView('play'); setShowReview(false);
     } catch { /* ignore */ }
   }
@@ -239,7 +226,7 @@ export default function TriviaPage() {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 60 }}>
       <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{@keyframes spin{to{transform:rotate(360deg)}}}</style>
     </div>
   );
 
@@ -260,8 +247,6 @@ export default function TriviaPage() {
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontSize: 13, fontWeight: 600 }}>{s}</div>
           ))}
         </div>
-
-        {/* Category preview */}
         <div style={{ padding: '12px 16px', borderRadius: 14, background: 'rgba(99,102,241,0.08)', border: '1.5px solid rgba(99,102,241,0.2)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 20 }}>🎯</span>
           <div>
@@ -269,7 +254,6 @@ export default function TriviaPage() {
             <div style={{ fontSize: 13, fontWeight: 700 }}>{CATEGORY_NAMES[sessionCount % 6]}</div>
           </div>
         </div>
-
         {isParent ? (
           <button onClick={handleGenerate} disabled={generating} style={{ width: '100%', padding: '16px', borderRadius: 16, fontSize: 16, fontWeight: 900, background: 'linear-gradient(135deg, #6366F1, #A78BFA)', border: 'none', color: '#fff', cursor: 'pointer', opacity: generating ? 0.7 : 1, boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}>
             {generating ? '🤖 Generating questions...' : '🎮 Start Trivia Night!'}
@@ -299,7 +283,7 @@ export default function TriviaPage() {
           {session.status === 'finished' ? 'Final Results!' : 'Live Leaderboard'}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-          {session.status === 'finished' ? 'Winner gets 3 bonus ⭐ stars!' : `${myAnswers.length} / ${questions.length} answered`}
+          {session.status === 'finished' ? 'Winner gets 3 bonus ⭐ stars!' : ${myAnswers.length} /  answered}
         </p>
       </div>
 
@@ -312,7 +296,6 @@ export default function TriviaPage() {
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
-          {/* Active game controls */}
           {session.status === 'active' && (
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setView('play')} style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer' }}>
@@ -326,13 +309,11 @@ export default function TriviaPage() {
             </div>
           )}
 
-          {/* New game — always shown when finished */}
           {session.status === 'finished' && (
             <div style={{ borderRadius: 16, padding: 20, background: 'rgba(255,255,255,0.03)', border: '1.5px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 12 }}>
                 🎉 Game over! Ready for another round?
               </div>
-              {/* Next category preview */}
               <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700, marginBottom: 14 }}>
                 Next up: {CATEGORY_NAMES[(sessionCount + 1) % 6]} 🎯
               </div>
@@ -360,13 +341,14 @@ export default function TriviaPage() {
   const selectedOption = selected[currentQuestion.id] || myAnswer?.answer;
   const answersForQ    = session.answers.filter(a => a.questionId === currentQuestion.id);
   const timerPct       = (timeLeft / QUESTION_TIME) * 100;
+  const isLastQuestion = currentQ === questions.length - 1;
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
-      <style>{`
+      <style>{
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes spin{to{transform:rotate(360deg)}}
-      `}</style>
+      }</style>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -379,7 +361,7 @@ export default function TriviaPage() {
 
       {/* Progress bar */}
       <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', marginBottom: 20, overflow: 'hidden' }}>
-        <div style={{ height: '100%', borderRadius: 2, background: 'var(--primary)', width: `${((currentQ + 1) / questions.length) * 100}%`, transition: 'width 0.3s' }} />
+        <div style={{ height: '100%', borderRadius: 2, background: 'var(--primary)', width: ${((currentQ + 1) / questions.length) * 100}%, transition: 'width 0.3s' }} />
       </div>
 
       {/* Question dots */}
@@ -387,14 +369,14 @@ export default function TriviaPage() {
         {questions.map((q, i) => {
           const ans = session.answers.find(a => a.questionId === q.id && a.memberId === member?.id);
           return (
-            <div key={q.id} onClick={() => setCurrentQ(i)} style={{ width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, background: i === currentQ ? 'var(--primary)' : ans ? (ans.correct ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)') : 'rgba(255,255,255,0.08)', border: `2px solid ${i === currentQ ? 'var(--primary)' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'rgba(255,255,255,0.12)'}`, color: i === currentQ ? '#fff' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'var(--text-muted)' }}>
+            <div key={q.id} onClick={() => setCurrentQ(i)} style={{ width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, background: i === currentQ ? 'var(--primary)' : ans ? (ans.correct ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)') : 'rgba(255,255,255,0.08)', border: 2px solid , color: i === currentQ ? '#fff' : ans ? (ans.correct ? '#4ADE80' : '#F87171') : 'var(--text-muted)' }}>
               {ans ? (ans.correct ? '✓' : '✗') : i + 1}
             </div>
           );
         })}
       </div>
 
-      {/* Timer — circular ring */}
+      {/* Timer */}
       {!isRevealed && (
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 64, height: 64 }}>
@@ -403,8 +385,8 @@ export default function TriviaPage() {
               <circle cx="32" cy="32" r="28" fill="none"
                 stroke={timeLeft <= 5 ? '#F87171' : timeLeft <= 10 ? '#f59e0b' : '#6366f1'}
                 strokeWidth="4"
-                strokeDasharray={`${2 * Math.PI * 28}`}
-                strokeDashoffset={`${2 * Math.PI * 28 * (1 - timerPct / 100)}`}
+                strokeDasharray={${2 * Math.PI * 28}}
+                strokeDashoffset={${2 * Math.PI * 28 * (1 - timerPct / 100)}}
                 strokeLinecap="round"
                 style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
               />
@@ -431,7 +413,7 @@ export default function TriviaPage() {
             else if (isSelected && !isCorrect) { bg = 'rgba(248,113,113,0.15)'; border = '#F87171'; color = '#F87171'; }
           } else if (isSelected) { bg = 'rgba(99,102,241,0.2)'; border = '#6366F1'; color = '#A78BFA'; }
           return (
-            <button key={option} onClick={() => !isRevealed && handleAnswer(currentQuestion.id, option)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: bg, border: `1.5px solid ${border}`, color, fontWeight: 700, fontSize: 14, cursor: isRevealed ? 'default' : 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
+            <button key={option} onClick={() => !isRevealed && handleAnswer(currentQuestion.id, option)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: bg, border: 1.5px solid , color, fontWeight: 700, fontSize: 14, cursor: isRevealed ? 'default' : 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
               <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isRevealed && isCorrect ? '#4ADE80' : isRevealed && isSelected ? '#F87171' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: isRevealed ? '#fff' : 'var(--text-muted)' }}>{letters[i]}</div>
               <span>{option.replace(/^[A-D]\) /, '')}</span>
               {isRevealed && isCorrect && <span style={{ marginLeft: 'auto', fontSize: 18 }}>✅</span>}
@@ -459,22 +441,34 @@ export default function TriviaPage() {
       )}
 
       {/* Navigation */}
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
         <button onClick={() => setCurrentQ(q => Math.max(0, q - 1))} disabled={currentQ === 0} style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: currentQ === 0 ? 'not-allowed' : 'pointer', opacity: currentQ === 0 ? 0.4 : 1 }}>← Prev</button>
-        {currentQ < questions.length - 1 ? (
+        {!isLastQuestion ? (
           <button onClick={() => setCurrentQ(q => q + 1)} style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer' }}>Next →</button>
         ) : (
-          <button onClick={() => setView('leaderboard')} style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: allDone ? 'rgba(74,222,128,0.2)' : 'var(--primary)', border: allDone ? '1.5px solid #4ADE80' : 'none', color: allDone ? '#4ADE80' : '#fff', cursor: 'pointer' }}>
-            {allDone ? '🏆 See Leaderboard!' : '📊 Leaderboard'}
-          </button>
+          <button onClick={() => setView('leaderboard')} style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer' }}>📊 Scores</button>
         )}
       </div>
 
-      {/* Parent controls */}
-      {isParent && (
-        <div style={{ marginTop: 20, padding: '14px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 10 }}>
-          <button onClick={handleFinish} disabled={finishing} style={{ flex: 1, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'rgba(74,222,128,0.1)', border: '1.5px solid rgba(74,222,128,0.3)', color: '#4ADE80', cursor: 'pointer' }}>
-            {finishing ? 'Finishing...' : '🏁 End Game & Award Winner'}
+      {/* ── Finish session banner — shown to everyone when all done ── */}
+      {allDone && (
+        <button onClick={handleFinish} disabled={finishing} style={{
+          width: '100%', padding: '16px', borderRadius: 16, fontSize: 16, fontWeight: 900,
+          background: finishing ? 'rgba(74,222,128,0.1)' : 'linear-gradient(135deg, #4ADE80, #22C55E)',
+          border: 'none', color: finishing ? '#4ADE80' : '#0f0f13',
+          cursor: finishing ? 'not-allowed' : 'pointer',
+          boxShadow: finishing ? 'none' : '0 8px 24px rgba(74,222,128,0.35)',
+          marginBottom: 12,
+        }}>
+          {finishing ? 'Finishing...' : '🏆 I\'m Done! See Final Results'}
+        </button>
+      )}
+
+      {/* Parent early-finish (only shown when not all done yet) */}
+      {isParent && !allDone && (
+        <div style={{ padding: '14px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <button onClick={handleFinish} disabled={finishing} style={{ width: '100%', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, background: 'rgba(74,222,128,0.1)', border: '1.5px solid rgba(74,222,128,0.3)', color: '#4ADE80', cursor: 'pointer' }}>
+            {finishing ? 'Finishing...' : '🏁 End Game Early & Award Winner'}
           </button>
         </div>
       )}
