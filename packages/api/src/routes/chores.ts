@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { PrismaClient, ChoreStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
@@ -9,7 +9,6 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 const router = Router();
 import { prisma } from '../db';
 
-// ─── Cloudinary config ───────────────────────────────────────────────────────
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key:    process.env.CLOUDINARY_API_KEY,
@@ -32,7 +31,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const chores = await prisma.chore.findMany({
       where: { familyId: req.familyId },
       include: {
-        assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
         completedBy: { select: { id: true, name: true, emoji: true, color: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -60,7 +59,7 @@ router.post('/', async (req: AuthRequest, res) => {
         status:        ChoreStatus.pending,
       },
       include: {
-        assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
         completedBy: { select: { id: true, name: true, emoji: true, color: true } },
       },
     });
@@ -76,18 +75,9 @@ router.post('/', async (req: AuthRequest, res) => {
 router.patch('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-
     const {
-      status,
-      assignedToId,
-      title,
-      emoji,
-      frequency,
-      stars,
-      proofRequired,
-      proofUrl,
-      proofType,
-      dueDate,
+      status, assignedToId, title, emoji, frequency,
+      stars, proofRequired, proofUrl, proofType, dueDate,
     } = req.body;
 
     const existing = await prisma.chore.findUnique({ where: { id } });
@@ -103,15 +93,12 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     if (proofUrl      !== undefined) updateData.proofUrl      = proofUrl;
     if (proofType     !== undefined) updateData.proofType     = proofType;
     if (dueDate       !== undefined) updateData.dueDate       = dueDate ? new Date(dueDate) : null;
-
-    if (assignedToId !== undefined) {
-      updateData.assignedToId = assignedToId || null;
-    }
+    if (assignedToId  !== undefined) updateData.assignedToId  = assignedToId || null;
 
     if (status !== undefined) {
       const validStatuses = ['pending', 'in_progress', 'done'];
       if (!validStatuses.includes(status)) {
-        return res.status(400).json({ error: `Invalid status: ${status}` });
+        return res.status(400).json({ error: 'Invalid status: ' + status });
       }
 
       updateData.status = status as ChoreStatus;
@@ -120,11 +107,13 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         updateData.completedAt   = new Date();
         updateData.completedById = req.memberId;
 
+        // Award stars to whoever completed it
         await prisma.member.update({
           where: { id: req.memberId! },
           data:  { stars: { increment: existing.stars } },
         });
 
+        // Streak logic
         if (existing.dueDate && new Date() > existing.dueDate && existing.assignedToId) {
           await prisma.member.update({
             where: { id: existing.assignedToId },
@@ -134,8 +123,8 @@ router.patch('/:id', async (req: AuthRequest, res) => {
             data: {
               familyId: req.familyId!,
               memberId: existing.assignedToId,
-              title:    '? Chore overdue!',
-              body:     `"${existing.title}" was completed late — streak reset.`,
+              title:    'Chore overdue!',
+              body:     '"' + existing.title + '" was completed late - streak reset.',
             },
           });
         } else if (existing.assignedToId) {
@@ -149,6 +138,53 @@ router.patch('/:id', async (req: AuthRequest, res) => {
           });
         }
 
+        // For daily chores: save details, delete this record, create tomorrow's copy
+        if (existing.frequency === 'daily') {
+          // First finish saving the completed state so the UI sees it briefly
+          const completedChore = await prisma.chore.update({
+            where: { id },
+            data:  updateData,
+            include: {
+              assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+              completedBy: { select: { id: true, name: true, emoji: true, color: true } },
+            },
+          });
+
+          broadcast(req.familyId!, { type: 'chore:updated', chore: completedChore });
+
+          // Delete the completed chore
+          await prisma.chore.delete({ where: { id } });
+          broadcast(req.familyId!, { type: 'chore:deleted', id });
+
+          // Create fresh copy due tomorrow
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(23, 59, 59, 0);
+
+          const newChore = await prisma.chore.create({
+            data: {
+              familyId:      existing.familyId,
+              title:         existing.title,
+              emoji:         existing.emoji,
+              frequency:     'daily',
+              stars:         existing.stars,
+              proofRequired: existing.proofRequired,
+              assignedToId:  existing.assignedToId,
+              dueDate:       tomorrow,
+              status:        'pending',
+            },
+            include: {
+              assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+              completedBy: { select: { id: true, name: true, emoji: true, color: true } },
+            },
+          });
+
+          broadcast(req.familyId!, { type: 'chore:created', chore: newChore });
+
+          // Return the completed chore so the UI can show the done state momentarily
+          return res.json(completedChore);
+        }
+
       } else if (status === 'pending') {
         updateData.completedAt   = null;
         updateData.completedById = null;
@@ -159,7 +195,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       where: { id },
       data:  updateData,
       include: {
-        assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
         completedBy: { select: { id: true, name: true, emoji: true, color: true } },
       },
     });
@@ -176,19 +212,15 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 router.patch('/:id/photo', upload.single('photo'), async (req: AuthRequest, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
-    // Cloudinary returns the permanent URL in req.file.path
     const photoUrl = (req.file as any).path;
-
     const chore = await prisma.chore.update({
       where: { id: req.params.id },
       data:  { photoUrl, photoedAt: new Date() },
       include: {
-        assignedTo: { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
         completedBy: { select: { id: true, name: true, emoji: true, color: true } },
       },
     });
-
     broadcast(req.familyId!, { type: 'chore:updated', chore });
     res.json(chore);
   } catch (e: any) {
@@ -208,7 +240,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/chores/reset-daily
+// POST /api/chores/reset-daily (manual trigger, kept for admin use)
 router.post('/reset-daily', async (req: AuthRequest, res) => {
   try {
     await prisma.chore.updateMany({
