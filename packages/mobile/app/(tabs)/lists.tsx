@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert, StyleSheet } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
@@ -8,12 +8,17 @@ const GROCERY_CATS = ["Produce","Dairy","Meat & Fish","Bakery","Frozen","Pantry"
 const NEEDS_CATS   = ["Clothing","Shoes","School Supplies","Electronics","Toiletries","Medicine","Home & Garden","Other"];
 type Tab = "grocery" | "needs" | "wishlist";
 
+const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
+  approved: { label: "Approved", color: "#10B981", icon: "✅" },
+  declined: { label: "Declined", color: "#EF4444", icon: "❌" },
+  deferred: { label: "Maybe later", color: "#F59E0B", icon: "⏳" },
+};
+
 export default function ListsScreen() {
   const qc = useQueryClient();
   const { member, isParent } = useAuthStore() as any;
   const [tab, setTab] = useState<Tab>("grocery");
 
-  // Grocery + Needs
   const { data: allItems = [] } = useQuery({ queryKey: ["grocery"], queryFn: () => api.get("/grocery").then(r => r.data) });
   const createItem = useMutation({ mutationFn: (d: any) => api.post("/grocery", d).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ["grocery"] }) });
   const updateItem = useMutation({ mutationFn: ({ id, data }: any) => api.patch(`/grocery/${id}`, data).then(r => r.data), onSuccess: () => qc.invalidateQueries({ queryKey: ["grocery"] }) });
@@ -48,6 +53,11 @@ export default function ListsScreen() {
   const [wurl,   setWurl]   = useState("");
   const [wprice, setWprice] = useState("");
 
+  // Review modal
+  const [reviewItem, setReviewItem] = useState<any | null>(null);
+  const [reviewMode, setReviewMode] = useState<"decline" | "defer">("decline");
+  const [reason, setReason] = useState("");
+
   const memberList     = members as any[];
   const visibleMembers = isParent ? memberList : memberList.filter((m: any) => m.id === member?.id);
   const wishItems      = wishlist as any[];
@@ -67,6 +77,29 @@ export default function ListsScreen() {
   function deleteWish(id: string) {
     Alert.alert("Remove wish?", "", [{ text:"Cancel", style:"cancel" }, { text:"Remove", style:"destructive", onPress: async () => { await api.delete(`/wishlist/${id}`); qc.invalidateQueries({ queryKey: ["wishlist", selMember] }); } }]);
   }
+  async function approveWish(id: string) {
+    try {
+      await api.patch(`/wishlist/${id}/approve`, {});
+      qc.invalidateQueries({ queryKey: ["wishlist", selMember] });
+    } catch (e: any) { Alert.alert("Error", e.response?.data?.error || "Failed to approve"); }
+  }
+  function openReview(item: any, mode: "decline" | "defer") {
+    setReviewItem(item);
+    setReviewMode(mode);
+    setReason(item.declineReason || "");
+  }
+  async function submitReview() {
+    if (!reviewItem || !reason.trim()) return;
+    try {
+      if (reviewMode === "decline") {
+        await api.patch(`/wishlist/${reviewItem.id}/decline`, { reason: reason.trim() });
+      } else {
+        await api.patch(`/wishlist/${reviewItem.id}/defer`, { reason: reason.trim() });
+      }
+      qc.invalidateQueries({ queryKey: ["wishlist", selMember] });
+      setReviewItem(null); setReason("");
+    } catch (e: any) { Alert.alert("Error", e.response?.data?.error || "Failed to save"); }
+  }
 
   const TABS = [
     { key:"grocery"  as Tab, icon:"🛒", label:"Groceries", count: groceryCount },
@@ -78,7 +111,6 @@ export default function ListsScreen() {
     <View style={s.container}>
       <Text style={s.title}>Family Lists</Text>
 
-      {/* Tab bar */}
       <View style={s.tabBar}>
         {TABS.map(t => (
           <TouchableOpacity key={t.key} onPress={() => setTab(t.key)} style={[s.tabBtn, tab===t.key && s.tabActive]}>
@@ -89,7 +121,6 @@ export default function ListsScreen() {
         ))}
       </View>
 
-      {/* GROCERY + NEEDS */}
       {tab !== "wishlist" && (
         <>
           <TouchableOpacity onPress={() => setShowAdd(true)} style={s.addBtn}>
@@ -145,7 +176,6 @@ export default function ListsScreen() {
         </>
       )}
 
-      {/* WISHLIST */}
       {tab === "wishlist" && (
         <>
           {visibleMembers.length > 1 && (
@@ -166,27 +196,49 @@ export default function ListsScreen() {
           )}
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ flex:1 }}>
-            {wishUnclaimed.map((item: any) => (
-              <View key={item.id} style={s.itemRow}>
-                <View style={{ flex:1 }}>
-                  <Text style={s.itemName}>{item.title}</Text>
-                  {item.price ? <Text style={{ fontSize:12, color:"#F59E0B", marginTop:2 }}>${item.price.toFixed(2)}</Text> : null}
-                  {item.url   ? <Text style={{ fontSize:11, color:"#60A5FA", marginTop:2 }} numberOfLines={1}>{item.url}</Text> : null}
-                </View>
-                <View style={{ gap:6 }}>
-                  {isParent && selMember !== member?.id && (
-                    <TouchableOpacity onPress={() => claimWish(item.id)} style={[s.smBtn, { backgroundColor:"#10B981" }]}>
-                      <Text style={s.smBtnText}>Claim</Text>
-                    </TouchableOpacity>
+            {wishUnclaimed.map((item: any) => {
+              const sm = STATUS_META[item.status];
+              return (
+                <View key={item.id} style={[s.itemRow, { flexDirection:"column", alignItems:"stretch", gap:0 }]}>
+                  <View style={{ flexDirection:"row", alignItems:"flex-start" }}>
+                    <View style={{ flex:1 }}>
+                      <Text style={s.itemName}>{item.title}</Text>
+                      {item.price ? <Text style={{ fontSize:12, color:"#F59E0B", marginTop:2 }}>${item.price.toFixed(2)}</Text> : null}
+                      {item.url   ? <Text style={{ fontSize:11, color:"#60A5FA", marginTop:2 }} numberOfLines={1}>{item.url}</Text> : null}
+                    </View>
+                    <View style={{ gap:6 }}>
+                      {isParent && selMember !== member?.id && (
+                        <TouchableOpacity onPress={() => claimWish(item.id)} style={[s.smBtn, { backgroundColor:"#10B981" }]}>
+                          <Text style={s.smBtnText}>Claim</Text>
+                        </TouchableOpacity>
+                      )}
+                      {(isParent || selMember === member?.id) && (
+                        <TouchableOpacity onPress={() => deleteWish(item.id)} style={[s.smBtn, { backgroundColor:"#EF4444" }]}>
+                          <Text style={s.smBtnText}>Del</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
+                  {sm && (
+                    <View style={{ marginTop:10, padding:8, borderRadius:8, backgroundColor: sm.color+"18", borderWidth:1, borderColor: sm.color+"40" }}>
+                      <Text style={{ fontSize:12, fontWeight:"700", color: sm.color }}>
+                        {sm.icon} {sm.label}{item.status==="deferred" && item.deferUntil ? ` until ${new Date(item.deferUntil).toLocaleDateString()}` : ""}
+                      </Text>
+                      {item.declineReason ? <Text style={{ fontSize:12, color:"#f0f0f5", marginTop:3, opacity:0.85 }}>{item.declineReason}</Text> : null}
+                    </View>
                   )}
-                  {(isParent || selMember === member?.id) && (
-                    <TouchableOpacity onPress={() => deleteWish(item.id)} style={[s.smBtn, { backgroundColor:"#EF4444" }]}>
-                      <Text style={s.smBtnText}>Del</Text>
-                    </TouchableOpacity>
+
+                  {isParent && (
+                    <View style={{ flexDirection:"row", gap:6, marginTop:10, flexWrap:"wrap" }}>
+                      <TouchableOpacity onPress={() => approveWish(item.id)} style={[s.smBtn, { backgroundColor:"#10B981" }]}><Text style={s.smBtnText}>Approve</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => openReview(item, "defer")} style={[s.smBtn, { backgroundColor:"#F59E0B" }]}><Text style={s.smBtnText}>Maybe later</Text></TouchableOpacity>
+                      <TouchableOpacity onPress={() => openReview(item, "decline")} style={[s.smBtn, { backgroundColor:"#EF4444" }]}><Text style={s.smBtnText}>Decline</Text></TouchableOpacity>
+                    </View>
                   )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             {wishClaimed.length > 0 && <Text style={[s.sectionLabel, { color:"#10B981", marginTop:12 }]}>{isParent ? "CLAIMED" : "SOMEONE IS ON IT!"}</Text>}
             {wishClaimed.map((item: any) => (
@@ -245,6 +297,33 @@ export default function ListsScreen() {
               </TouchableOpacity>
               <TouchableOpacity onPress={addWish} disabled={!wtitle.trim()} style={[s.smBtn, { backgroundColor:"#6366F1", flex:2, paddingVertical:13 }]}>
                 <Text style={s.smBtnText}>Save Wish</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* REVIEW MODAL */}
+      <Modal visible={!!reviewItem} transparent animationType="slide" onRequestClose={() => setReviewItem(null)}>
+        <View style={s.overlay}>
+          <View style={s.modal}>
+            <Text style={s.modalTitle}>{reviewMode === "decline" ? "Decline this wish" : "Maybe later"}</Text>
+            <Text style={{ fontSize:13, color:"rgba(240,240,245,0.5)", marginBottom:4 }}>{reviewItem?.title}</Text>
+            <TextInput
+              style={[s.input, { minHeight:80, textAlignVertical:"top" }]}
+              placeholder={reviewMode === "decline" ? "Why not? (e.g. too expensive right now)" : "Why wait? (e.g. saving for your birthday)"}
+              placeholderTextColor="#666"
+              value={reason}
+              onChangeText={setReason}
+              multiline
+              autoFocus
+            />
+            <View style={{ flexDirection:"row", gap:8 }}>
+              <TouchableOpacity onPress={() => setReviewItem(null)} style={[s.smBtn, { backgroundColor:"#444", flex:1, paddingVertical:13 }]}>
+                <Text style={s.smBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={submitReview} disabled={!reason.trim()} style={[s.smBtn, { backgroundColor: reviewMode==="decline" ? "#EF4444" : "#F59E0B", flex:2, paddingVertical:13 }]}>
+                <Text style={s.smBtnText}>{reviewMode === "decline" ? "Decline" : "Save"}</Text>
               </TouchableOpacity>
             </View>
           </View>

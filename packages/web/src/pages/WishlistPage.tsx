@@ -9,6 +9,12 @@ function avatarSrc(url?: string | null) {
   return (import.meta.env.VITE_API_URL || '') + url;
 }
 
+const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
+  approved: { label: 'Approved', color: '#10B981', icon: '✅' },
+  declined: { label: 'Declined', color: '#EF4444', icon: '❌' },
+  deferred: { label: 'Maybe later', color: '#F59E0B', icon: '⏳' },
+};
+
 export default function WishlistPage() {
   const { member, isParent } = useAuthStore();
   const qc = useQueryClient();
@@ -21,6 +27,13 @@ export default function WishlistPage() {
   const [saving, setSaving] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Review modal (decline / defer)
+  const [reviewItem, setReviewItem] = useState<any | null>(null);
+  const [reviewMode, setReviewMode] = useState<'decline' | 'defer'>('decline');
+  const [reason, setReason] = useState('');
+  const [deferDate, setDeferDate] = useState('');
 
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
@@ -36,7 +49,6 @@ export default function WishlistPage() {
   });
 
   const memberList = members as any[];
-  // Everyone sees everyone's wishlist
   const visibleMembers = memberList;
   const selectedMember = memberList.find((m: any) => m.id === selectedMemberId);
 
@@ -77,10 +89,43 @@ export default function WishlistPage() {
     finally { setDeletingId(null); }
   }
 
+  async function handleApprove(id: string) {
+    setBusyId(id);
+    try {
+      await api.patch(`/wishlist/${id}/approve`, {});
+      qc.invalidateQueries({ queryKey: ['wishlist', selectedMemberId] });
+    } catch (e: any) { alert(e.response?.data?.error || 'Failed to approve'); }
+    finally { setBusyId(null); }
+  }
+
+  function openReview(item: any, mode: 'decline' | 'defer') {
+    setReviewItem(item);
+    setReviewMode(mode);
+    setReason(item.declineReason || '');
+    setDeferDate(item.deferUntil ? new Date(item.deferUntil).toISOString().slice(0, 10) : '');
+  }
+
+  async function submitReview() {
+    if (!reviewItem || !reason.trim()) return;
+    setBusyId(reviewItem.id);
+    try {
+      if (reviewMode === 'decline') {
+        await api.patch(`/wishlist/${reviewItem.id}/decline`, { reason: reason.trim() });
+      } else {
+        await api.patch(`/wishlist/${reviewItem.id}/defer`, {
+          reason: reason.trim(),
+          deferUntil: deferDate ? new Date(deferDate.replace(/-/g, '/')).toISOString() : null,
+        });
+      }
+      qc.invalidateQueries({ queryKey: ['wishlist', selectedMemberId] });
+      setReviewItem(null); setReason(''); setDeferDate('');
+    } catch (e: any) { alert(e.response?.data?.error || 'Failed to save'); }
+    finally { setBusyId(null); }
+  }
+
   const items = wishlist as any[];
   const isViewingOwnList = selectedMemberId === member?.id;
   const unclaimed = items.filter((i: any) => !i.claimed);
-  // Hide claimed items from the owner so gifts stay a surprise
   const claimed = isViewingOwnList ? [] : items.filter((i: any) => i.claimed);
 
   const inputStyle: React.CSSProperties = {
@@ -91,6 +136,10 @@ export default function WishlistPage() {
     padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
     fontWeight: 700, fontSize: 13, background: color, color: '#fff',
   });
+  const smBtn = (color: string): React.CSSProperties => ({
+    padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    fontWeight: 700, fontSize: 12, background: color, color: '#fff', whiteSpace: 'nowrap',
+  });
 
   return (
     <div style={{ padding: '16px 16px 80px', maxWidth: 600, margin: '0 auto' }}>
@@ -99,7 +148,6 @@ export default function WishlistPage() {
         See what everyone wants &mdash; claim gifts secretly!
       </p>
 
-      {/* Member tabs — everyone sees all members */}
       {visibleMembers.length > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           {visibleMembers.map((m: any) => {
@@ -124,14 +172,12 @@ export default function WishlistPage() {
         </div>
       )}
 
-      {/* Add wish — only for your own list */}
       {selectedMemberId === member?.id && !adding && (
         <button onClick={() => setAdding(true)} style={{ ...btnStyle('#7C3AED'), marginBottom: 16, width: '100%' }}>
           + Add a Wish
         </button>
       )}
 
-      {/* Add wish form */}
       {adding && (
         <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input style={inputStyle} placeholder="What do you wish for? *" value={title} onChange={e => setTitle(e.target.value)} />
@@ -146,39 +192,61 @@ export default function WishlistPage() {
         </div>
       )}
 
-      {/* Empty state */}
       {unclaimed.length === 0 && claimed.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-          {isViewingOwnList ? 'No wishes yet — add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
+          {isViewingOwnList ? 'No wishes yet â€” add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
         </div>
       )}
 
-      {/* Unclaimed wishes */}
-      {unclaimed.map((item: any) => (
-        <div key={item.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, marginBottom: 10, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{item.title}</div>
-            {item.price && <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 2 }}>${item.price.toFixed(2)}</div>}
-            {item.url && <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#60A5FA', marginTop: 2, display: 'block', wordBreak: 'break-all' }}>{item.url}</a>}
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {/* Anyone can claim items on someone else's list */}
-            {!isViewingOwnList && (
-              <button onClick={() => handleClaim(item.id)} disabled={claimingId === item.id} style={btnStyle('#10B981')}>
-                {claimingId === item.id ? '...' : 'Claim'}
-              </button>
-            )}
-            {/* Only the owner or a parent can delete */}
-            {(isParent || isViewingOwnList) && (
-              <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} style={btnStyle('#EF4444')}>
-                {deletingId === item.id ? '...' : 'x'}
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
+      {unclaimed.map((item: any) => {
+        const sm = STATUS_META[item.status];
+        return (
+          <div key={item.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{item.title}</div>
+                {item.price && <div style={{ fontSize: 12, color: '#F59E0B', marginTop: 2 }}>${item.price.toFixed(2)}</div>}
+                {item.url && <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#60A5FA', marginTop: 2, display: 'block', wordBreak: 'break-all' }}>{item.url}</a>}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {!isViewingOwnList && (
+                  <button onClick={() => handleClaim(item.id)} disabled={claimingId === item.id} style={btnStyle('#10B981')}>
+                    {claimingId === item.id ? '...' : 'Claim'}
+                  </button>
+                )}
+                {(isParent || isViewingOwnList) && (
+                  <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} style={btnStyle('#EF4444')}>
+                    {deletingId === item.id ? '...' : 'x'}
+                  </button>
+                )}
+              </div>
+            </div>
 
-      {/* Claimed section — hidden from the list owner */}
+            {/* Status banner — visible to everyone */}
+            {sm && (
+              <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: sm.color + '18', border: `1px solid ${sm.color}40` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: sm.color }}>
+                  {sm.icon} {sm.label}
+                  {item.status === 'deferred' && item.deferUntil && ` until ${new Date(item.deferUntil).toLocaleDateString()}`}
+                </div>
+                {item.declineReason && (
+                  <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, opacity: 0.85 }}>{item.declineReason}</div>
+                )}
+              </div>
+            )}
+
+            {/* Parent review controls */}
+            {isParent && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                <button onClick={() => handleApprove(item.id)} disabled={busyId === item.id} style={smBtn('#10B981')}>Approve</button>
+                <button onClick={() => openReview(item, 'defer')} disabled={busyId === item.id} style={smBtn('#F59E0B')}>Maybe later</button>
+                <button onClick={() => openReview(item, 'decline')} disabled={busyId === item.id} style={smBtn('#EF4444')}>Decline</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
       {claimed.length > 0 && (
         <>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -198,6 +266,37 @@ export default function WishlistPage() {
             </div>
           ))}
         </>
+      )}
+
+      {/* Review modal */}
+      {reviewItem && (
+        <div onClick={() => setReviewItem(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#1a1a24', borderRadius: 16, padding: 20, width: '100%', maxWidth: 420, border: '1px solid rgba(255,255,255,0.12)' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>
+              {reviewMode === 'decline' ? 'Decline this wish' : 'Maybe later'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>{reviewItem.title}</div>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder={reviewMode === 'decline' ? 'Why not? (e.g. too expensive right now)' : 'Why wait? (e.g. saving this for your birthday)'}
+              style={{ ...inputStyle, minHeight: 80, resize: 'vertical', fontFamily: 'inherit' }}
+            />
+            {reviewMode === 'defer' && (
+              <div style={{ marginTop: 10 }}>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Revisit on (optional)</label>
+                <input type="date" value={deferDate} onChange={e => setDeferDate(e.target.value)} style={inputStyle} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button onClick={() => setReviewItem(null)} style={{ ...btnStyle('#444'), flex: 1 }}>Cancel</button>
+              <button onClick={submitReview} disabled={!reason.trim() || busyId === reviewItem.id}
+                style={{ ...btnStyle(reviewMode === 'decline' ? '#EF4444' : '#F59E0B'), flex: 2 }}>
+                {busyId === reviewItem.id ? 'Saving...' : reviewMode === 'decline' ? 'Decline' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

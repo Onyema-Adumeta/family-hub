@@ -36,7 +36,7 @@ model Member {
   familyId        String
   family          Family         @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String         @default("🙂")
+  emoji           String         @default("ðŸ™‚")
   color           String         @default("#6366F1")
   avatarUrl       String?
   role            String         @default("child")
@@ -79,7 +79,7 @@ model Chore {
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String      @default("✅")
+  emoji         String      @default("âœ…")
   assignedToId  String?
   assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
   frequency     String      @default("daily")
@@ -108,7 +108,7 @@ model Meal {
   day          String
   slot         String   @default("dinner")
   name         String
-  emoji        String   @default("🍽️")
+  emoji        String   @default("ðŸ½ï¸")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
@@ -121,7 +121,7 @@ model Event {
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   title        String
-  emoji        String   @default("📅")
+  emoji        String   @default("ðŸ“…")
   date         DateTime
   time         String?
   color        String?
@@ -138,7 +138,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("🎁")
+  emoji          String       @default("ðŸŽ")
   cost           Int
   description    String?
   availableCount Int?
@@ -180,7 +180,7 @@ model Quest {
   member      Member?   @relation(fields: [memberId], references: [id])
   title       String
   description String?
-  emoji       String    @default("⚔️")
+  emoji       String    @default("âš”ï¸")
   difficulty  String    @default("easy")
   stages      Json      @default("[]")
   stars       Int       @default(10)
@@ -316,5 +316,10 @@ model WishlistItem {
   price      Float?
   claimed    Boolean  @default(false)
   claimedBy  String?
+  status      String   @default("open")
+  declineReason String?
+  deferUntil  DateTime?
+  reviewedBy  String?
+  reviewedAt  DateTime?
   createdAt  DateTime @default(now())
 }
