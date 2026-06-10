@@ -68,6 +68,7 @@ app.use(express.json({ limit: '50kb' }));
 app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
+app.use('/api/events/google/callback', eventsRoutes);
 app.use('/api/events',        authMiddleware, eventsRoutes);
 app.use('/api/rewards',       authMiddleware, rewardsRoutes);
 app.use('/api/chat',          authMiddleware, chatRoutes);

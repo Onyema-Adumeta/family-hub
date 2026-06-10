@@ -65,6 +65,7 @@ app.use(express_1.default.json({ limit: '50kb' }));
 app.use('/api/auth', auth_2.default);
 app.use('/api/chores', auth_1.authMiddleware, chores_1.default);
 app.use('/api/meals', auth_1.authMiddleware, meals_1.default);
+app.use('/api/events/google/callback', events_1.default);
 app.use('/api/events', auth_1.authMiddleware, events_1.default);
 app.use('/api/rewards', auth_1.authMiddleware, rewards_1.default);
 app.use('/api/chat', auth_1.authMiddleware, chat_1.default);
