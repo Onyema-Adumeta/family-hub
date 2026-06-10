@@ -128,6 +128,8 @@ model Event {
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
+  googleEventId String?
+  source        String?  @default("app")
   createdAt    DateTime @default(now())
 }
 

@@ -1,0 +1,12 @@
+const fs=require('fs');
+const path='C:/Users/Devops/family-hub/packages/web/src/pages/WishlistPage.tsx';
+const lines=fs.readFileSync(path,'utf8').split('\n');
+lines[38]=`  const visibleMembers = memberList;`;
+lines[79]=`  const isViewingOwnList = selectedMemberId === member?.id;
+  const unclaimed = items.filter((i) => !i.claimed);
+  const claimed = isViewingOwnList ? [] : items.filter((i) => i.claimed);`;
+lines[80]='';
+lines[95]=`      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>See what everyone wants — claim gifts secretly!</p>`;
+lines[163]=lines[163].replace('{isParent && selectedMemberId !== member?.id && (', '{selectedMemberId !== member?.id && (');
+fs.writeFileSync(path,lines.join('\n'),'utf8');
+console.log('done');
