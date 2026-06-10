@@ -36,7 +36,8 @@ export default function WishlistPage() {
   });
 
   const memberList = members as any[];
-  const visibleMembers = isParent ? memberList : memberList.filter((m: any) => m.id === member?.id);
+  // Everyone sees everyone's wishlist
+  const visibleMembers = memberList;
   const selectedMember = memberList.find((m: any) => m.id === selectedMemberId);
 
   async function handleAdd() {
@@ -77,8 +78,10 @@ export default function WishlistPage() {
   }
 
   const items = wishlist as any[];
+  const isViewingOwnList = selectedMemberId === member?.id;
   const unclaimed = items.filter((i: any) => !i.claimed);
-  const claimed   = items.filter((i: any) => i.claimed);
+  // Hide claimed items from the owner so gifts stay a surprise
+  const claimed = isViewingOwnList ? [] : items.filter((i: any) => i.claimed);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)',
@@ -93,10 +96,10 @@ export default function WishlistPage() {
     <div style={{ padding: '16px 16px 80px', maxWidth: 600, margin: '0 auto' }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Wishlists</h1>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-        {isParent ? 'See what everyone wants — claim items secretly!' : 'Add things you\'d love to receive'}
+        See what everyone wants &mdash; claim gifts secretly!
       </p>
 
-      {/* Member tabs */}
+      {/* Member tabs — everyone sees all members */}
       {visibleMembers.length > 1 && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           {visibleMembers.map((m: any) => {
@@ -110,18 +113,19 @@ export default function WishlistPage() {
                 color: 'var(--text)',
               }}>
                 {avatarSrc(m.avatarUrl)
-                  ? <img src={avatarSrc(m.avatarUrl)!} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                  ? <img src={avatarSrc(m.avatarUrl)!} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} alt={m.name} />
                   : <div style={{ width: 24, height: 24, borderRadius: '50%', background: m.color || '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#fff', fontWeight: 800 }}>{m.name?.[0]}</div>
                 }
                 {m.name}
+                {m.id === member?.id && <span style={{ fontSize: 10, opacity: 0.6 }}>(you)</span>}
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Add wish button */}
-      {(isParent || selectedMemberId === member?.id) && !adding && (
+      {/* Add wish — only for your own list */}
+      {selectedMemberId === member?.id && !adding && (
         <button onClick={() => setAdding(true)} style={{ ...btnStyle('#7C3AED'), marginBottom: 16, width: '100%' }}>
           + Add a Wish
         </button>
@@ -142,13 +146,14 @@ export default function WishlistPage() {
         </div>
       )}
 
-      {/* Unclaimed wishes */}
+      {/* Empty state */}
       {unclaimed.length === 0 && claimed.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-          No wishes yet — add something!
+          {isViewingOwnList ? 'No wishes yet — add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
         </div>
       )}
 
+      {/* Unclaimed wishes */}
       {unclaimed.map((item: any) => (
         <div key={item.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, marginBottom: 10, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -157,12 +162,14 @@ export default function WishlistPage() {
             {item.url && <a href={item.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#60A5FA', marginTop: 2, display: 'block', wordBreak: 'break-all' }}>{item.url}</a>}
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            {isParent && selectedMemberId !== member?.id && (
+            {/* Anyone can claim items on someone else's list */}
+            {!isViewingOwnList && (
               <button onClick={() => handleClaim(item.id)} disabled={claimingId === item.id} style={btnStyle('#10B981')}>
                 {claimingId === item.id ? '...' : 'Claim'}
               </button>
             )}
-            {(isParent || selectedMemberId === member?.id) && (
+            {/* Only the owner or a parent can delete */}
+            {(isParent || isViewingOwnList) && (
               <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} style={btnStyle('#EF4444')}>
                 {deletingId === item.id ? '...' : 'x'}
               </button>
@@ -171,11 +178,11 @@ export default function WishlistPage() {
         </div>
       ))}
 
-      {/* Claimed section */}
+      {/* Claimed section — hidden from the list owner */}
       {claimed.length > 0 && (
         <>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
-            {isParent ? 'Claimed' : 'Someone\'s on it!'}
+            Already claimed
           </div>
           {claimed.map((item: any) => (
             <div key={item.id} style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 14, marginBottom: 10, opacity: 0.7 }}>
@@ -185,7 +192,9 @@ export default function WishlistPage() {
                   Claimed by {memberList.find((m: any) => m.id === item.claimedBy)?.name || 'someone'}
                 </div>
               )}
-              {!isParent && <div style={{ fontSize: 11, color: '#10B981', marginTop: 4 }}>Someone's already on it! Shhh...</div>}
+              {!isParent && (
+                <div style={{ fontSize: 11, color: '#10B981', marginTop: 4 }}>Someone's already on it! Shhh...</div>
+              )}
             </div>
           ))}
         </>
@@ -193,6 +202,3 @@ export default function WishlistPage() {
     </div>
   );
 }
-
-
-
