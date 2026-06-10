@@ -30,6 +30,8 @@ const rules_1 = __importDefault(require("./routes/rules"));
 const weeklyRulesCron_1 = require("./services/weeklyRulesCron");
 const trivia_1 = __importDefault(require("./routes/trivia"));
 const wishlist_1 = __importDefault(require("./routes/wishlist"));
+const googleapis_1 = require("googleapis");
+const db_1 = require("./db");
 const app = (0, express_1.default)();
 app.set('trust proxy', 1);
 const server = (0, http_1.createServer)(app);
@@ -61,11 +63,27 @@ const globalLimiter = (0, express_rate_limit_1.default)({
 app.use(globalLimiter);
 // ── Body parsing (50kb max — uploads go via Cloudinary) ──────────────────────
 app.use(express_1.default.json({ limit: '50kb' }));
+// ── Google Calendar OAuth callback — no auth required ────────────────────────
+app.get('/api/events/google/callback', async (req, res) => {
+    const { code, state: familyId } = req.query;
+    try {
+        const auth = new googleapis_1.google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
+        const { tokens } = await auth.getToken(code);
+        await db_1.prisma.family.update({
+            where: { id: familyId },
+            data: { googleTokens: JSON.stringify(tokens) },
+        });
+        res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
+    }
+    catch (e) {
+        console.error('Google OAuth callback error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', auth_2.default);
 app.use('/api/chores', auth_1.authMiddleware, chores_1.default);
 app.use('/api/meals', auth_1.authMiddleware, meals_1.default);
-app.use('/api/events/google/callback', events_1.default);
 app.use('/api/events', auth_1.authMiddleware, events_1.default);
 app.use('/api/rewards', auth_1.authMiddleware, rewards_1.default);
 app.use('/api/chat', auth_1.authMiddleware, chat_1.default);

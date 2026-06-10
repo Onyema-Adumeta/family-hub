@@ -26,6 +26,8 @@ import rulesRoutes from './routes/rules';
 import { startWeeklyRulesCron } from './services/weeklyRulesCron';
 import triviaRoutes from './routes/trivia';
 import wishlistRouter from './routes/wishlist';
+import { google } from 'googleapis';
+import { prisma } from './db';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -64,11 +66,31 @@ app.use(globalLimiter);
 // ── Body parsing (50kb max — uploads go via Cloudinary) ──────────────────────
 app.use(express.json({ limit: '50kb' }));
 
+// ── Google Calendar OAuth callback — no auth required ────────────────────────
+app.get('/api/events/google/callback', async (req, res) => {
+  const { code, state: familyId } = req.query as { code: string; state: string };
+  try {
+    const auth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+    const { tokens } = await auth.getToken(code);
+    await (prisma.family.update as any)({
+      where: { id: familyId },
+      data: { googleTokens: JSON.stringify(tokens) },
+    });
+    res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
+  } catch (e: any) {
+    console.error('Google OAuth callback error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
-app.use('/api/events/google/callback', eventsRoutes);
 app.use('/api/events',        authMiddleware, eventsRoutes);
 app.use('/api/rewards',       authMiddleware, rewardsRoutes);
 app.use('/api/chat',          authMiddleware, chatRoutes);
