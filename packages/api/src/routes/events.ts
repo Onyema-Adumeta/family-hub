@@ -78,7 +78,7 @@ router.get('/sync', async (req: AuthRequest, res) => {
     const threeMonths = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
 
     const response = await cal.events.list({
-      calendarId: 'primary',
+      calendarId: process.env.GOOGLE_CALENDAR_ID || 'primary',
       timeMin: now.toISOString(),
       timeMax: threeMonths.toISOString(),
       singleEvents: true,
