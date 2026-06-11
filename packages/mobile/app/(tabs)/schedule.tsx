@@ -13,7 +13,10 @@ const EVENT_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899
 // Strip corrupted/mojibake emoji (Google imports & old BOM-corrupted data)
 function cleanEmoji(emoji?: string): string {
   if (!emoji) return '📅';
-  if (/^[\x00-\x7F]/.test(emoji)) return '📅';
+  // Mojibake from bad UTF-8 encoding — these lead sequences mean it's corrupted
+  if (/ð|Ã|â‚|â€|Â|Å|Ÿ/.test(emoji)) return '📅';
+  // Plain ASCII (letters, numbers, no real emoji) — fall back
+  if (/^[\x00-\x7F]+$/.test(emoji)) return '📅';
   return emoji;
 }
 
