@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import type { Member, Family } from '@family-hub/shared';
 
@@ -8,6 +8,7 @@ interface AuthState {
   member: Member | null;
   family: Family | null;
   setAuth: (token: string, member: Member, family: Family) => void;
+  setMember: (member: Member) => void;
   logout: () => void;
   loadFromStorage: () => Promise<void>;
 }
@@ -23,6 +24,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.setItemAsync('member', JSON.stringify(member));
     await SecureStore.setItemAsync('family', JSON.stringify(family));
     set({ token, member, family, isParent: member.role === 'parent' });
+  },
+  setMember: async (member) => {
+    await SecureStore.setItemAsync('member', JSON.stringify(member));
+    set({ member, isParent: member.role === 'parent' });
   },
 
   logout: async () => {

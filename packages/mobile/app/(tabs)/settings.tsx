@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Platform,
@@ -6,10 +6,10 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { useAuthStore } from '../store/auth';
 
 export default function SettingsPage() {
-  const { member, setMember, logout } = useAuth();
+  const { member, setMember, logout } = useAuthStore();
   const qc = useQueryClient();
 
   const { data: members = [] } = useQuery({
