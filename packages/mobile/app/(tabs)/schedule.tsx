@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
-  TextInput, StyleSheet, SafeAreaView, FlatList,
+  TextInput, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useEvents, useCreateEvent, useDeleteEvent, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
@@ -10,12 +10,20 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const EVENT_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#ec4899'];
 
+// Strip corrupted/mojibake emoji (Google imports & old BOM-corrupted data)
+function cleanEmoji(emoji?: string): string {
+  if (!emoji) return '📅';
+  if (/^[\x00-\x7F]/.test(emoji)) return '📅';
+  return emoji;
+}
+
 export default function ScheduleScreen() {
   const { member } = useAuthStore();
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
   const [showAdd, setShowAdd] = useState(false);
+  const [detailEvent, setDetailEvent] = useState<any | null>(null);
   const [newEvent, setNewEvent] = useState({ title: '', date: '', color: EVENT_COLORS[0] });
 
   const { data: events = [] } = useEvents();
@@ -42,6 +50,11 @@ export default function ScheduleScreen() {
     createEvent.mutate({ ...newEvent, date: dateStr });
     setShowAdd(false);
     setNewEvent({ title: '', date: '', color: EVENT_COLORS[0] });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteEvent.mutate(id);
+    setDetailEvent(null);
   };
 
   const calendarDays: (number | null)[] = [
@@ -115,24 +128,76 @@ export default function ScheduleScreen() {
               <View style={s.emptyCard}>
                 <Text style={s.emptyText}>No events{isParent ? ' — tap + Event to add' : ''}</Text>
               </View>
-            ) : selectedEvents.map((e: any) => (
-              <View key={e.id} style={s.eventCard}>
-                <View style={[s.eventBar, { backgroundColor: e.color || '#6366f1' }]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.eventTitle}>{e.title}</Text>
-                  {e.time && <Text style={s.eventSub}>🕐 {e.time}</Text>}
-                  {e.member && <Text style={s.eventSub}>{e.member.emoji} {e.member.name}</Text>}
-                </View>
-                {isParent && (
-                  <TouchableOpacity onPress={() => deleteEvent.mutate(e.id)} style={s.deleteBtn}>
-                    <Text style={{ fontSize: 16 }}>🗑</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
+            ) : selectedEvents.map((e: any) => {
+              const assignee = (members as any[]).find((m: any) => m.id === e.assignedToId);
+              const isGoogle = e.source === 'google';
+              return (
+                <TouchableOpacity key={e.id} style={s.eventCard} onPress={() => setDetailEvent(e)} activeOpacity={0.7}>
+                  <View style={[s.eventBar, { backgroundColor: e.color || '#6366f1' }]} />
+                  <View style={[s.eventIcon, { backgroundColor: (e.color || '#6366f1') + '33' }]}>
+                    <Text style={{ fontSize: 16 }}>{cleanEmoji(e.emoji)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.eventTitle} numberOfLines={1}>{e.title}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+                      {e.time && <Text style={s.eventSub}>🕐 {e.time}</Text>}
+                      {assignee && <Text style={[s.eventSub, { color: assignee.color }]}>{assignee.emoji} {assignee.name}</Text>}
+                      {isGoogle && <Text style={s.googleBadge}>Google</Text>}
+                    </View>
+                  </View>
+                  {isParent && (
+                    <TouchableOpacity onPress={() => deleteEvent.mutate(e.id)} style={s.deleteBtn} hitSlop={{ top:8, bottom:8, left:8, right:8 }}>
+                      <Text style={{ fontSize: 16 }}>🗑</Text>
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
+
+      {/* Event detail modal */}
+      <Modal visible={!!detailEvent} transparent animationType="fade" onRequestClose={() => setDetailEvent(null)}>
+        <TouchableOpacity style={s.detailOverlay} activeOpacity={1} onPress={() => setDetailEvent(null)}>
+          <TouchableOpacity activeOpacity={1} style={s.detailCard} onPress={() => {}}>
+            {detailEvent && (() => {
+              const ev = detailEvent;
+              const assignee = (members as any[]).find((m: any) => m.id === ev.assignedToId);
+              const isGoogle = ev.source === 'google';
+              return (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+                    <View style={[s.detailIcon, { backgroundColor: (ev.color || '#6366f1') + '33' }]}>
+                      <Text style={{ fontSize: 24 }}>{cleanEmoji(ev.emoji)}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.detailTitle}>{ev.title}</Text>
+                      <Text style={s.detailDate}>{MONTHS[month]} {selectedDay}</Text>
+                    </View>
+                    {isGoogle && <Text style={s.googleBadge}>Google</Text>}
+                  </View>
+                  <View style={{ gap: 10, marginBottom: 20 }}>
+                    {ev.time && <Text style={s.detailRow}>🕐 {ev.time}</Text>}
+                    {assignee && <Text style={[s.detailRow, { color: assignee.color }]}>{assignee.emoji} {assignee.name}</Text>}
+                    {ev.notes ? <Text style={s.detailNotes}>{ev.notes}</Text> : null}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => setDetailEvent(null)}>
+                      <Text style={s.modalBtnGhostText}>Close</Text>
+                    </TouchableOpacity>
+                    {isParent && (
+                      <TouchableOpacity style={[s.modalBtn, s.deleteBtnFull]} onPress={() => handleDelete(ev.id)}>
+                        <Text style={s.deleteBtnFullText}>Delete</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Add modal */}
       <Modal visible={showAdd} transparent animationType="slide" onRequestClose={() => setShowAdd(false)}>
@@ -196,11 +261,23 @@ const s = StyleSheet.create({
   emptyCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 20, alignItems: 'center' },
   emptyText: { color: 'rgba(240,240,245,0.35)', fontWeight: '700', fontSize: 13 },
   eventCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
-  eventBar: { width: 4, alignSelf: 'stretch', borderRadius: 4 },
+  eventBar: { width: 4, alignSelf: 'stretch', borderRadius: 4, minHeight: 36 },
+  eventIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   eventTitle: { fontWeight: '800', fontSize: 14, color: '#f0f0f5' },
-  eventSub: { fontSize: 11, color: 'rgba(240,240,245,0.5)', fontWeight: '700', marginTop: 2 },
+  eventSub: { fontSize: 11, color: 'rgba(240,240,245,0.5)', fontWeight: '700' },
+  googleBadge: { fontSize: 9, fontWeight: '800', color: '#4285F4', backgroundColor: 'rgba(66,133,244,0.12)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
   deleteBtn: { padding: 4 },
-  // Modal
+  // Detail modal
+  detailOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  detailCard: { width: '100%', maxWidth: 400, backgroundColor: '#1a1a24', borderRadius: 20, padding: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
+  detailIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  detailTitle: { fontSize: 18, fontWeight: '900', color: '#f0f0f5' },
+  detailDate: { fontSize: 12, color: 'rgba(240,240,245,0.5)', marginTop: 4 },
+  detailRow: { fontSize: 14, fontWeight: '600', color: '#f0f0f5' },
+  detailNotes: { fontSize: 13, color: 'rgba(240,240,245,0.6)', lineHeight: 20, padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.04)' },
+  deleteBtnFull: { backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
+  deleteBtnFullText: { color: '#ef4444', fontWeight: '800' },
+  // Add modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modal: { backgroundColor: '#1a1a24', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalTitle: { fontSize: 16, fontWeight: '900', color: '#f0f0f5', marginBottom: 16 },
