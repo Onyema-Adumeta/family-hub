@@ -9,9 +9,9 @@ const NEEDS_CATS   = ["Clothing","Shoes","School Supplies","Electronics","Toilet
 type Tab = "grocery" | "needs" | "wishlist";
 
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  approved: { label: "Approved", color: "#10B981", icon: "✅" },
-  declined: { label: "Declined", color: "#EF4444", icon: "❌" },
-  deferred: { label: "Maybe later", color: "#F59E0B", icon: "⏳" },
+  approved: { label: "Approved", color: "#10B981", icon: "âœ…" },
+  declined: { label: "Declined", color: "#EF4444", icon: "âŒ" },
+  deferred: { label: "Maybe later", color: "#F59E0B", icon: "â³" },
 };
 
 export default function ListsScreen() {
@@ -102,9 +102,9 @@ export default function ListsScreen() {
   }
 
   const TABS = [
-    { key:"grocery"  as Tab, icon:"🛒", label:"Groceries", count: groceryCount },
-    { key:"needs"    as Tab, icon:"🧢", label:"Needs",     count: needsCount   },
-    { key:"wishlist" as Tab, icon:"🎁", label:"Wishlist"                        },
+    { key:"grocery"  as Tab, icon:"ðŸ›’", label:"Groceries", count: groceryCount },
+    { key:"needs"    as Tab, icon:"ðŸ§¢", label:"Needs",     count: needsCount   },
+    { key:"wishlist" as Tab, icon:"ðŸŽ", label:"Wishlist"                        },
   ];
 
   return (
@@ -164,14 +164,14 @@ export default function ListsScreen() {
                 {gotItems.map((item: any) => (
                   <TouchableOpacity key={item.id} onPress={() => updateItem.mutate({ id:item.id, data:{ checked:false } })} style={[s.itemRow, { opacity:0.4 }]}>
                     <View style={[s.checkbox, { backgroundColor:"#4ADE80", borderColor:"#4ADE80", alignItems:"center", justifyContent:"center" }]}>
-                      <Text style={{ color:"#000", fontSize:11, fontWeight:"900" }}>✓</Text>
+                      <Text style={{ color:"#000", fontSize:11, fontWeight:"900" }}>âœ“</Text>
                     </View>
                     <Text style={[s.itemName, { textDecorationLine:"line-through", color:"#666" }]}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </>
             )}
-            {listItems.length === 0 && <Text style={s.empty}>Nothing here yet — tap + Add Item</Text>}
+            {listItems.length === 0 && <Text style={s.empty}>Nothing here yet â€” tap + Add Item</Text>}
           </ScrollView>
         </>
       )}
@@ -241,17 +241,35 @@ export default function ListsScreen() {
             })}
 
             {wishClaimed.length > 0 && <Text style={[s.sectionLabel, { color:"#10B981", marginTop:12 }]}>{isParent ? "CLAIMED" : "SOMEONE IS ON IT!"}</Text>}
-            {wishClaimed.map((item: any) => (
-              <View key={item.id} style={[s.itemRow, { opacity:0.5, borderColor:"#10B981" }]}>
+            {wishClaimed.map((item: any) => {
+              const sm = STATUS_META[item.status];
+              return (
+              <View key={item.id} style={[s.itemRow, { flexDirection:"column", alignItems:"stretch", gap:0, borderColor:"#10B981" }]}>
                 <Text style={[s.itemName, { textDecorationLine:"line-through" }]}>{item.title}</Text>
                 {isParent && item.claimedBy && (
-                  <Text style={{ fontSize:11, color:"#10B981" }}>
+                  <Text style={{ fontSize:11, color:"#10B981", marginTop:4 }}>
                     {memberList.find((m:any) => m.id===item.claimedBy)?.name || "someone"}
                   </Text>
                 )}
+                {sm && (
+                  <View style={{ marginTop:10, padding:8, borderRadius:8, backgroundColor: sm.color+"18", borderWidth:1, borderColor: sm.color+"40" }}>
+                    <Text style={{ fontSize:12, fontWeight:"700", color: sm.color }}>
+                      {sm.icon} {sm.label}{item.status==="deferred" && item.deferUntil ? ` until ${new Date(item.deferUntil).toLocaleDateString()}` : ""}
+                    </Text>
+                    {item.declineReason ? <Text style={{ fontSize:12, color:"#f0f0f5", marginTop:3, opacity:0.85 }}>{item.declineReason}</Text> : null}
+                  </View>
+                )}
+                {isParent && (
+                  <View style={{ flexDirection:"row", gap:6, marginTop:10, flexWrap:"wrap" }}>
+                    <TouchableOpacity onPress={() => approveWish(item.id)} style={[s.smBtn, { backgroundColor:"#10B981" }]}><Text style={s.smBtnText}>Approve</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => openReview(item, "defer")} style={[s.smBtn, { backgroundColor:"#F59E0B" }]}><Text style={s.smBtnText}>Maybe later</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => openReview(item, "decline")} style={[s.smBtn, { backgroundColor:"#EF4444" }]}><Text style={s.smBtnText}>Decline</Text></TouchableOpacity>
+                  </View>
+                )}
               </View>
-            ))}
-            {wishItems.length === 0 && <Text style={s.empty}>No wishes yet — add something!</Text>}
+              );
+            })}
+            {wishItems.length === 0 && <Text style={s.empty}>No wishes yet â€” add something!</Text>}
           </ScrollView>
         </>
       )}
@@ -263,7 +281,7 @@ export default function ListsScreen() {
             <Text style={s.modalTitle}>+ Add to {tab === "grocery" ? "Groceries" : "Other Needs"}</Text>
             <TextInput style={s.input} placeholder="Item name *" placeholderTextColor="#666" value={iname} onChangeText={setIname} autoFocus />
             <TextInput style={s.input} placeholder="Qty (e.g. 2, 500g)" placeholderTextColor="#666" value={iqty} onChangeText={setIqty} />
-            <TextInput style={s.input} placeholder="Notes — brand, size..." placeholderTextColor="#666" value={inotes} onChangeText={setInotes} />
+            <TextInput style={s.input} placeholder="Notes â€” brand, size..." placeholderTextColor="#666" value={inotes} onChangeText={setInotes} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
               {CATS.map(c => (
                 <TouchableOpacity key={c} onPress={() => setIcat(c)} style={[s.chip, icat===c && { backgroundColor:"#6366F1", borderColor:"#6366F1" }]}>

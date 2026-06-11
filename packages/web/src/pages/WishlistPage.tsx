@@ -10,9 +10,9 @@ function avatarSrc(url?: string | null) {
 }
 
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  approved: { label: 'Approved', color: '#10B981', icon: '✅' },
-  declined: { label: 'Declined', color: '#EF4444', icon: '❌' },
-  deferred: { label: 'Maybe later', color: '#F59E0B', icon: '⏳' },
+  approved: { label: 'Approved', color: '#10B981', icon: 'âœ…' },
+  declined: { label: 'Declined', color: '#EF4444', icon: 'âŒ' },
+  deferred: { label: 'Maybe later', color: '#F59E0B', icon: 'â³' },
 };
 
 export default function WishlistPage() {
@@ -194,7 +194,7 @@ export default function WishlistPage() {
 
       {unclaimed.length === 0 && claimed.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-          {isViewingOwnList ? 'No wishes yet â€” add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
+          {isViewingOwnList ? 'No wishes yet Ã¢â‚¬â€ add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
         </div>
       )}
 
@@ -222,7 +222,7 @@ export default function WishlistPage() {
               </div>
             </div>
 
-            {/* Status banner — visible to everyone */}
+            {/* Status banner â€” visible to everyone */}
             {sm && (
               <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: sm.color + '18', border: `1px solid ${sm.color}40` }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: sm.color }}>
@@ -252,8 +252,10 @@ export default function WishlistPage() {
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', margin: '16px 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>
             Already claimed
           </div>
-          {claimed.map((item: any) => (
-            <div key={item.id} style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 14, marginBottom: 10, opacity: 0.7 }}>
+          {claimed.map((item: any) => {
+            const sm = STATUS_META[item.status];
+            return (
+            <div key={item.id} style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15, textDecoration: 'line-through', color: 'var(--text-muted)' }}>{item.title}</div>
               {isParent && item.claimedBy && (
                 <div style={{ fontSize: 11, color: '#10B981', marginTop: 4 }}>
@@ -263,8 +265,27 @@ export default function WishlistPage() {
               {!isParent && (
                 <div style={{ fontSize: 11, color: '#10B981', marginTop: 4 }}>Someone's already on it! Shhh...</div>
               )}
+              {sm && (
+                <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: sm.color + '18', border: `1px solid ${sm.color}40` }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: sm.color }}>
+                    {sm.icon} {sm.label}
+                    {item.status === 'deferred' && item.deferUntil && ` until ${new Date(item.deferUntil).toLocaleDateString()}`}
+                  </div>
+                  {item.declineReason && (
+                    <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 3, opacity: 0.85 }}>{item.declineReason}</div>
+                  )}
+                </div>
+              )}
+              {isParent && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                  <button onClick={() => handleApprove(item.id)} disabled={busyId === item.id} style={smBtn('#10B981')}>Approve</button>
+                  <button onClick={() => openReview(item, 'defer')} disabled={busyId === item.id} style={smBtn('#F59E0B')}>Maybe later</button>
+                  <button onClick={() => openReview(item, 'decline')} disabled={busyId === item.id} style={smBtn('#EF4444')}>Decline</button>
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </>
       )}
 
