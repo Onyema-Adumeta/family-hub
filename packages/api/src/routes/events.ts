@@ -30,7 +30,7 @@ router.get('/', async (req: AuthRequest, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/events/google/auth — get OAuth URL
+// GET /api/events/google/auth â€” get OAuth URL
 router.get('/google/auth', async (req: AuthRequest, res) => {
   try {
     const auth = new google.auth.OAuth2(
@@ -48,7 +48,7 @@ router.get('/google/auth', async (req: AuthRequest, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/events/google/callback — OAuth callback
+// GET /api/events/google/callback â€” OAuth callback
 router.get('/google/callback', async (req: any, res) => {
   const { code, state: familyId } = req.query as { code: string; state: string };
   try {
@@ -57,6 +57,8 @@ router.get('/google/callback', async (req: any, res) => {
       process.env.GOOGLE_CLIENT_SECRET,
       process.env.GOOGLE_REDIRECT_URI
     );
+    console.log('OAuth callback hit. code present:', !!code, 'familyId:', familyId);
+    console.log('Using redirect_uri:', process.env.GOOGLE_REDIRECT_URI);
     const { tokens } = await auth.getToken(code);
     await (prisma.family.update as any)({
       where: { id: familyId },
@@ -64,11 +66,13 @@ router.get('/google/callback', async (req: any, res) => {
     });
     res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    const detail = e?.response?.data || e?.message || 'unknown';
+    console.error('OAuth callback error:', JSON.stringify(detail));
+    res.status(500).json({ error: 'oauth_failed', detail });
   }
 });
 
-// GET /api/events/sync — pull events from Google Calendar
+// GET /api/events/sync â€” pull events from Google Calendar
 router.get('/sync', async (req: AuthRequest, res) => {
   try {
     const cal = await getCalendarClient(req.familyId!);
@@ -103,7 +107,7 @@ router.get('/sync', async (req: AuthRequest, res) => {
         data: {
           familyId:     req.familyId!,
           title:        gEvent.summary,
-          emoji:        '📅',
+          emoji:        'ðŸ“…',
           date:         new Date(startDate + 'T12:00:00'),
           time:         gEvent.start?.dateTime ? gEvent.start.dateTime.slice(11, 16) : undefined,
           color:        '#4285F4',
@@ -123,7 +127,7 @@ router.get('/sync', async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/events — create and optionally push to Google Calendar
+// POST /api/events â€” create and optionally push to Google Calendar
 router.post('/', async (req: AuthRequest, res) => {
   try {
     const event = await prisma.event.create({
@@ -167,7 +171,7 @@ router.post('/', async (req: AuthRequest, res) => {
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
 
-// DELETE /api/events/:id — delete from app and Google Calendar
+// DELETE /api/events/:id â€” delete from app and Google Calendar
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
