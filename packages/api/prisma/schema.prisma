@@ -11,6 +11,7 @@ model Family {
   id               String          @id @default(cuid())
   name             String
   inviteCode       String          @unique
+  googleTokens  String?
   createdAt        DateTime        @default(now())
   plan             String          @default("free")
   stripeCustomerId String?         @unique
@@ -36,7 +37,7 @@ model Member {
   familyId        String
   family          Family         @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String         @default("ðŸ™‚")
+  emoji           String         @default("Ã°Å¸â„¢â€š")
   color           String         @default("#6366F1")
   avatarUrl       String?
   role            String         @default("child")
@@ -79,7 +80,7 @@ model Chore {
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String      @default("âœ…")
+  emoji         String      @default("Ã¢Å“â€¦")
   assignedToId  String?
   assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
   frequency     String      @default("daily")
@@ -108,7 +109,7 @@ model Meal {
   day          String
   slot         String   @default("dinner")
   name         String
-  emoji        String   @default("ðŸ½ï¸")
+  emoji        String   @default("Ã°Å¸ÂÂ½Ã¯Â¸Â")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
@@ -121,7 +122,7 @@ model Event {
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   title        String
-  emoji        String   @default("ðŸ“…")
+  emoji        String   @default("Ã°Å¸â€œâ€¦")
   date         DateTime
   time         String?
   color        String?
@@ -138,7 +139,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("ðŸŽ")
+  emoji          String       @default("Ã°Å¸Å½Â")
   cost           Int
   description    String?
   availableCount Int?
@@ -180,7 +181,7 @@ model Quest {
   member      Member?   @relation(fields: [memberId], references: [id])
   title       String
   description String?
-  emoji       String    @default("âš”ï¸")
+  emoji       String    @default("Ã¢Å¡â€Ã¯Â¸Â")
   difficulty  String    @default("easy")
   stages      Json      @default("[]")
   stars       Int       @default(10)
