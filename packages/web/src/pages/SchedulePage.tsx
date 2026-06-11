@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/useApi';
 import { api } from '../lib/api';
 
@@ -14,7 +14,10 @@ function toLocalDateStr(date: Date): string {
 // Strip corrupted/mojibake emoji (e.g. Google imports showing "8Y...")
 function cleanEmoji(emoji?: string): string {
   if (!emoji) return '📅';
-  if (/^[\x00-\x7F]/.test(emoji)) return '📅';
+  // Mojibake from bad UTF-8 encoding — these lead sequences mean it's corrupted
+  if (/ð|Ã|â‚|â€|Â|Å|Ÿ/.test(emoji)) return '📅';
+  // Plain ASCII (letters, numbers, no real emoji) — fall back
+  if (/^[\x00-\x7F]+$/.test(emoji)) return '📅';
   return emoji;
 }
 
