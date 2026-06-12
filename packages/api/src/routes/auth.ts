@@ -54,7 +54,7 @@ function makeToken(memberId: string, familyId: string, role: string) {
 }
 const MEMBER_SELECT = {
   id: true, name: true, emoji: true, color: true,
-  role: true, stars: true, avatarUrl: true, email: true, createdAt: true,
+  role: true, stars: true, avatarUrl: true, email: true, createdAt: true, streakDays: true, streakUpdatedAt: true,
 };
 
 // ── Register ──────────────────────────────────────────────────────────────────
