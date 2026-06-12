@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import Layout from './components/Layout';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import JoinPage from './pages/JoinPage';
@@ -27,6 +28,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/welcome" element={<LandingPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/join" element={<JoinPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
