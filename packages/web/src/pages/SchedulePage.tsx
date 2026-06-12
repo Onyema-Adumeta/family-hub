@@ -327,7 +327,7 @@ export default function SchedulePage() {
               const hasEvents  = dayEvents.length > 0;
               return (
                 <div key={day} className="cal-day" onClick={() => handleDayClick(dateStr)} style={{
-                  minHeight: isMobile ? 48 : 72, padding: '5px 4px 4px', borderRadius: 12, cursor: 'pointer', position: 'relative',
+                  minHeight: isMobile ? 48 : 72, padding: '5px 4px 4px', borderRadius: 12, cursor: 'pointer', position: 'relative', overflow: 'hidden',
                   border: `1.5px solid ${isSelected ? 'var(--primary)' : isToday ? 'rgba(99,102,241,0.4)' : hasEvents ? 'rgba(255,255,255,0.08)' : 'transparent'}`,
                   background: isSelected ? 'linear-gradient(135deg,rgba(99,102,241,0.25),rgba(167,139,250,0.15))' : isToday ? 'rgba(99,102,241,0.08)' : hasEvents ? 'rgba(255,255,255,0.04)' : 'transparent',
                   transition: 'all 0.12s ease',
@@ -352,10 +352,11 @@ export default function SchedulePage() {
                           background: (ev.color || '#6366F1') + '22',
                           color: 'var(--text)',
                           overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                          maxWidth: '100%', boxSizing: 'border-box',
                         }}
                       >
                         <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: ev.color || '#6366F1' }} />
-                        {!isMobile && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</span>}
+                        {!isMobile && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{ev.title}</span>}
                       </div>
                     ))}
                     {dayEvents.length > (isMobile ? 2 : 3) && (
