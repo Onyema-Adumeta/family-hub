@@ -20,6 +20,14 @@ function cleanEmoji(emoji?: string): string {
   return emoji;
 }
 
+// Format an event's own date string ("2026-06-17" / ISO) as "June 17" — local-safe
+function formatEventDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
 export default function ScheduleScreen() {
   const { member } = useAuthStore();
   const today = new Date();
@@ -176,7 +184,7 @@ export default function ScheduleScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.detailTitle}>{ev.title}</Text>
-                      <Text style={s.detailDate}>{MONTHS[month]} {selectedDay}</Text>
+                      <Text style={s.detailDate}>{formatEventDate(ev.date)}</Text>
                     </View>
                     {isGoogle && <Text style={s.googleBadge}>Google</Text>}
                   </View>
