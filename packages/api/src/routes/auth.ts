@@ -33,7 +33,7 @@ const RegisterSchema = z.object({
 });
 
 const LoginSchema = z.object({
-  familyCode: z.string().min(1).max(20).trim().toUpperCase(),
+  familyCode: z.string().min(1).max(20).trim().toUpperCase().transform(s => s.replace(/\s+/g, '')),
   name:       z.string().min(1).max(50).trim(),
 });
 
