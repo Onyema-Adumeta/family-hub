@@ -1,8 +1,9 @@
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+﻿import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
 import { router } from 'expo-router';
+import StreakCard from '../components/StreakCard';
 
 /** Safely parse any date string to a local Date — strips timezone noise */
 function parseDate(raw: string | null | undefined): Date | null {
@@ -63,20 +64,11 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetchChores} tintColor="#6366F1" />}>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hey {member?.emoji} {member?.name}!</Text>
-          <Text style={styles.subtitle}>{family?.name}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={styles.starBadge}>
-            <Text style={styles.starText}>⭐ {member?.stars}</Text>
-          </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.gearBtn}>
-            <Text style={{ fontSize: 20 }}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
+      </View>
+
+      {/* Streak */}
+      <View style={{ marginBottom: 12 }}>
+        <StreakCard />
       </View>
 
       {/* Stats */}

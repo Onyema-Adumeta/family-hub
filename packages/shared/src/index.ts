@@ -15,6 +15,8 @@ export interface Member {
   color: string;
   role: 'parent' | 'child';
   stars: number;
+  streakDays?: number;
+  streakUpdatedAt?: string | null;
   pushToken?: string;
 }
 

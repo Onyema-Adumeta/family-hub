@@ -7,6 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';
+import StreakCard from '../components/StreakCard';
 
 export default function SettingsPage() {
   const { member, setMember, logout } = useAuthStore();
@@ -57,8 +58,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>⚙️ Settings</Text>
+      <StreakCard />
 
       {/* ── Birthdays section ── */}
       <View style={styles.card}>

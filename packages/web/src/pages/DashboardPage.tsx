@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChores, useMembers, useMeals, useEvents, useMessages } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
+import StreakCard from '../components/StreakCard';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -495,6 +496,11 @@ export default function DashboardPage() {
         <StatCard icon="✅" label="Done Today"  value={doneToday.length}   gradient="linear-gradient(135deg,#10B981,#059669)" shadow="0 8px 24px rgba(16,185,129,0.4)"  onClick={() => navigate('/chores')} />
         <StatCard icon="📅" label="Events"      value={todayEvents.length} gradient="linear-gradient(135deg,#3B82F6,#6366F1)" shadow="0 8px 24px rgba(59,130,246,0.4)"  onClick={() => navigate('/schedule')} />
         <StatCard icon="👨‍👩‍👧" label="Members"   value={allMembers.length}  gradient="linear-gradient(135deg,#7C3AED,#A78BFA)" shadow="0 8px 24px rgba(124,58,237,0.4)" onClick={() => navigate('/settings')} />
+      </div>
+
+      {/* ── Streak ── */}
+      <div style={{ marginBottom: 20 }}>
+        <StreakCard />
       </div>
 
       {/* ── Quick Actions ── */}
