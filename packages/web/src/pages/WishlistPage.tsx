@@ -10,9 +10,9 @@ function avatarSrc(url?: string | null) {
 }
 
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  approved: { label: 'Approved', color: '#10B981', icon: 'âœ…' },
-  declined: { label: 'Declined', color: '#EF4444', icon: 'âŒ' },
-  deferred: { label: 'Maybe later', color: '#F59E0B', icon: 'â³' },
+  approved: { label: 'Approved', color: '#10B981', icon: '✅' },
+  declined: { label: 'Declined', color: '#EF4444', icon: '❌' },
+  deferred: { label: 'Maybe later', color: '#F59E0B', icon: '⏳' },
 };
 
 export default function WishlistPage() {
@@ -21,6 +21,7 @@ export default function WishlistPage() {
   const [selectedMemberId, setSelectedMemberId] = useState<string>(member?.id || '');
   useEffect(() => { if (!selectedMemberId && member?.id) setSelectedMemberId(member.id); }, [member?.id]);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -52,19 +53,43 @@ export default function WishlistPage() {
   const visibleMembers = memberList;
   const selectedMember = memberList.find((m: any) => m.id === selectedMemberId);
 
-  async function handleAdd() {
-    if (!title.trim() || !selectedMemberId) return;
+  function resetForm() {
+    setTitle(''); setUrl(''); setPrice('');
+    setAdding(false); setEditingId(null);
+  }
+
+  function startAdd() {
+    resetForm();
+    setAdding(true);
+  }
+
+  function startEdit(item: any) {
+    setEditingId(item.id);
+    setAdding(true);
+    setTitle(item.title || '');
+    setUrl(item.url || '');
+    setPrice(item.price != null ? String(item.price) : '');
+  }
+
+  async function handleSave() {
+    if (!title.trim()) return;
     setSaving(true);
     try {
-      await api.post(`/wishlist/${selectedMemberId}`, {
+      const payload = {
         title: title.trim(),
         url: url.trim() || null,
         price: price ? parseFloat(price) : null,
-      });
+      };
+      if (editingId) {
+        await api.patch(`/wishlist/${editingId}`, payload);
+      } else {
+        if (!selectedMemberId) return;
+        await api.post(`/wishlist/${selectedMemberId}`, payload);
+      }
       qc.invalidateQueries({ queryKey: ['wishlist', selectedMemberId] });
-      setTitle(''); setUrl(''); setPrice(''); setAdding(false);
+      resetForm();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed to add item');
+      alert(e.response?.data?.error || 'Failed to save item');
     } finally {
       setSaving(false);
     }
@@ -141,6 +166,9 @@ export default function WishlistPage() {
     fontWeight: 700, fontSize: 12, background: color, color: '#fff', whiteSpace: 'nowrap',
   });
 
+  // Owner of the currently viewed list can edit their own wishes; parents can edit any.
+  const canEdit = isParent || isViewingOwnList;
+
   return (
     <div style={{ padding: '16px 16px 80px', maxWidth: 600, margin: '0 auto' }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Wishlists</h1>
@@ -153,7 +181,7 @@ export default function WishlistPage() {
           {visibleMembers.map((m: any) => {
             const isSelected = selectedMemberId === m.id;
             return (
-              <button key={m.id} onClick={() => setSelectedMemberId(m.id)} style={{
+              <button key={m.id} onClick={() => { setSelectedMemberId(m.id); resetForm(); }} style={{
                 display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
                 borderRadius: 20, cursor: 'pointer', fontWeight: 700, fontSize: 13,
                 background: isSelected ? (m.color || '#7C3AED') + '30' : 'rgba(255,255,255,0.05)',
@@ -173,28 +201,29 @@ export default function WishlistPage() {
       )}
 
       {selectedMemberId === member?.id && !adding && (
-        <button onClick={() => setAdding(true)} style={{ ...btnStyle('#7C3AED'), marginBottom: 16, width: '100%' }}>
+        <button onClick={startAdd} style={{ ...btnStyle('#7C3AED'), marginBottom: 16, width: '100%' }}>
           + Add a Wish
         </button>
       )}
 
       {adding && (
         <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>{editingId ? 'Edit wish' : 'New wish'}</div>
           <input style={inputStyle} placeholder="What do you wish for? *" value={title} onChange={e => setTitle(e.target.value)} />
           <input style={inputStyle} placeholder="Link (optional)" value={url} onChange={e => setUrl(e.target.value)} />
           <input style={inputStyle} placeholder="Price (optional)" type="number" value={price} onChange={e => setPrice(e.target.value)} />
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={handleAdd} disabled={saving || !title.trim()} style={btnStyle('#7C3AED')}>
-              {saving ? 'Saving...' : 'Save Wish'}
+            <button onClick={handleSave} disabled={saving || !title.trim()} style={btnStyle('#7C3AED')}>
+              {saving ? 'Saving...' : editingId ? 'Update Wish' : 'Save Wish'}
             </button>
-            <button onClick={() => setAdding(false)} style={btnStyle('#555')}>Cancel</button>
+            <button onClick={resetForm} style={btnStyle('#555')}>Cancel</button>
           </div>
         </div>
       )}
 
       {unclaimed.length === 0 && claimed.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-          {isViewingOwnList ? 'No wishes yet Ã¢â‚¬â€ add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
+          {isViewingOwnList ? 'No wishes yet — add something!' : `${selectedMember?.name || 'This person'} hasn't added any wishes yet`}
         </div>
       )}
 
@@ -214,6 +243,11 @@ export default function WishlistPage() {
                     {claimingId === item.id ? '...' : 'Claim'}
                   </button>
                 )}
+                {canEdit && (
+                  <button onClick={() => startEdit(item)} style={btnStyle('#6366F1')} title="Edit wish">
+                    Edit
+                  </button>
+                )}
                 {(isParent || isViewingOwnList) && (
                   <button onClick={() => handleDelete(item.id)} disabled={deletingId === item.id} style={btnStyle('#EF4444')}>
                     {deletingId === item.id ? '...' : 'x'}
@@ -222,7 +256,7 @@ export default function WishlistPage() {
               </div>
             </div>
 
-            {/* Status banner â€” visible to everyone */}
+            {/* Status banner — visible to everyone */}
             {sm && (
               <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: sm.color + '18', border: `1px solid ${sm.color}40` }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: sm.color }}>

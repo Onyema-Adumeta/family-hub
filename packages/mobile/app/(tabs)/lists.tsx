@@ -9,9 +9,9 @@ const NEEDS_CATS   = ["Clothing","Shoes","School Supplies","Electronics","Toilet
 type Tab = "grocery" | "needs" | "wishlist";
 
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
-  approved: { label: "Approved", color: "#10B981", icon: "âœ…" },
-  declined: { label: "Declined", color: "#EF4444", icon: "âŒ" },
-  deferred: { label: "Maybe later", color: "#F59E0B", icon: "â³" },
+  approved: { label: "Approved", color: "#10B981", icon: "✅" },
+  declined: { label: "Declined", color: "#EF4444", icon: "❌" },
+  deferred: { label: "Maybe later", color: "#F59E0B", icon: "⏳" },
 };
 
 export default function ListsScreen() {
@@ -49,6 +49,7 @@ export default function ListsScreen() {
   const { data: members = [] } = useQuery({ queryKey: ["members"], queryFn: () => api.get("/members").then(r => r.data) });
   const { data: wishlist = [] } = useQuery({ queryKey: ["wishlist", selMember], queryFn: () => selMember ? api.get(`/wishlist/${selMember}`).then(r => r.data) : [], enabled: !!selMember });
   const [showWish, setShowWish] = useState(false);
+  const [editingWishId, setEditingWishId] = useState<string | null>(null);
   const [wtitle, setWtitle] = useState("");
   const [wurl,   setWurl]   = useState("");
   const [wprice, setWprice] = useState("");
@@ -64,11 +65,32 @@ export default function ListsScreen() {
   const wishUnclaimed  = wishItems.filter(i => !i.claimed);
   const wishClaimed    = wishItems.filter(i =>  i.claimed);
 
-  async function addWish() {
+  function openAddWish() {
+    setEditingWishId(null);
+    setWtitle(""); setWurl(""); setWprice("");
+    setShowWish(true);
+  }
+
+  function openEditWish(item: any) {
+    setEditingWishId(item.id);
+    setWtitle(item.title || "");
+    setWurl(item.url || "");
+    setWprice(item.price != null ? String(item.price) : "");
+    setShowWish(true);
+  }
+
+  async function saveWish() {
     if (!wtitle.trim()) return;
-    await api.post(`/wishlist/${selMember}`, { title: wtitle.trim(), url: wurl.trim()||null, price: wprice ? parseFloat(wprice) : null });
-    qc.invalidateQueries({ queryKey: ["wishlist", selMember] });
-    setWtitle(""); setWurl(""); setWprice(""); setShowWish(false);
+    const payload = { title: wtitle.trim(), url: wurl.trim()||null, price: wprice ? parseFloat(wprice) : null };
+    try {
+      if (editingWishId) {
+        await api.patch(`/wishlist/${editingWishId}`, payload);
+      } else {
+        await api.post(`/wishlist/${selMember}`, payload);
+      }
+      qc.invalidateQueries({ queryKey: ["wishlist", selMember] });
+      setWtitle(""); setWurl(""); setWprice(""); setEditingWishId(null); setShowWish(false);
+    } catch (e: any) { Alert.alert("Error", e.response?.data?.error || "Failed to save"); }
   }
   async function claimWish(id: string) {
     await api.patch(`/wishlist/${id}/claim`, {});
@@ -101,10 +123,13 @@ export default function ListsScreen() {
     } catch (e: any) { Alert.alert("Error", e.response?.data?.error || "Failed to save"); }
   }
 
+  // Owner of the viewed list can edit their own wishes; parents can edit any.
+  const canEditWish = isParent || selMember === member?.id;
+
   const TABS = [
-    { key:"grocery"  as Tab, icon:"ðŸ›’", label:"Groceries", count: groceryCount },
-    { key:"needs"    as Tab, icon:"ðŸ§¢", label:"Needs",     count: needsCount   },
-    { key:"wishlist" as Tab, icon:"ðŸŽ", label:"Wishlist"                        },
+    { key:"grocery"  as Tab, icon:"🛒", label:"Groceries", count: groceryCount },
+    { key:"needs"    as Tab, icon:"🧢", label:"Needs",     count: needsCount   },
+    { key:"wishlist" as Tab, icon:"🎁", label:"Wishlist"                        },
   ];
 
   return (
@@ -164,14 +189,14 @@ export default function ListsScreen() {
                 {gotItems.map((item: any) => (
                   <TouchableOpacity key={item.id} onPress={() => updateItem.mutate({ id:item.id, data:{ checked:false } })} style={[s.itemRow, { opacity:0.4 }]}>
                     <View style={[s.checkbox, { backgroundColor:"#4ADE80", borderColor:"#4ADE80", alignItems:"center", justifyContent:"center" }]}>
-                      <Text style={{ color:"#000", fontSize:11, fontWeight:"900" }}>âœ“</Text>
+                      <Text style={{ color:"#000", fontSize:11, fontWeight:"900" }}>✓</Text>
                     </View>
                     <Text style={[s.itemName, { textDecorationLine:"line-through", color:"#666" }]}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </>
             )}
-            {listItems.length === 0 && <Text style={s.empty}>Nothing here yet â€” tap + Add Item</Text>}
+            {listItems.length === 0 && <Text style={s.empty}>Nothing here yet — tap + Add Item</Text>}
           </ScrollView>
         </>
       )}
@@ -190,7 +215,7 @@ export default function ListsScreen() {
           )}
 
           {(isParent || selMember === member?.id) && (
-            <TouchableOpacity onPress={() => setShowWish(true)} style={s.addBtn}>
+            <TouchableOpacity onPress={openAddWish} style={s.addBtn}>
               <Text style={s.addBtnText}>+ Add a Wish</Text>
             </TouchableOpacity>
           )}
@@ -210,6 +235,11 @@ export default function ListsScreen() {
                       {isParent && selMember !== member?.id && (
                         <TouchableOpacity onPress={() => claimWish(item.id)} style={[s.smBtn, { backgroundColor:"#10B981" }]}>
                           <Text style={s.smBtnText}>Claim</Text>
+                        </TouchableOpacity>
+                      )}
+                      {canEditWish && (
+                        <TouchableOpacity onPress={() => openEditWish(item)} style={[s.smBtn, { backgroundColor:"#6366F1" }]}>
+                          <Text style={s.smBtnText}>Edit</Text>
                         </TouchableOpacity>
                       )}
                       {(isParent || selMember === member?.id) && (
@@ -269,7 +299,7 @@ export default function ListsScreen() {
               </View>
               );
             })}
-            {wishItems.length === 0 && <Text style={s.empty}>No wishes yet â€” add something!</Text>}
+            {wishItems.length === 0 && <Text style={s.empty}>No wishes yet — add something!</Text>}
           </ScrollView>
         </>
       )}
@@ -281,7 +311,7 @@ export default function ListsScreen() {
             <Text style={s.modalTitle}>+ Add to {tab === "grocery" ? "Groceries" : "Other Needs"}</Text>
             <TextInput style={s.input} placeholder="Item name *" placeholderTextColor="#666" value={iname} onChangeText={setIname} autoFocus />
             <TextInput style={s.input} placeholder="Qty (e.g. 2, 500g)" placeholderTextColor="#666" value={iqty} onChangeText={setIqty} />
-            <TextInput style={s.input} placeholder="Notes â€” brand, size..." placeholderTextColor="#666" value={inotes} onChangeText={setInotes} />
+            <TextInput style={s.input} placeholder="Notes — brand, size..." placeholderTextColor="#666" value={inotes} onChangeText={setInotes} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
               {CATS.map(c => (
                 <TouchableOpacity key={c} onPress={() => setIcat(c)} style={[s.chip, icat===c && { backgroundColor:"#6366F1", borderColor:"#6366F1" }]}>
@@ -301,20 +331,20 @@ export default function ListsScreen() {
         </View>
       </Modal>
 
-      {/* ADD WISH MODAL */}
+      {/* ADD / EDIT WISH MODAL */}
       <Modal visible={showWish} transparent animationType="slide" onRequestClose={() => setShowWish(false)}>
         <View style={s.overlay}>
           <View style={s.modal}>
-            <Text style={s.modalTitle}>+ Add a Wish</Text>
+            <Text style={s.modalTitle}>{editingWishId ? "Edit wish" : "+ Add a Wish"}</Text>
             <TextInput style={s.input} placeholder="What do you wish for? *" placeholderTextColor="#666" value={wtitle} onChangeText={setWtitle} autoFocus />
             <TextInput style={s.input} placeholder="Link (optional)" placeholderTextColor="#666" value={wurl} onChangeText={setWurl} autoCapitalize="none" />
             <TextInput style={s.input} placeholder="Price (optional)" placeholderTextColor="#666" value={wprice} onChangeText={setWprice} keyboardType="numeric" />
             <View style={{ flexDirection:"row", gap:8 }}>
-              <TouchableOpacity onPress={() => setShowWish(false)} style={[s.smBtn, { backgroundColor:"#444", flex:1, paddingVertical:13 }]}>
+              <TouchableOpacity onPress={() => { setShowWish(false); setEditingWishId(null); }} style={[s.smBtn, { backgroundColor:"#444", flex:1, paddingVertical:13 }]}>
                 <Text style={s.smBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={addWish} disabled={!wtitle.trim()} style={[s.smBtn, { backgroundColor:"#6366F1", flex:2, paddingVertical:13 }]}>
-                <Text style={s.smBtnText}>Save Wish</Text>
+              <TouchableOpacity onPress={saveWish} disabled={!wtitle.trim()} style={[s.smBtn, { backgroundColor:"#6366F1", flex:2, paddingVertical:13 }]}>
+                <Text style={s.smBtnText}>{editingWishId ? "Update Wish" : "Save Wish"}</Text>
               </TouchableOpacity>
             </View>
           </View>
