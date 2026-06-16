@@ -46,7 +46,18 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
       }),
     });
 
-    const aiData = await response.json() as any;
+ const aiData = await response.json() as any;
+
+    // --- TEMP DIAGNOSTIC: surface what Anthropic actually returned ---
+    if (!aiData.content || !aiData.content[0]?.text) {
+      console.error('Anthropic returned no content. Full response:', JSON.stringify(aiData));
+      return res.status(500).json({
+        error: aiData.error?.message || aiData.type || 'AI returned no content',
+        raw: aiData.error || aiData,
+      });
+    }
+    // ----------------------------------------------------------------
+
     const text = aiData.content?.[0]?.text || '[]';
     let questions: any[] = [];
     try {

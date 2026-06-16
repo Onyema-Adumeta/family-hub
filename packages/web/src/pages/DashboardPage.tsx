@@ -4,6 +4,7 @@ import { useChores, useMembers, useMeals, useEvents, useMessages } from '../hook
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
 import StreakCard from '../components/StreakCard';
+import WeeklyReportCard from '../components/WeeklyReportCard';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
