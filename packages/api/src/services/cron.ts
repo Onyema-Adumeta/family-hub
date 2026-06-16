@@ -1,6 +1,5 @@
 import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 async function generateDailyTrivia() {
   const families = await prisma.family.findMany({ select: { id: true, name: true } });
@@ -22,7 +21,7 @@ async function generateDailyTrivia() {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         messages: [{
           role: 'user',
@@ -32,7 +31,7 @@ Mix difficulty like this:
 - 4 medium questions (14-year-old level: history, geography, music, movies/TV, sports, technology, pop culture)
 - 3 hard questions (adult level: literature, advanced science, world history, Canadian geography, cooking, 80s/90s nostalgia, tricky logic)
 Make sure every family member gets to shine at least once. Keep all content family-friendly.
-Use a completely different mix of topics each time — never repeat the same questions.
+Use a completely different mix of topics each time - never repeat the same questions.
 
 Respond with ONLY a valid JSON array, no markdown, no explanation:
 [
@@ -46,17 +45,13 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
       }),
     });
 
- const aiData = await response.json() as any;
+    const aiData = await response.json() as any;
 
-    // --- TEMP DIAGNOSTIC: surface what Anthropic actually returned ---
+    // Background job: no HTTP response to send. Log and skip this family on failure.
     if (!aiData.content || !aiData.content[0]?.text) {
-      console.error('Anthropic returned no content. Full response:', JSON.stringify(aiData));
-      return res.status(500).json({
-        error: aiData.error?.message || aiData.type || 'AI returned no content',
-        raw: aiData.error || aiData,
-      });
+      console.error(`[trivia] Anthropic returned no content for family ${family.name}:`, JSON.stringify(aiData.error || aiData));
+      continue;
     }
-    // ----------------------------------------------------------------
 
     const text = aiData.content?.[0]?.text || '[]';
     let questions: any[] = [];
@@ -84,7 +79,7 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
       data: {
         familyId: family.id,
         title: '🎮 Daily Trivia is ready!',
-        body: `Today's 10 questions are live — can you beat the family?`,
+        body: `Today's 10 questions are live - can you beat the family?`,
       },
     });
 
