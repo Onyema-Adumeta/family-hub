@@ -31,7 +31,7 @@ router.patch("/:id", authMiddleware, async (req: AuthRequest, res) => {
     if (!existing) return res.status(404).json({ error: "Wish not found" });
 
     const isOwner = existing.memberId === req.memberId;
-    if (!isOwner && !req.isParent) {
+    if (!isOwner && req.role !== 'parent') {
       return res.status(403).json({ error: "Not allowed to edit this wish" });
     }
 
@@ -62,7 +62,7 @@ router.patch("/:id/claim", authMiddleware, async (req: AuthRequest, res) => {
 // Parent review: approve
 router.patch("/:id/approve", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    if (!req.isParent) return res.status(403).json({ error: "Parents only" });
+    if (req.role !== 'parent') return res.status(403).json({ error: "Parents only" });
     const item = await prisma.wishlistItem.update({
       where: { id: req.params.id },
       data: { status: "approved", declineReason: null, deferUntil: null, reviewedBy: req.memberId, reviewedAt: new Date() }
@@ -74,7 +74,7 @@ router.patch("/:id/approve", authMiddleware, async (req: AuthRequest, res) => {
 // Parent review: decline (with reason)
 router.patch("/:id/decline", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    if (!req.isParent) return res.status(403).json({ error: "Parents only" });
+    if (req.role !== 'parent') return res.status(403).json({ error: "Parents only" });
     const { reason } = req.body;
     const item = await prisma.wishlistItem.update({
       where: { id: req.params.id },
@@ -87,7 +87,7 @@ router.patch("/:id/decline", authMiddleware, async (req: AuthRequest, res) => {
 // Parent review: defer / maybe later (with reason + optional date)
 router.patch("/:id/defer", authMiddleware, async (req: AuthRequest, res) => {
   try {
-    if (!req.isParent) return res.status(403).json({ error: "Parents only" });
+    if (req.role !== 'parent') return res.status(403).json({ error: "Parents only" });
     const { reason, deferUntil } = req.body;
     const item = await prisma.wishlistItem.update({
       where: { id: req.params.id },
