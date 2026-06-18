@@ -57,6 +57,7 @@ model Member {
   lastSeenAt      DateTime?
   chores          Chore[]        @relation("AssignedChores")
   completedChores Chore[]        @relation("CompletedChores")
+  choreAssignments Chore[]       @relation("ChoreAssignees")
   meals           Meal[]
   events          Event[]
   messages        Message[]
@@ -83,6 +84,7 @@ model Chore {
   emoji         String      @default("Ã¢Å“â€¦")
   assignedToId  String?
   assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
+  assignees     Member[]    @relation("ChoreAssignees")
   frequency     String      @default("daily")
   stars         Int         @default(5)
   status        ChoreStatus @default(pending)
