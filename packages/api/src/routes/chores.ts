@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { PrismaClient, ChoreStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
@@ -25,15 +25,28 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
+// Standard include used on every chore response
+const choreInclude = {
+  assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+  completedBy: { select: { id: true, name: true, emoji: true, color: true } },
+  assignees:   { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
+};
+
+// Normalize assignee input: accept assigneeIds[] (new) or fall back to assignedToId (legacy single)
+function resolveAssigneeIds(body: any): string[] {
+  if (Array.isArray(body.assigneeIds)) {
+    return body.assigneeIds.filter((x: any) => typeof x === 'string' && x.length > 0);
+  }
+  if (body.assignedToId) return [body.assignedToId];
+  return [];
+}
+
 // GET /api/chores
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const chores = await prisma.chore.findMany({
       where: { familyId: req.familyId },
-      include: {
-        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-        completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-      },
+      include: choreInclude,
       orderBy: { createdAt: 'desc' },
     });
     res.json(chores);
@@ -45,23 +58,24 @@ router.get('/', async (req: AuthRequest, res) => {
 // POST /api/chores
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { title, emoji, frequency, stars, proofRequired, assignedToId, dueDate } = req.body;
+    const { title, emoji, frequency, stars, proofRequired, dueDate } = req.body;
+    const assigneeIds = resolveAssigneeIds(req.body);
+
     const chore = await prisma.chore.create({
       data: {
         familyId:      req.familyId!,
         title,
-        emoji:         emoji || '?',
+        emoji:         emoji || '\u2705',
         frequency:     frequency || 'daily',
         stars:         stars ? parseInt(stars) : 5,
         proofRequired: proofRequired ?? false,
-        assignedToId:  assignedToId || null,
+        // Mirror first assignee into assignedToId so legacy reads keep working
+        assignedToId:  assigneeIds[0] || null,
+        assignees:     assigneeIds.length ? { connect: assigneeIds.map(id => ({ id })) } : undefined,
         dueDate:       dueDate ? new Date(dueDate) : null,
         status:        ChoreStatus.pending,
       },
-      include: {
-        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-        completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-      },
+      include: choreInclude,
     });
     broadcast(req.familyId!, { type: 'chore:created', chore });
     res.json(chore);
@@ -76,11 +90,14 @@ router.patch('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const {
-      status, assignedToId, title, emoji, frequency,
+      status, title, emoji, frequency,
       stars, proofRequired, proofUrl, proofType, dueDate,
     } = req.body;
 
-    const existing = await prisma.chore.findUnique({ where: { id } });
+    const existing = await prisma.chore.findUnique({
+      where: { id },
+      include: { assignees: { select: { id: true } } },
+    });
     if (!existing) return res.status(404).json({ error: 'Chore not found' });
 
     const updateData: any = {};
@@ -93,7 +110,17 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     if (proofUrl      !== undefined) updateData.proofUrl      = proofUrl;
     if (proofType     !== undefined) updateData.proofType     = proofType;
     if (dueDate       !== undefined) updateData.dueDate       = dueDate ? new Date(dueDate) : null;
-    if (assignedToId  !== undefined) updateData.assignedToId  = assignedToId || null;
+
+    // Assignee changes: accept assigneeIds[] (preferred) or legacy assignedToId
+    let newAssigneeIds: string[] | undefined;
+    if (req.body.assigneeIds !== undefined || req.body.assignedToId !== undefined) {
+      newAssigneeIds = resolveAssigneeIds(req.body);
+      updateData.assignees    = { set: newAssigneeIds.map(aid => ({ id: aid })) };
+      updateData.assignedToId = newAssigneeIds[0] || null; // keep mirror in sync
+    }
+
+    // The assignee list to use for streak/star logic (new list if changed, else existing)
+    const effectiveAssigneeIds = newAssigneeIds ?? existing.assignees.map(a => a.id);
 
     if (status !== undefined) {
       const validStatuses = ['pending', 'in_progress', 'done'];
@@ -107,56 +134,73 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         updateData.completedAt   = new Date();
         updateData.completedById = req.memberId;
 
-        // Award stars to whoever completed it
-        await prisma.member.update({
-          where: { id: req.memberId! },
-          data:  { stars: { increment: existing.stars } },
-        });
-
-        // Streak logic
-        if (existing.dueDate && new Date() > existing.dueDate && existing.assignedToId) {
+        // Split stars among assignees; completer gets remainder so nothing is lost.
+        // No assignees -> full stars to whoever completed it.
+        if (effectiveAssigneeIds.length > 0) {
+          const base      = Math.floor(existing.stars / effectiveAssigneeIds.length);
+          const remainder = existing.stars - base * effectiveAssigneeIds.length;
+          for (const aid of effectiveAssigneeIds) {
+            const share = base + (aid === req.memberId ? remainder : 0);
+            if (share > 0) {
+              await prisma.member.update({
+                where: { id: aid },
+                data:  { stars: { increment: share } },
+              });
+            }
+          }
+          // If the completer isn't one of the assignees, give them the remainder
+          if (remainder > 0 && !effectiveAssigneeIds.includes(req.memberId!)) {
+            await prisma.member.update({
+              where: { id: req.memberId! },
+              data:  { stars: { increment: remainder } },
+            });
+          }
+        } else {
           await prisma.member.update({
-            where: { id: existing.assignedToId },
-            data:  { streakDays: 0 },
-          });
-          await prisma.notification.create({
-            data: {
-              familyId: req.familyId!,
-              memberId: existing.assignedToId,
-              title:    'Chore overdue!',
-              body:     '"' + existing.title + '" was completed late - streak reset.',
-            },
-          });
-        } else if (existing.assignedToId) {
-          await prisma.member.update({
-            where: { id: existing.assignedToId },
-            data:  {
-              streakDays:      { increment: 1 },
-              streakUpdatedAt: new Date(),
-              totalChoresDone: { increment: 1 },
-            },
+            where: { id: req.memberId! },
+            data:  { stars: { increment: existing.stars } },
           });
         }
 
-        // For daily chores: save details, delete this record, create tomorrow's copy
+        // Streak logic applies to all assignees
+        const wasLate = existing.dueDate && new Date() > existing.dueDate;
+        if (wasLate && effectiveAssigneeIds.length > 0) {
+          for (const aid of effectiveAssigneeIds) {
+            await prisma.member.update({ where: { id: aid }, data: { streakDays: 0 } });
+            await prisma.notification.create({
+              data: {
+                familyId: req.familyId!,
+                memberId: aid,
+                title:    'Chore overdue!',
+                body:     '"' + existing.title + '" was completed late - streak reset.',
+              },
+            });
+          }
+        } else if (effectiveAssigneeIds.length > 0) {
+          for (const aid of effectiveAssigneeIds) {
+            await prisma.member.update({
+              where: { id: aid },
+              data:  {
+                streakDays:      { increment: 1 },
+                streakUpdatedAt: new Date(),
+                totalChoresDone: { increment: 1 },
+              },
+            });
+          }
+        }
+
+        // Daily chores: save completed state, delete, recreate tomorrow's copy with same assignees
         if (existing.frequency === 'daily') {
-          // First finish saving the completed state so the UI sees it briefly
           const completedChore = await prisma.chore.update({
             where: { id },
             data:  updateData,
-            include: {
-              assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-              completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-            },
+            include: choreInclude,
           });
-
           broadcast(req.familyId!, { type: 'chore:updated', chore: completedChore });
 
-          // Delete the completed chore
           await prisma.chore.delete({ where: { id } });
           broadcast(req.familyId!, { type: 'chore:deleted', id });
 
-          // Create fresh copy due tomorrow
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           tomorrow.setHours(23, 59, 59, 0);
@@ -169,19 +213,15 @@ router.patch('/:id', async (req: AuthRequest, res) => {
               frequency:     'daily',
               stars:         existing.stars,
               proofRequired: existing.proofRequired,
-              assignedToId:  existing.assignedToId,
+              assignedToId:  effectiveAssigneeIds[0] || null,
+              assignees:     effectiveAssigneeIds.length ? { connect: effectiveAssigneeIds.map(aid => ({ id: aid })) } : undefined,
               dueDate:       tomorrow,
               status:        'pending',
             },
-            include: {
-              assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-              completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-            },
+            include: choreInclude,
           });
-
           broadcast(req.familyId!, { type: 'chore:created', chore: newChore });
 
-          // Return the completed chore so the UI can show the done state momentarily
           return res.json(completedChore);
         }
 
@@ -194,10 +234,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     const chore = await prisma.chore.update({
       where: { id },
       data:  updateData,
-      include: {
-        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-        completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-      },
+      include: choreInclude,
     });
 
     broadcast(req.familyId!, { type: 'chore:updated', chore });
@@ -216,10 +253,7 @@ router.patch('/:id/photo', upload.single('photo'), async (req: AuthRequest, res)
     const chore = await prisma.chore.update({
       where: { id: req.params.id },
       data:  { photoUrl, photoedAt: new Date() },
-      include: {
-        assignedTo:  { select: { id: true, name: true, emoji: true, color: true, avatarUrl: true } },
-        completedBy: { select: { id: true, name: true, emoji: true, color: true } },
-      },
+      include: choreInclude,
     });
     broadcast(req.familyId!, { type: 'chore:updated', chore });
     res.json(chore);
