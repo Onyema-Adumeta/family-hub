@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
-import { useNotifications, useMembers } from '../hooks/useApi';
+import { useNotifications, useMembers, useMarkRead, useMarkAllRead } from '../hooks/useApi';
 import { useRealtime } from '../hooks/useRealtime';
 import { QuickActionFAB } from './QuickActionFAB';
 
@@ -13,6 +13,140 @@ function getLevel(stars: number) {
   if (stars < 300) return { level: 3, title: 'Champion', next: 300 };
   if (stars < 500) return { level: 4, title: 'Hero',     next: 500 };
   return             { level: 5, title: 'Legend',         next: 1000 };
+}
+
+// ── Relative time formatter for notification timestamps ──────────────
+function timeAgo(iso?: string | null) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return '';
+  const secs = Math.floor((Date.now() - then) / 1000);
+  if (secs < 45)        return 'just now';
+  if (secs < 90)        return '1 min ago';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60)        return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)         return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)         return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+// ── Notification bell + dropdown panel ───────────────────────────────
+// Self-contained so it can sit in both the desktop sidebar and mobile topbar.
+function NotificationBell({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
+  const { data: notifications = [] } = useNotifications();
+  const markRead    = useMarkRead();
+  const markAllRead = useMarkAllRead();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const list   = notifications as any[];
+  const unread = list.filter((n: any) => !n.read).length;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onEsc);
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onEsc); };
+  }, [open]);
+
+  const iconColor = variant === 'dark' ? 'var(--text-secondary)' : 'var(--text-secondary)';
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-label="Notifications"
+        style={{
+          width: 38, height: 38, borderRadius: '50%', padding: 0, cursor: 'pointer',
+          background: open ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
+          border: '1.5px solid rgba(255,255,255,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1, color: iconColor }}>🔔</span>
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', top: -2, right: -2,
+            minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+            background: 'var(--accent, #EC4899)', color: '#fff',
+            fontSize: 10, fontWeight: 900, lineHeight: '18px', textAlign: 'center',
+            border: '2px solid #131c35', boxSizing: 'border-box',
+          }}>{unread > 9 ? '9+' : unread}</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 46, right: 0, zIndex: 300,
+          width: 320, maxWidth: 'calc(100vw - 32px)',
+          background: '#161527', border: '1.5px solid rgba(255,255,255,0.12)',
+          borderRadius: 14, boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{ fontWeight: 900, fontSize: 14 }}>
+              Notifications {unread > 0 && <span style={{ color: 'var(--accent, #EC4899)' }}>· {unread}</span>}
+            </div>
+            {unread > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#A78BFA', fontSize: 12, fontWeight: 800, padding: 0,
+                  opacity: markAllRead.isPending ? 0.5 : 1,
+                }}
+              >Mark all read</button>
+            )}
+          </div>
+
+          <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+            {list.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: 30, marginBottom: 8 }}>🔕</div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>You're all caught up</div>
+                <div style={{ fontSize: 11, marginTop: 2 }}>No notifications yet</div>
+              </div>
+            ) : (
+              list.map((n: any) => (
+                <button
+                  key={n.id}
+                  onClick={() => { if (!n.read) markRead.mutate(n.id); }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%',
+                    textAlign: 'left', padding: '12px 14px', cursor: n.read ? 'default' : 'pointer',
+                    background: n.read ? 'transparent' : 'rgba(124,111,247,0.08)',
+                    border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%', marginTop: 5, flexShrink: 0,
+                    background: n.read ? 'transparent' : 'var(--accent, #EC4899)',
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {n.title && <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>{n.title}</div>}
+                    {n.body && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1, lineHeight: 1.35 }}>{n.body}</div>}
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, fontWeight: 700 }}>{timeAgo(n.createdAt)}</div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const NAV_PRIMARY   = [
@@ -169,9 +303,12 @@ export default function Layout() {
           background: 'linear-gradient(180deg, #0f1729 0%, #131c35 100%)', borderRight: '1.5px solid rgba(255,255,255,0.06)',
           height: '100vh', flexShrink: 0, overflowY: 'auto',
         }}>
-          <div style={{ padding: '16px 14px 10px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Family Hub</div>
-            <div style={{ fontWeight: 900, fontSize: 15 }}>{family?.name || 'My Family'}</div>
+          <div style={{ padding: '16px 14px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Family Hub</div>
+              <div style={{ fontWeight: 900, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{family?.name || 'My Family'}</div>
+            </div>
+            <NotificationBell />
           </div>
           <div style={{ padding: '14px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -232,7 +369,7 @@ export default function Layout() {
             <div style={{ fontWeight: 900, fontSize: 14 }}>{family?.name || 'My Family'}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {unread > 0 && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />}
+            <NotificationBell />
             <button
               onClick={() => setSidebarOpen(true)}
               style={{
