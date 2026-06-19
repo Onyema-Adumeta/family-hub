@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
+import { notifyParents } from "../services/notify";
 
 const router = Router();
 
@@ -20,6 +21,22 @@ router.post("/:memberId", authMiddleware, async (req: AuthRequest, res) => {
     const item = await prisma.wishlistItem.create({
       data: { memberId: req.params.memberId, title, url, price }
     });
+
+    // Notify parents that a new wish needs review. familyId isn't on the
+    // request here, so derive it from the member who owns the wish.
+    const owner = await prisma.member.findUnique({
+      where: { id: req.params.memberId },
+      select: { familyId: true, name: true },
+    });
+    if (owner?.familyId) {
+      await notifyParents(
+        owner.familyId,
+        'New wishlist item',
+        `${owner.name} added "${title}" to their wishlist`,
+        req.params.memberId, // don't notify a parent adding to their own list
+      );
+    }
+
     res.json(item);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

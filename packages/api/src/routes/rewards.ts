@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
+import { notifyMember, notifyParents } from '../services/notify';
 
 const router = Router();
 import { prisma } from '../db';
@@ -95,6 +96,15 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
     });
 
     broadcast(req.familyId!, { type: 'redemption:requested', redemption });
+
+    // Notify parents that a reward needs approval
+    await notifyParents(
+      req.familyId!,
+      'Reward to approve',
+      `${member.name} wants to redeem "${reward.name}" (${reward.cost}⭐)`,
+      req.memberId, // don't notify a parent who redeemed their own reward
+    );
+
     res.json(redemption);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });
@@ -139,6 +149,24 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res) => {
       redemption: updated,
       id: redemption.id,
     });
+
+    // Notify the child who requested it
+    if (approved) {
+      await notifyMember(
+        req.familyId!,
+        redemption.memberId,
+        'Reward approved! 🎉',
+        `Your "${redemption.reward.name}" reward was approved`,
+      );
+    } else {
+      await notifyMember(
+        req.familyId!,
+        redemption.memberId,
+        'Reward declined',
+        `"${redemption.reward.name}" wasn't approved — your ${redemption.reward.cost}⭐ were refunded`,
+      );
+    }
+
     res.json(updated ?? { ok: true, rejected: true });
   } catch (e: any) { res.status(400).json({ error: e.message }); }
 });

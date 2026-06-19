@@ -2,6 +2,7 @@
 import { PrismaClient, ChoreStatus } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
+import { notifyMember } from '../services/notify';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
@@ -41,6 +42,21 @@ function resolveAssigneeIds(body: any): string[] {
   return [];
 }
 
+// Notify each newly-assigned member (except the person doing the assigning)
+async function notifyAssigned(
+  familyId: string,
+  actorId: string | undefined,
+  assigneeIds: string[],
+  choreTitle: string,
+) {
+  const recipients = assigneeIds.filter(id => id !== actorId);
+  await Promise.all(
+    recipients.map(id =>
+      notifyMember(familyId, id, 'New chore assigned', `You've been assigned "${choreTitle}"`),
+    ),
+  );
+}
+
 // GET /api/chores
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -78,6 +94,10 @@ router.post('/', async (req: AuthRequest, res) => {
       include: choreInclude,
     });
     broadcast(req.familyId!, { type: 'chore:created', chore });
+
+    // Notify everyone this chore was just assigned to
+    await notifyAssigned(req.familyId!, req.memberId, assigneeIds, chore.title);
+
     res.json(chore);
   } catch (e: any) {
     console.error('POST /chores error:', e);
@@ -121,6 +141,13 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 
     // The assignee list to use for streak/star logic (new list if changed, else existing)
     const effectiveAssigneeIds = newAssigneeIds ?? existing.assignees.map(a => a.id);
+
+    // Figure out which assignees are NEWLY added by this edit, so we only
+    // notify people who weren't already on the chore.
+    const previousAssigneeIds = existing.assignees.map(a => a.id);
+    const addedAssigneeIds = newAssigneeIds
+      ? newAssigneeIds.filter(aid => !previousAssigneeIds.includes(aid))
+      : [];
 
     if (status !== undefined) {
       const validStatuses = ['pending', 'in_progress', 'done'];
@@ -222,6 +249,11 @@ router.patch('/:id', async (req: AuthRequest, res) => {
           });
           broadcast(req.familyId!, { type: 'chore:created', chore: newChore });
 
+          // If this edit also added new assignees, let them know
+          if (addedAssigneeIds.length) {
+            await notifyAssigned(req.familyId!, req.memberId, addedAssigneeIds, existing.title);
+          }
+
           return res.json(completedChore);
         }
 
@@ -238,6 +270,12 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     });
 
     broadcast(req.familyId!, { type: 'chore:updated', chore });
+
+    // Notify any members newly added to this chore by the edit
+    if (addedAssigneeIds.length) {
+      await notifyAssigned(req.familyId!, req.memberId, addedAssigneeIds, chore.title);
+    }
+
     res.json(chore);
   } catch (e: any) {
     console.error('PATCH /chores error:', e);
