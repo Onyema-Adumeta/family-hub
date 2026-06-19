@@ -18,6 +18,58 @@ const STATUS_META: Record<Status, { label: string; icon: string; color: string; 
   done:        { label: 'Done',        icon: '✅', color: '#4ADE80', bg: 'rgba(74,222,128,0.15)'  },
 };
 
+/* ------------------------------------------------------------------ *
+ * Responsive card styles.
+ * Inline styles can't hold media queries, so the chore-row layout
+ * lives here. Under 520px the row stops fighting for horizontal space:
+ * the title gets its own line, meta wraps beneath it, and the controls
+ * move to a full-width footer instead of crushing the content to zero.
+ * ------------------------------------------------------------------ */
+const CHORE_STYLES = `
+.chore-card { background: rgba(255,255,255,0.04); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+
+/* Top section: emoji + content. Controls are a separate row below. */
+.chore-main { display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px 10px; }
+.chore-emoji { font-size: 26px; flex-shrink: 0; line-height: 1.1; }
+.chore-content { flex: 1; min-width: 0; }
+
+.chore-title {
+  font-weight: 700; font-size: 15px; line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.chore-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.chore-meta-item { font-size: 11px; color: var(--text-muted); }
+.chore-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 11px; border-radius: 10px; padding: 1px 6px; color: var(--text-muted);
+}
+.chore-badge { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 7px; }
+
+/* Controls row: a tidy strip beneath the content, never squeezing the title. */
+.chore-controls {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px 12px; flex-wrap: wrap;
+}
+.chore-controls .status-select { margin-left: auto; }       /* push status to the right on wide screens */
+.chore-icon-btn {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer;
+}
+.status-select {
+  padding: 7px 10px; border-radius: 10px; font-size: 12px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .chore-controls { margin-left: 0; }
+  .chore-controls .status-select { margin-left: 0; flex: 1; }   /* status fills the row on mobile */
+  .chore-icon-btn { width: 34px; height: 34px; }                /* comfortable tap targets */
+}
+`;
+
 function isOverdue(dueDate?: string | null, status?: string) {
   if (!dueDate || status === 'done') return false;
   return new Date() > new Date(dueDate);
@@ -466,6 +518,9 @@ export default function ChoresPage() {
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
+      {/* Responsive card styles (inline styles can't carry media queries) */}
+      <style>{CHORE_STYLES}</style>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🧹 Chores</h1>
@@ -488,7 +543,7 @@ export default function ChoresPage() {
 
       {bulkMode && (
         <div style={{ padding: '12px 14px', borderRadius: 14, marginBottom: 12, background: 'rgba(124,111,247,0.08)', border: '1.5px solid rgba(124,111,247,0.25)' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: bulkAssignIds.length || true ? 10 : 0 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#A78BFA' }}>{selected.size} selected</span>
             <button onClick={handleBulkComplete} disabled={selected.size === 0} style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', color: '#4ADE80', cursor: 'pointer', opacity: selected.size === 0 ? 0.4 : 1 }}>✅ Mark Done</button>
             <button onClick={handleBulkDelete} disabled={selected.size === 0} style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: '#F87171', cursor: 'pointer', opacity: selected.size === 0 ? 0.4 : 1 }}>🗑️ Delete</button>
@@ -515,10 +570,10 @@ export default function ChoresPage() {
       </div>
 
       {/* Sort bar */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center' }}>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>Sort:</span>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center', overflowX: 'auto' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>Sort:</span>
         {[{key:'created',label:'Latest'},{key:'due',label:'Due date'},{key:'stars',label:'Stars'},{key:'priority',label:'Priority'}].map(s => (
-          <button key={s.key} onClick={() => setSortBy(s.key as any)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: sortBy === s.key ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${sortBy === s.key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.1)'}`, color: sortBy === s.key ? '#A78BFA' : 'var(--text-muted)' }}>{s.label}</button>
+          <button key={s.key} onClick={() => setSortBy(s.key as any)} style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: sortBy === s.key ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${sortBy === s.key ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.1)'}`, color: sortBy === s.key ? '#A78BFA' : 'var(--text-muted)' }}>{s.label}</button>
         ))}
       </div>
 
@@ -548,92 +603,104 @@ export default function ChoresPage() {
         const photoUrl  = photoPreview[chore.id] || chore.photoUrl || null;
         const needsProof = chore.proofRequired && !photoUrl;
 
-        return (
-          <div key={chore.id} style={{ background: isSelected ? 'rgba(124,111,247,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${isSelected ? 'rgba(124,111,247,0.5)' : overdue ? '#F87171' : isEditing ? 'rgba(124,111,247,0.5)' : meta.color + '44'}`, borderRadius: 14, marginBottom: 10, overflow: 'hidden' }}>
+        const cardBorder = isSelected ? 'rgba(124,111,247,0.5)'
+          : overdue ? '#F87171'
+          : isEditing ? 'rgba(124,111,247,0.5)'
+          : meta.color + '44';
 
-            {/* Main chore row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px' }}>
+        return (
+          <div key={chore.id} className="chore-card" style={{ background: isSelected ? 'rgba(124,111,247,0.08)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${cardBorder}` }}>
+
+            {/* ---- Content: emoji + title + meta. Title is the hero and gets its own line. ---- */}
+            <div className="chore-main">
               {bulkMode && (
-                <div onClick={() => toggleSelect(chore.id)} style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, border: `2px solid ${isSelected ? '#A78BFA' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? 'rgba(124,111,247,0.3)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}>
+                <div onClick={() => toggleSelect(chore.id)} style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 2, border: `2px solid ${isSelected ? '#A78BFA' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? 'rgba(124,111,247,0.3)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13 }}>
                   {isSelected ? '✓' : ''}
                 </div>
               )}
-              <span style={{ fontSize: 26, flexShrink: 0 }}>{chore.emoji || '🧹'}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {chore.priority === 'high' && <span style={{ fontSize: 12, flexShrink: 0 }}>🔴</span>}
-                  {chore.priority === 'low'  && <span style={{ fontSize: 12, flexShrink: 0 }}>🟢</span>}
-                  <div style={{ fontWeight: 700, fontSize: 15, color: status === 'done' ? '#64748B' : 'var(--text)', textDecoration: status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chore.title}</div>
+              <span className="chore-emoji">{chore.emoji || '🧹'}</span>
+              <div className="chore-content">
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  {chore.priority === 'high' && <span style={{ fontSize: 12, flexShrink: 0, marginTop: 2 }}>🔴</span>}
+                  {chore.priority === 'low'  && <span style={{ fontSize: 12, flexShrink: 0, marginTop: 2 }}>🟢</span>}
+                  <div className="chore-title" style={{ color: status === 'done' ? '#64748B' : 'var(--text)', textDecoration: status === 'done' ? 'line-through' : 'none' }}>
+                    {chore.title || 'Untitled chore'}
+                  </div>
                   {isRecurring && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, padding: '2px 7px', borderRadius: 20, background: streak > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)', border: `1px solid ${streak > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.12)'}`, fontSize: 11, fontWeight: 800, color: streak > 0 ? '#FBBF24' : 'var(--text-muted)' }}>🔥 {streak}w</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0, marginTop: 1, padding: '2px 7px', borderRadius: 20, background: streak > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)', border: `1px solid ${streak > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.12)'}`, fontSize: 11, fontWeight: 800, color: streak > 0 ? '#FBBF24' : 'var(--text-muted)' }}>🔥 {streak}w</div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>⭐{chore.stars}{assignees.length > 1 ? ` (split ${assignees.length})` : ''}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
+
+                <div className="chore-meta">
+                  <span className="chore-meta-item">⭐{chore.stars}{assignees.length > 1 ? ` (split ${assignees.length})` : ''}</span>
+                  <span className="chore-meta-item">· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
                   {assignees.length > 0 ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>·</span>
-                      {assignees.map((a: any) => (
-                        <span key={a.id} title={a.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 11, color: 'var(--text-muted)', background: (a.color || '#7C3AED') + '22', borderRadius: 10, padding: '1px 6px' }}>
-                          {a.emoji} {a.name}
-                        </span>
-                      ))}
-                    </span>
+                    assignees.map((a: any) => (
+                      <span key={a.id} className="chore-chip" title={a.name} style={{ background: (a.color || '#7C3AED') + '22' }}>
+                        {a.emoji} {a.name}
+                      </span>
+                    ))
                   ) : (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· 👤 Unassigned</span>
+                    <span className="chore-meta-item">· 👤 Unassigned</span>
                   )}
-                  {dueLabel  && <span style={{ fontSize: 11, fontWeight: 700, color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)', borderRadius: 6, padding: '1px 6px' }}>📅 {dueLabel}</span>}
-                  {needsProof && <span style={{ fontSize: 11, fontWeight: 700, color: '#F97316', background: 'rgba(249,115,22,0.12)', borderRadius: 6, padding: '1px 6px' }}>📸 proof needed</span>}
+                  {dueLabel  && <span className="chore-badge" style={{ color: overdue ? '#F87171' : '#FBBF24', background: overdue ? 'rgba(248,113,113,0.12)' : 'rgba(251,191,36,0.12)' }}>📅 {dueLabel}</span>}
+                  {needsProof && <span className="chore-badge" style={{ color: '#F97316', background: 'rgba(249,115,22,0.12)' }}>📸 proof needed</span>}
                 </div>
+
                 {chore.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {chore.notes}</div>}
               </div>
-
-              {!bulkMode && (
-                <>
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      style={{ display: 'none' }}
-                      ref={el => { fileInputRefs.current[chore.id] = el; }}
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) handlePhotoUpload(chore.id, file);
-                        e.target.value = '';
-                      }}
-                    />
-                    <button
-                      onClick={() => fileInputRefs.current[chore.id]?.click()}
-                      disabled={isUploading}
-                      title={photoUrl ? 'Replace photo proof' : 'Add photo proof'}
-                      style={{
-                        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                        background:  photoUrl   ? 'rgba(74,222,128,0.15)'  : needsProof ? 'rgba(249,115,22,0.15)'  : 'rgba(255,255,255,0.07)',
-                        border: `1px solid ${photoUrl ? 'rgba(74,222,128,0.4)' : needsProof ? 'rgba(249,115,22,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                        color:       photoUrl   ? '#4ADE80'                : needsProof ? '#F97316'                : 'var(--text-muted)',
-                        fontSize: 13, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        opacity: isUploading ? 0.5 : 1,
-                      }}
-                    >
-                      {isUploading ? '⏳' : photoUrl ? '✅' : '📷'}
-                    </button>
-                  </div>
-
-                  <button onClick={() => handleDuplicate(chore)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Duplicate">📋</button>
-                  <button onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Edit (assign, due date, more)">✏️</button>
-                </>
-              )}
-
-              <select value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ padding: '6px 8px', background: meta.bg, border: `1.5px solid ${meta.color}66`, borderRadius: 10, color: meta.color, fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                <option value="pending">⏳ Pending</option>
-                <option value="in_progress">🔥 In Progress</option>
-                <option value="done">✅ Done</option>
-              </select>
-              <button onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
+
+            {/* ---- Controls: their own row, so they never crush the title. ---- */}
+            {!bulkMode && (
+              <div className="chore-controls">
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: 'none' }}
+                    ref={el => { fileInputRefs.current[chore.id] = el; }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePhotoUpload(chore.id, file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    className="chore-icon-btn"
+                    onClick={() => fileInputRefs.current[chore.id]?.click()}
+                    disabled={isUploading}
+                    title={photoUrl ? 'Replace photo proof' : 'Add photo proof'}
+                    style={{
+                      background:  photoUrl   ? 'rgba(74,222,128,0.15)'  : needsProof ? 'rgba(249,115,22,0.15)'  : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${photoUrl ? 'rgba(74,222,128,0.4)' : needsProof ? 'rgba(249,115,22,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                      color:       photoUrl   ? '#4ADE80'                : needsProof ? '#F97316'                : 'var(--text-muted)',
+                      opacity: isUploading ? 0.5 : 1,
+                    }}
+                  >
+                    {isUploading ? '⏳' : photoUrl ? '✅' : '📷'}
+                  </button>
+                </div>
+
+                <button className="chore-icon-btn" onClick={() => handleDuplicate(chore)} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)' }} title="Duplicate">📋</button>
+                <button className="chore-icon-btn" onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)' }} title="Edit (assign, due date, more)">✏️</button>
+                <button className="chore-icon-btn" onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16 }} title="Delete">×</button>
+
+                <select className="status-select" value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ background: meta.bg, border: `1.5px solid ${meta.color}66`, color: meta.color }}>
+                  <option value="pending">⏳ Pending</option>
+                  <option value="in_progress">🔥 In Progress</option>
+                  <option value="done">✅ Done</option>
+                </select>
+              </div>
+            )}
+
+            {/* Bulk-mode select target (whole card tappable) */}
+            {bulkMode && (
+              <div onClick={() => toggleSelect(chore.id)} style={{ padding: '0 14px 12px', cursor: 'pointer' }}>
+                <span style={{ fontSize: 11, color: '#A78BFA', fontWeight: 700 }}>{isSelected ? '✓ Selected' : 'Tap to select'}</span>
+              </div>
+            )}
 
             {/* Photo thumbnail */}
             {photoUrl && (
@@ -647,15 +714,6 @@ export default function ChoresPage() {
                   ✅ Photo proof submitted
                   <div style={{ color: 'var(--text-muted)', fontWeight: 400, marginTop: 2 }}>Tap 📷 to replace</div>
                 </div>
-              </div>
-            )}
-
-            {/* Quick due-date control (assignment now lives in Edit for multi-select) */}
-            {!isEditing && (
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>📅 Due:</span>
-                <input type="date" value={chore.dueDate ? chore.dueDate.substring(0,10) : ''} onChange={e => setDueDateFn(chore, e.target.value)} style={{ flex: 1, padding: '5px 8px', fontSize: 12, background: 'rgba(255,255,255,0.05)', border: `1px solid ${overdue ? '#F87171' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: overdue ? '#F87171' : 'var(--text-muted)', cursor: 'pointer' }} />
-                <button onClick={() => setEditingId(chore.id)} style={{ padding: '5px 10px', fontSize: 11, fontWeight: 700, background: 'rgba(124,111,247,0.15)', border: '1px solid rgba(124,111,247,0.3)', borderRadius: 8, color: '#A78BFA', cursor: 'pointer', whiteSpace: 'nowrap' }}>👥 Assign</button>
               </div>
             )}
 
