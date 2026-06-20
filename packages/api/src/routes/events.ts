@@ -107,7 +107,7 @@ router.get('/sync', async (req: AuthRequest, res) => {
         data: {
           familyId:     req.familyId!,
           title:        gEvent.summary,
-          emoji:        'ðŸ“…',
+          emoji:        '📅',
           date:         new Date(startDate + 'T12:00:00'),
           time:         gEvent.start?.dateTime ? gEvent.start.dateTime.slice(11, 16) : undefined,
           color:        '#4285F4',
