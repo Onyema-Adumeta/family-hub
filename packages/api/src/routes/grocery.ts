@@ -32,7 +32,7 @@ router.post('/', async (req: AuthRequest, res) => {
         name:      name.trim(),
         qty:       qty     || null,
         category:  category || 'General',
-        listType:  listType || 'grocery',   // ÃƒÂ¢Ã¢â‚¬Â Ã‚Â key field
+        listType:  listType || 'grocery',   // ÃƒÂ¢— Ã‚Â key field
         priority:  priority || 'normal',
         notes:     notes    || null,
       },
@@ -142,7 +142,7 @@ Be practical and specific. Include quantities where helpful (e.g. "2 lbs", "1 do
   }
 });
 
-// POST /api/grocery/suggest â€” AI suggestions from meal plan
+// POST /api/grocery/suggest — AI suggestions from meal plan
 router.post('/suggest', async (req: AuthRequest, res) => {
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

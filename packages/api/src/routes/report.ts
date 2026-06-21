@@ -15,7 +15,7 @@ function getWeekStart() {
   return d;
 }
 
-// GET /api/report Ã¢â‚¬â€ full weekly report with AI insights
+// GET /api/report — full weekly report with AI insights
 router.get('/', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const familyId = req.familyId;
@@ -122,17 +122,17 @@ Respond in JSON format only, no markdown:
       } catch (e) {
         aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way with ${topMember.starsEarned} stars!` : ''} Keep building those good habits!`;
         aiTips = [
-          'Celebrate small wins Ã¢â‚¬â€ even one completed chore deserves recognition.',
+          'Celebrate small wins — even one completed chore deserves recognition.',
           'Consistency beats perfection. A daily routine builds lasting habits.',
-          'Let kids choose their own chores sometimes Ã¢â‚¬â€ ownership increases motivation.',
+          'Let kids choose their own chores sometimes — ownership increases motivation.',
         ];
       }
     } else {
       aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way!` : ''} Great effort all around!`;
       aiTips = [
-        'Celebrate small wins Ã¢â‚¬â€ even one completed chore deserves recognition.',
+        'Celebrate small wins — even one completed chore deserves recognition.',
         'Consistency beats perfection. A daily routine builds lasting habits.',
-        'Let kids choose their own chores sometimes Ã¢â‚¬â€ ownership increases motivation.',
+        'Let kids choose their own chores sometimes — ownership increases motivation.',
       ];
     }
 
