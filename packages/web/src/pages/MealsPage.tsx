@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useMeals, useCreateMeal, useDeleteMeal, useMembers } from '../hooks/useApi';
 import { api } from '../lib/api';
 
@@ -22,12 +22,28 @@ function guessEmoji(name: string): string {
   return '🍽️';
 }
 
+// Monday of the current week, formatted as YYYY-MM-DD in LOCAL time.
+// (Using toISOString() here would shift to UTC and make devices in different
+// timezones — or at different times of day — compute different week strings,
+// which made the exact-match `week` filter return nothing for some members.)
 function getWeekStart() {
   const d = new Date();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  return monday.toISOString().split('T')[0];
+  const monday = new Date(d.getFullYear(), d.getMonth(), diff); // fresh date, no mutation
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// Pull a meal's assignee ids from whichever shape the API returned
+function mealAssigneeIds(meal: any): string[] {
+  if (Array.isArray(meal.assignees) && meal.assignees.length) {
+    return meal.assignees.map((a: any) => a.id);
+  }
+  if (meal.assignedToId) return [meal.assignedToId];
+  return [];
 }
 
 export default function MealsPage() {
@@ -44,10 +60,16 @@ export default function MealsPage() {
     name: '',
     emoji: '🍕',
     notes: '',
-    assignedToId: '',
+    assigneeIds: [] as string[],
   });
   const [viewSlot, setViewSlot] = useState<string>('dinner');
   const [aiLoading, setAiLoading] = useState(false);
+
+  const toggleAssignee = (id: string) =>
+    setNewMeal(p => ({
+      ...p,
+      assigneeIds: p.assigneeIds.includes(id) ? p.assigneeIds.filter(x => x !== id) : [...p.assigneeIds, id],
+    }));
 
   // Build grid
   const mealGrid: Record<string, Record<string, any>> = {};
@@ -56,8 +78,8 @@ export default function MealsPage() {
 
   function handleAdd() {
     if (!newMeal.name.trim()) return;
-    createMeal.mutate({ ...newMeal, week, assignedToId: newMeal.assignedToId || undefined });
-    setNewMeal({ day: 'Monday', slot: 'dinner', name: '', emoji: '🍕', notes: '', assignedToId: '' });
+    createMeal.mutate({ ...newMeal, week });
+    setNewMeal({ day: 'Monday', slot: 'dinner', name: '', emoji: '🍕', notes: '', assigneeIds: [] });
     setShowAdd(false);
   }
 
@@ -79,6 +101,7 @@ export default function MealsPage() {
           await createMeal.mutateAsync({
             day: DAYS[i], slot: viewSlot, week,
             name, emoji: guessEmoji(name), notes: match[2]?.trim() || '',
+            assigneeIds: [],
           });
         }
       }
@@ -188,12 +211,43 @@ export default function MealsPage() {
             <input className="input" placeholder="Notes (optional)" style={{ marginBottom: 12, width: '100%' }}
               value={newMeal.notes} onChange={e => setNewMeal(p => ({ ...p, notes: e.target.value }))} />
 
-            {/* Who's cooking */}
-            <select className="input" style={{ marginBottom: 20, width: '100%' }}
-              value={newMeal.assignedToId} onChange={e => setNewMeal(p => ({ ...p, assignedToId: e.target.value }))}>
-              <option value="">Anyone</option>
-              {(members as any[]).map((m: any) => <option key={m.id} value={m.id}>{m.emoji} {m.name}</option>)}
-            </select>
+            {/* Who's cooking — multi-select */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+                👨‍🍳 Who's cooking? {newMeal.assigneeIds.length === 0 && <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>(Anyone)</span>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(members as any[]).map((m: any) => {
+                  const checked = newMeal.assigneeIds.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleAssignee(m.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
+                        borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        background: checked ? (m.color || '#7C3AED') + '22' : 'rgba(255,255,255,0.05)',
+                        border: `1.5px solid ${checked ? (m.color || '#7C3AED') : 'rgba(255,255,255,0.1)'}`,
+                        color: 'var(--text)', fontWeight: 700, fontSize: 13,
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
+                        background: checked ? (m.color || '#7C3AED') : 'transparent',
+                        border: `2px solid ${checked ? (m.color || '#7C3AED') : 'rgba(255,255,255,0.25)'}`,
+                        color: '#fff',
+                      }}>{checked ? '✓' : ''}</div>
+                      <span style={{ fontSize: 16 }}>{m.emoji}</span>
+                      <span>{m.name}</span>
+                    </button>
+                  );
+                })}
+                {(members as any[]).length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: 8 }}>No members yet</div>
+                )}
+              </div>
+            </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn" style={{ flex: 1 }} onClick={() => setShowAdd(false)}>Cancel</button>

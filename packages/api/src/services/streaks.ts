@@ -1,7 +1,5 @@
 import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 export async function awardBadges(memberId: string) {
   const member = await prisma.member.findUnique({ where: { id: memberId } });
@@ -77,6 +75,73 @@ export function startStreakCron() {
     }
   });
 
+  // ── 8:00 PM: streak-at-risk / chores-due warning ──────────────────────────
+  // Warns each member who still has pending chores due today, before midnight
+  // wipes any streak. Personalized count; mentions streak only if they have one
+  // to lose. Skips members who are already done (no pending due-today chores).
+  cron.schedule('0 20 * * *', async () => {
+    console.log('[streaks] Running 8pm streak-at-risk warning...');
+    try {
+      // End of today — chores "due today" have a dueDate up to this moment.
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const families = await prisma.family.findMany({ include: { members: true } });
+
+      for (const family of families) {
+        for (const member of family.members) {
+          // Count this member's still-pending chores that are due today (or daily).
+          // A chore counts if the member is an assignee (new model) OR the legacy
+          // single assignee, it's not done, and it's either a daily chore or its
+          // dueDate falls on today.
+          const pendingDueToday = await prisma.chore.count({
+            where: {
+              familyId: family.id,
+              status: { not: 'done' },
+              OR: [
+                { assignees:    { some: { id: member.id } } },
+                { assignedToId: member.id },
+              ],
+              AND: [
+                {
+                  OR: [
+                    { frequency: 'daily' },
+                    { dueDate: { gte: startOfToday, lte: endOfToday } },
+                  ],
+                },
+              ],
+            },
+          });
+
+          if (pendingDueToday === 0) continue; // nothing due — don't nag
+
+          const streak = member.streakDays ?? 0;
+          const choreWord = pendingDueToday === 1 ? 'chore' : 'chores';
+
+          const body = streak > 0
+            ? `You still have ${pendingDueToday} ${choreWord} due today. Finish before midnight to keep your ${streak}-day streak alive! 🔥`
+            : `You still have ${pendingDueToday} ${choreWord} due today. Get them done before bed! ⭐`;
+
+          await prisma.notification.create({
+            data: {
+              familyId: family.id,
+              memberId: member.id,
+              title: streak > 0 ? '🔥 Streak at risk!' : '⏰ Chores due tonight',
+              body,
+              read: false,
+            },
+          });
+
+          console.log(`[streaks] Warned ${member.name}: ${pendingDueToday} due, streak ${streak}`);
+        }
+      }
+    } catch (e) {
+      console.error('[streaks] 8pm warning error:', e);
+    }
+  });
+
   // ── Weekly recurring chores: advance dueDate after completion ─────────────
   // Runs every day at 00:05 — finds recurring weekly chores that are done
   // and advances their dueDate by 7 days (so they reset for next week).
@@ -138,7 +203,7 @@ export function startStreakCron() {
     }
   });
 
-  console.log('[streaks] Cron registered (midnight daily + 00:05 weekly recurring)');
+  console.log('[streaks] Cron registered (midnight daily + 8pm warning + 00:05 weekly recurring)');
 }
 
 export { awardBadges as default };
