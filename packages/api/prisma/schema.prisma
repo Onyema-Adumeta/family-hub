@@ -58,6 +58,7 @@ model Member {
   chores          Chore[]        @relation("AssignedChores")
   completedChores Chore[]        @relation("CompletedChores")
   choreAssignments Chore[]       @relation("ChoreAssignees")
+  mealAssignments Meal[]         @relation("MealAssignees")
   meals           Meal[]
   events          Event[]
   messages        Message[]
@@ -111,20 +112,20 @@ model Meal {
   day          String
   slot         String   @default("dinner")
   name         String
-  emoji        String   @default("Ã°Å¸ÂÂ½Ã¯Â¸Â")
+  emoji        String   @default("🍽️")
   notes        String?
   assignedToId String?
   assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
+  assignees    Member[] @relation("MealAssignees")
   week         String
   createdAt    DateTime @default(now())
 }
-
 model Event {
   id           String   @id @default(cuid())
   familyId     String
   family       Family   @relation(fields: [familyId], references: [id])
   title        String
-  emoji        String   @default("Ã°Å¸â€œâ€¦")
+  emoji        String   @default("📅")
   date         DateTime
   time         String?
   color        String?
