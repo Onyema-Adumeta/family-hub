@@ -22,32 +22,47 @@ function guessEmoji(name: string): string {
   return '🍽️';
 }
 
-// Monday of the current week, formatted as YYYY-MM-DD in LOCAL time.
-// (Using toISOString() here would shift to UTC and make devices in different
-// timezones — or at different times of day — compute different week strings,
-// which made the exact-match `week` filter return nothing for some members.)
-function getWeekStart() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.getFullYear(), d.getMonth(), diff); // fresh date, no mutation
-  const y = monday.getFullYear();
-  const m = String(monday.getMonth() + 1).padStart(2, '0');
-  const dd = String(monday.getDate()).padStart(2, '0');
+// Format a Date as YYYY-MM-DD in LOCAL time (never UTC — see week-bug note).
+function fmtLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
 }
 
-// Pull a meal's assignee ids from whichever shape the API returned
-function mealAssigneeIds(meal: any): string[] {
-  if (Array.isArray(meal.assignees) && meal.assignees.length) {
-    return meal.assignees.map((a: any) => a.id);
-  }
-  if (meal.assignedToId) return [meal.assignedToId];
-  return [];
+// Monday of the week containing `ref`, as a local Date (no mutation).
+function mondayOf(ref: Date): Date {
+  const day = ref.getDay();
+  const diff = ref.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(ref.getFullYear(), ref.getMonth(), diff);
+}
+
+// This week's Monday as YYYY-MM-DD (local).
+function thisWeekStart(): string {
+  return fmtLocal(mondayOf(new Date()));
+}
+
+// Shift a YYYY-MM-DD week-start string by N weeks, returning a new local string.
+function shiftWeek(weekStr: string, weeks: number): string {
+  const [y, m, d] = weekStr.split('-').map(Number);
+  const base = new Date(y, m - 1, d);          // local midnight of that Monday
+  base.setDate(base.getDate() + weeks * 7);
+  return fmtLocal(base);
+}
+
+// Human-readable range label, e.g. "Jun 16 – Jun 22"
+function weekRangeLabel(weekStr: string): string {
+  const [y, m, d] = weekStr.split('-').map(Number);
+  const start = new Date(y, m - 1, d);
+  const end = new Date(y, m - 1, d + 6);
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, opts)}`;
 }
 
 export default function MealsPage() {
-  const week = getWeekStart();
+  const [week, setWeek] = useState<string>(thisWeekStart());
+  const isCurrentWeek = week === thisWeekStart();
+
   const { data: meals = [], isLoading } = useMeals(week);
   const { data: members = [] } = useMembers();
   const createMeal = useCreateMeal();
@@ -78,7 +93,7 @@ export default function MealsPage() {
 
   function handleAdd() {
     if (!newMeal.name.trim()) return;
-    createMeal.mutate({ ...newMeal, week });
+    createMeal.mutate({ ...newMeal, week });   // saves to the week being viewed
     setNewMeal({ day: 'Monday', slot: 'dinner', name: '', emoji: '🍕', notes: '', assigneeIds: [] });
     setShowAdd(false);
   }
@@ -116,7 +131,7 @@ export default function MealsPage() {
   return (
     <div style={{ width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900 }}>🍽️ Meals</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={getAiSuggestions} disabled={aiLoading} className="btn" style={{ fontSize: 12 }}>
@@ -124,6 +139,42 @@ export default function MealsPage() {
           </button>
           <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize: 13 }}>+ Add meal</button>
         </div>
+      </div>
+
+      {/* Week navigation */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        marginBottom: 20, padding: '8px 10px', borderRadius: 12,
+        background: 'var(--bg-secondary)', border: '1.5px solid var(--border)', maxWidth: 480,
+      }}>
+        <button
+          onClick={() => setWeek(w => shiftWeek(w, -1))}
+          className="btn"
+          style={{ fontSize: 13, padding: '6px 12px' }}
+          aria-label="Previous week"
+        >◀</button>
+
+        <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 900, fontSize: 13 }}>{weekRangeLabel(week)}</div>
+          <div style={{ fontSize: 11, color: isCurrentWeek ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 700 }}>
+            {isCurrentWeek ? '● This week' : 'Tap "Today" to return'}
+          </div>
+        </div>
+
+        {!isCurrentWeek && (
+          <button
+            onClick={() => setWeek(thisWeekStart())}
+            className="btn"
+            style={{ fontSize: 12, padding: '6px 10px' }}
+          >Today</button>
+        )}
+
+        <button
+          onClick={() => setWeek(w => shiftWeek(w, 1))}
+          className="btn"
+          style={{ fontSize: 13, padding: '6px 12px' }}
+          aria-label="Next week"
+        >▶</button>
       </div>
 
       {/* Slot tabs */}
@@ -172,7 +223,7 @@ export default function MealsPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
           <div className="card" style={{ width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontWeight: 900, fontSize: 18 }}>🍽️ Add Meal</h2>
+              <h2 style={{ fontWeight: 900, fontSize: 18 }}>🍽️ Add Meal <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>· {weekRangeLabel(week)}</span></h2>
               <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
             </div>
 
