@@ -30,6 +30,7 @@ model Family {
   groceryItems     GroceryItem[]
   weeklyRules      WeeklyRule[]
   triviaSessions   TriviaSession[]
+  gameScores      GameScore[]
 }
 
 model Member {
@@ -69,6 +70,7 @@ model Member {
   rulesCreated    WeeklyRule[]   @relation("RuleCreator")
   ruleOutcomes    RuleOutcome[]
   triviaAnswers   TriviaAnswer[]
+  gameScores      GameScore[]
 }
 
 enum ChoreStatus {
@@ -311,6 +313,18 @@ model TriviaAnswer {
   createdAt  DateTime       @default(now())
 }
 
+model GameScore {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id])
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  gameType  String
+  score     Int
+  playedAt  DateTime @default(now())
+
+  @@index([familyId, gameType])
+}
 model WishlistItem {
   id         String   @id @default(cuid())
   memberId   String
