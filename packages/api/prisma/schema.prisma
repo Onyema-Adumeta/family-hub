@@ -30,7 +30,8 @@ model Family {
   groceryItems     GroceryItem[]
   weeklyRules      WeeklyRule[]
   triviaSessions   TriviaSession[]
-  gameScores      GameScore[]
+  gameScores       GameScore[]
+  trips            Trip[]
 }
 
 model Member {
@@ -71,6 +72,9 @@ model Member {
   ruleOutcomes    RuleOutcome[]
   triviaAnswers   TriviaAnswer[]
   gameScores      GameScore[]
+  tripsCreated    Trip[]               @relation("TripCreator")
+  packingItems    PackingItem[]        @relation("PackingItems")
+  activityAssignments  ItineraryActivity[]  @relation("ActivityAssignees")
 }
 
 enum ChoreStatus {
@@ -340,4 +344,55 @@ model WishlistItem {
   reviewedBy  String?
   reviewedAt  DateTime?
   createdAt  DateTime @default(now())
+}
+
+model Trip {
+  id            String         @id @default(cuid())
+  familyId      String
+  family        Family         @relation(fields: [familyId], references: [id])
+  title         String
+  destination   String?
+  startDate     DateTime
+  endDate       DateTime
+  notes         String?
+  createdById   String
+  createdBy     Member         @relation("TripCreator", fields: [createdById], references: [id])
+  createdAt     DateTime       @default(now())
+  packingItems  PackingItem[]
+  itineraryDays ItineraryDay[]
+}
+
+model PackingItem {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation("PackingItems", fields: [memberId], references: [id])
+  name      String
+  quantity  Int      @default(1)
+  category  String?
+  packed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ItineraryDay {
+  id         String              @id @default(cuid())
+  tripId     String
+  trip       Trip                @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date       DateTime
+  title      String?
+  notes      String?
+  activities ItineraryActivity[]
+}
+
+model ItineraryActivity {
+  id        String       @id @default(cuid())
+  dayId     String
+  day       ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  title     String
+  time      String?
+  location  String?
+  notes     String?
+  assignees Member[]     @relation("ActivityAssignees")
+  createdAt DateTime     @default(now())
 }
