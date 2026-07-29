@@ -86,10 +86,18 @@ export async function generateTriviaSession(familyId: string) {
   else if (hasTeens) { easyCount = 2; mediumCount = 5; hardCount = 3; }
   if (adults.length === 0) { hardCount = Math.max(1, hardCount - 1); easyCount++; }
 
+  // NOTE: category rotation is driven by total session count for this family,
+  // INCLUDING abandoned sessions (see DELETE route below). Previously the
+  // "New Game" flow hard-deleted the session row before regenerating, which
+  // erased its contribution to this count and caused the rotation to land on
+  // the same category repeatedly. Sessions are now soft-abandoned instead of
+  // deleted, so this count only ever grows and rotation always advances.
   const sessionCount = await prisma.triviaSession.count({ where: { familyId } });
   const pack = CATEGORY_PACKS[sessionCount % CATEGORY_PACKS.length];
 
-  // Fetch last 3 sessions worth of questions to avoid repeats
+  // Fetch last 3 sessions worth of questions to avoid repeats.
+  // This intentionally includes abandoned sessions too — a "New Game" restart
+  // should still avoid repeating the questions the family just saw.
   const recentSessions = await prisma.triviaSession.findMany({
     where: { familyId },
     orderBy: { createdAt: 'desc' },
@@ -197,8 +205,10 @@ Make sure the answer exactly matches one of the options.`;
 
 router.get('/current', async (req: AuthRequest, res) => {
   try {
+    // Exclude abandoned sessions (see DELETE route) so a "New Game" restart
+    // doesn't cause the old, discarded session to reappear as "current".
     const session = await prisma.triviaSession.findFirst({
-      where: { familyId: req.familyId! },
+      where: { familyId: req.familyId!, status: { not: 'abandoned' } },
       orderBy: { createdAt: 'desc' },
       include: {
         questions: { orderBy: { order: 'asc' } },
@@ -317,12 +327,20 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
   }
 });
 
+// Soft-abandon a session instead of hard-deleting it. Hard-deleting used to
+// remove the session's contribution to both the category rotation counter
+// (sessionCount in generateTriviaSession) and the recent-questions
+// repeat-avoidance query, which caused "New Game" to regenerate the same
+// category with near-duplicate questions. The session row is kept (marked
+// abandoned) so both signals stay intact; /current filters abandoned
+// sessions out so they don't reappear as the active game.
 router.delete('/:sessionId', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
-    await prisma.triviaAnswer.deleteMany({ where: { sessionId: req.params.sessionId } });
-    await prisma.triviaQuestion.deleteMany({ where: { sessionId: req.params.sessionId } });
-    await prisma.triviaSession.delete({ where: { id: req.params.sessionId } });
+    await prisma.triviaSession.update({
+      where: { id: req.params.sessionId },
+      data: { status: 'abandoned' },
+    });
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
