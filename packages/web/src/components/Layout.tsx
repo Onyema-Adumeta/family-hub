@@ -163,7 +163,7 @@ const NAV_SECONDARY = [
 const NAV_ADVANCED  = [
   { path:'/report',   icon:'📊', label:'Insights' },
   { path:'/quests',   icon:'🗯️', label:'Quests'   },
-  { path:'/trivia',   icon:'🧠', label:'Trivia'   },
+  { path:'/games',    icon:'🕹️', label:'Games'    },
   { path:'/wishlist', icon:'🎁', label:'Wishlist' },
   { path:'/settings', icon:'⚙️', label:'Settings'  },
 ];
@@ -173,7 +173,7 @@ const BOTTOM_NAV = [
   { path:'/chat',     icon:'💬', label:'Chat'     },
   { path:'/meals',    icon:'🍽️', label:'Meals'    },
   { path:'/schedule', icon:'📅', label:'Schedule' },
-  { path:'/trivia',   icon:'🧠', label:'Trivia'   },
+  { path:'/games',    icon:'🕹️', label:'Games'    },
 ];
 
 function NavSection({ label, items, highlight, onNav }: { label: string; items: typeof NAV_PRIMARY; highlight?: string[]; onNav?: () => void }) {

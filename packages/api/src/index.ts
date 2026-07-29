@@ -5,7 +5,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import rateLimit from 'express-rate-limit';
 import { authMiddleware } from './middleware/auth';
-
+import gamesRouter from './routes/games';
 import authRoutes from './routes/auth';
 import choresRoutes from './routes/chores';
 import mealsRoutes from './routes/meals';
@@ -104,6 +104,7 @@ app.use('/api/grocery',       authMiddleware, groceryRoutes);
 app.use('/api/rules',         authMiddleware, rulesRoutes);
 app.use('/api/trivia',        authMiddleware, triviaRoutes);
 app.use('/api/wishlist',      authMiddleware, wishlistRouter);
+app.use('/api/games',         authMiddleware, gamesRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));
