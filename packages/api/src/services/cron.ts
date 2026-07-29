@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../db';
+import { generateTriviaSession } from '../routes/trivia';
 
 async function generateDailyTrivia() {
   const families = await prisma.family.findMany({ select: { id: true, name: true } });
@@ -12,78 +13,14 @@ async function generateDailyTrivia() {
     });
     if (existing) continue;
 
-    // Call Claude to generate questions
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: `Generate 10 trivia questions for a family with a 10-year-old, a 14-year-old, and 2 adults.
-Mix difficulty like this:
-- 3 easy questions (10-year-old level: animals, basic science, Disney/Pixar, superheroes, Minecraft, fun world records)
-- 4 medium questions (14-year-old level: history, geography, music, movies/TV, sports, technology, pop culture)
-- 3 hard questions (adult level: literature, advanced science, world history, Canadian geography, cooking, 80s/90s nostalgia, tricky logic)
-Make sure every family member gets to shine at least once. Keep all content family-friendly.
-Use a completely different mix of topics each time - never repeat the same questions.
+    const result = await generateTriviaSession(family.id);
 
-Respond with ONLY a valid JSON array, no markdown, no explanation:
-[
-  {
-    "question": "Question text here?",
-    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-    "answer": "A) Option 1"
-  }
-]`,
-        }],
-      }),
-    });
-
-    const aiData = await response.json() as any;
-
-    // Background job: no HTTP response to send. Log and skip this family on failure.
-    if (!aiData.content || !aiData.content[0]?.text) {
-      console.error(`[trivia] Anthropic returned no content for family ${family.name}:`, JSON.stringify(aiData.error || aiData));
+    if ('error' in result) {
+      console.error(`[trivia] Generation failed for family ${family.name}:`, result.error);
       continue;
     }
 
-    const text = aiData.content?.[0]?.text || '[]';
-    let questions: any[] = [];
-    try {
-      questions = JSON.parse(text.replace(/```json|```/g, '').trim());
-    } catch { continue; }
-    if (!questions.length) continue;
-
-    await prisma.triviaSession.create({
-      data: {
-        familyId: family.id,
-        status: 'active',
-        questions: {
-          create: questions.slice(0, 10).map((q: any, i: number) => ({
-            question: q.question,
-            options: q.options,
-            answer: q.answer,
-            order: i + 1,
-          })),
-        },
-      },
-    });
-
-    await prisma.notification.create({
-      data: {
-        familyId: family.id,
-        title: '🎮 Daily Trivia is ready!',
-        body: `Today's 10 questions are live - can you beat the family?`,
-      },
-    });
-
-    console.log(`[trivia] Generated daily session for family ${family.name}`);
+    console.log(`[trivia] Generated daily "${result.categoryName}" session for family ${family.name}`);
   }
 }
 

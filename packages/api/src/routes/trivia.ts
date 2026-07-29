@@ -54,68 +54,53 @@ function getAgeLabel(birthday: Date | null): string {
   return `${age}-year-old (adult)`;
 }
 
-router.get('/current', async (req: AuthRequest, res) => {
-  try {
-    const session = await prisma.triviaSession.findFirst({
-      where: { familyId: req.familyId! },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        questions: { orderBy: { order: 'asc' } },
-        answers:   { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
-      },
-    });
-    res.json(session);
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// ── Shared generation logic — used by BOTH the manual "/generate" route
+// and the daily cron job. Do not fork this logic again; if the daily cron
+// needs to behave differently, add a parameter here instead of duplicating
+// the prompt/category-rotation/repeat-avoidance code elsewhere. ──────────────
+export async function generateTriviaSession(familyId: string) {
+  const members = await prisma.member.findMany({
+    where: { familyId },
+    select: { name: true, role: true, birthday: true },
+  });
 
-router.post('/generate', async (req: AuthRequest, res) => {
-  if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
+  const memberDescriptions = members.map(m =>
+    `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
+  ).join(', ');
 
-  try {
-    const members = await prisma.member.findMany({
-      where: { familyId: req.familyId! },
-      select: { name: true, role: true, birthday: true },
-    });
+  const kids   = members.filter(m => m.role === 'child');
+  const adults = members.filter(m => m.role === 'parent');
+  const hasYoungKids = kids.some(m => {
+    if (!m.birthday) return false;
+    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    return age < 11;
+  });
+  const hasTeens = kids.some(m => {
+    if (!m.birthday) return false;
+    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    return age >= 11 && age < 18;
+  });
 
-    const memberDescriptions = members.map(m =>
-      `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
-    ).join(', ');
+  let easyCount = 2, mediumCount = 4, hardCount = 4;
+  if (hasYoungKids)  { easyCount = 4; mediumCount = 4; hardCount = 2; }
+  else if (hasTeens) { easyCount = 2; mediumCount = 5; hardCount = 3; }
+  if (adults.length === 0) { hardCount = Math.max(1, hardCount - 1); easyCount++; }
 
-    const kids   = members.filter(m => m.role === 'child');
-    const adults = members.filter(m => m.role === 'parent');
-    const hasYoungKids = kids.some(m => {
-      if (!m.birthday) return false;
-      const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-      return age < 11;
-    });
-    const hasTeens = kids.some(m => {
-      if (!m.birthday) return false;
-      const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-      return age >= 11 && age < 18;
-    });
+  const sessionCount = await prisma.triviaSession.count({ where: { familyId } });
+  const pack = CATEGORY_PACKS[sessionCount % CATEGORY_PACKS.length];
 
-    let easyCount = 2, mediumCount = 4, hardCount = 4;
-    if (hasYoungKids)  { easyCount = 4; mediumCount = 4; hardCount = 2; }
-    else if (hasTeens) { easyCount = 2; mediumCount = 5; hardCount = 3; }
-    if (adults.length === 0) { hardCount = Math.max(1, hardCount - 1); easyCount++; }
+  // Fetch last 3 sessions worth of questions to avoid repeats
+  const recentSessions = await prisma.triviaSession.findMany({
+    where: { familyId },
+    orderBy: { createdAt: 'desc' },
+    take: 3,
+    include: { questions: { select: { question: true } } },
+  });
+  const recentQuestions = recentSessions
+    .flatMap(s => s.questions.map(q => `- ${q.question}`))
+    .join('\n') || 'None';
 
-    const sessionCount = await prisma.triviaSession.count({ where: { familyId: req.familyId! } });
-    const pack = CATEGORY_PACKS[sessionCount % CATEGORY_PACKS.length];
-
-    // Fetch last 3 sessions worth of questions to avoid repeats
-    const recentSessions = await prisma.triviaSession.findMany({
-      where: { familyId: req.familyId! },
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-      include: { questions: { select: { question: true } } },
-    });
-    const recentQuestions = recentSessions
-      .flatMap(s => s.questions.map(q => `- ${q.question}`))
-      .join('\n') || 'None';
-
-    const prompt = `Generate 10 trivia questions for a family game night.
+  const prompt = `Generate 10 trivia questions for a family game night.
 
 Family members: ${memberDescriptions}
 
@@ -145,73 +130,94 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
 
 Make sure the answer exactly matches one of the options.`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  const aiData = await response.json() as any;
+
+  if (!aiData.content || !aiData.content[0]?.text) {
+    console.error('[trivia] Anthropic returned no content. Full response:', JSON.stringify(aiData));
+    return { error: aiData.error?.message || aiData.type || 'AI returned no content', raw: aiData.error || aiData };
+  }
+
+  const text = aiData.content?.[0]?.text || '[]';
+
+  let questions: any[] = [];
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    questions = JSON.parse(clean);
+  } catch {
+    return { error: 'Failed to parse AI questions' };
+  }
+
+  if (!questions.length) return { error: 'No questions generated' };
+
+  const session = await prisma.triviaSession.create({
+    data: {
+      familyId,
+      status: 'active',
+      questions: {
+        create: questions.slice(0, 10).map((q: any, i: number) => ({
+          question: q.question,
+          options:  q.options,
+          answer:   q.answer,
+          order:    i + 1,
+        })),
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    },
+    include: {
+      questions: { orderBy: { order: 'asc' } },
+      answers:   true,
+    },
+  });
 
- const aiData = await response.json() as any;
+  await prisma.notification.create({
+    data: {
+      familyId,
+      title: `Trivia Night - ${pack.name}!`,
+      body: `A new ${pack.name} trivia session has started - join now and answer 10 questions!`,
+    },
+  });
 
-    // --- TEMP DIAGNOSTIC: surface what Anthropic actually returned ---
-    if (!aiData.content || !aiData.content[0]?.text) {
-      console.error('Anthropic returned no content. Full response:', JSON.stringify(aiData));
-      return res.status(500).json({
-        error: aiData.error?.message || aiData.type || 'AI returned no content',
-        raw: aiData.error || aiData,
-      });
-    }
-    // ----------------------------------------------------------------
+  broadcast(familyId, { type: 'trivia:started', session });
 
-    const text = aiData.content?.[0]?.text || '[]';
+  return { session, categoryName: pack.name };
+}
 
-    let questions: any[] = [];
-    try {
-      const clean = text.replace(/```json|```/g, '').trim();
-      questions = JSON.parse(clean);
-    } catch {
-      return res.status(500).json({ error: 'Failed to parse AI questions' });
-    }
-
-    if (!questions.length) return res.status(500).json({ error: 'No questions generated' });
-
-    const session = await prisma.triviaSession.create({
-      data: {
-        familyId: req.familyId!,
-        status: 'active',
-        questions: {
-          create: questions.slice(0, 10).map((q: any, i: number) => ({
-            question: q.question,
-            options:  q.options,
-            answer:   q.answer,
-            order:    i + 1,
-          })),
-        },
-      },
+router.get('/current', async (req: AuthRequest, res) => {
+  try {
+    const session = await prisma.triviaSession.findFirst({
+      where: { familyId: req.familyId! },
+      orderBy: { createdAt: 'desc' },
       include: {
         questions: { orderBy: { order: 'asc' } },
-        answers:   true,
+        answers:   { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
       },
     });
+    res.json(session);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    await prisma.notification.create({
-      data: {
-        familyId: req.familyId!,
-        title: `Trivia Night - ${pack.name}!`,
-        body: `A new ${pack.name} trivia session has started - join now and answer 10 questions!`,
-      },
-    });
+router.post('/generate', async (req: AuthRequest, res) => {
+  if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
 
-    broadcast(req.familyId!, { type: 'trivia:started', session });
-    res.json({ ...session, categoryName: pack.name });
+  try {
+    const result = await generateTriviaSession(req.familyId!);
+    if ('error' in result) return res.status(500).json(result);
+    res.json({ ...result.session, categoryName: result.categoryName });
   } catch (e: any) {
     console.error('Trivia generate error:', e);
     res.status(500).json({ error: e.message });
