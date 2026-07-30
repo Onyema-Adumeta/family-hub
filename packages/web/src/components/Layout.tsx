@@ -159,6 +159,7 @@ const NAV_SECONDARY = [
   { path:'/meals',    icon:'🍽️', label:'Meals'    },
   { path:'/grocery',  icon:'🛒', label:'Grocery'  },
   { path:'/rewards',  icon:'⭐', label:'Rewards'  },
+  { path:'/trips',    icon:'✈️', label:'Trips'    },
 ];
 const NAV_ADVANCED  = [
   { path:'/report',   icon:'📊', label:'Insights' },

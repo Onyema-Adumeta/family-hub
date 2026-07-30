@@ -17,6 +17,8 @@ import GroceryPage from './pages/GroceryPage';
 import SettingsPage from './pages/SettingsPage';
 import GamesPage from './pages/GamesPage';
 import WishlistPage from './pages/WishlistPage';
+import TripsPage from './pages/TripsPage';
+import TripDetailPage from './pages/TripDetailPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token);
@@ -44,10 +46,11 @@ export default function App() {
           <Route path="grocery" element={<GroceryPage />} />
           <Route path="games" element={<GamesPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
+          <Route path="trips" element={<TripsPage />} />
+          <Route path="trips/:tripId" element={<TripDetailPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
 }
-
