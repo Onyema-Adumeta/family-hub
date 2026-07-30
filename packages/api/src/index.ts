@@ -28,6 +28,7 @@ import triviaRoutes from './routes/trivia';
 import wishlistRouter from './routes/wishlist';
 import { google } from 'googleapis';
 import { prisma } from './db';
+import tripsRoutes from './routes/trips';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -105,6 +106,7 @@ app.use('/api/rules',         authMiddleware, rulesRoutes);
 app.use('/api/trivia',        authMiddleware, triviaRoutes);
 app.use('/api/wishlist',      authMiddleware, wishlistRouter);
 app.use('/api/games',         authMiddleware, gamesRouter);
+app.use('/api/trips',         authMiddleware, tripsRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ ok: true }));
