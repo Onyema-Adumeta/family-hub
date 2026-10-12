@@ -35,6 +35,10 @@ export default function ChatPage() {
   const [typingUsers, setTypingUsers] = useState<Record<string, { name: string; emoji: string; ts: number }>>({});
   const [pinnedMsg, setPinnedMsg] = useState<any | null>(null);
   const [showPinned, setShowPinned] = useState(false);
+  const [replyTo,setReplyTo] = useState<any|null>(null);
+  const [sendError,setSendError] = useState('');
+  const [hasNewMessages,setHasNewMessages] = useState(false);
+  const nearBottom = useRef(true);
 
   const bottomRef   = useRef<HTMLDivElement>(null);
   const aiBottomRef = useRef<HTMLDivElement>(null);
@@ -43,7 +47,7 @@ export default function ChatPage() {
   const typingTimer = useRef<any>(null);
 
   // Scroll to bottom on new messages
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { if(nearBottom.current) bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); else setHasNewMessages(true); }, [messages.length, (messages as any[])[messages.length-1]?.id]);
   useEffect(() => { aiBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [aiHistory, aiLoading]);
   useEffect(() => { if (showAI) setTimeout(() => aiInputRef.current?.focus(), 100); }, [showAI]);
 
@@ -86,7 +90,7 @@ export default function ChatPage() {
     }
     if (msg.type === 'message:pinned') {
       queryClient.setQueryData(['messages'], (old: any[]) =>
-        (old || []).map(m => m.id === msg.messageId ? { ...m, pinned: true } : m)
+        (old || []).map(m => m.id === msg.messageId ? { ...m, pinned: msg.pinned ?? true } : m)
       );
     }
     if (msg.type === 'message:deleted') {
@@ -115,17 +119,18 @@ export default function ChatPage() {
   }
 
   async function handleSend() {
-    if (!text.trim()) return;
-    sendMessage.mutate({ text });
-    setText('');
+    if (!text.trim() || sendMessage.isPending) return;
+    const draft=text; setSendError('');
+    try {await sendMessage.mutateAsync({text:draft,...(replyTo?{replyToId:replyTo.id}:{})});setText(current=>current===draft?'':current);setReplyTo(null);nearBottom.current=true;}
+    catch {setSendError('Message was not sent. Your draft is still here—tap Send to retry.');}
   }
 
   async function handlePin(msgId: string) {
-    await api.patch(`/chat/${msgId}/pin`);
+    const {data}=await api.patch(`/chat/${msgId}/pin`);
     queryClient.setQueryData(['messages'], (old: any[]) =>
-      (old || []).map(m => m.id === msgId ? { ...m, pinned: true } : m)
+      (old || []).map(m => m.id === msgId ? { ...m, pinned: data.pinned } : m)
     );
-    broadcast_pin(msgId);
+
   }
 
   function broadcast_pin(msgId: string) {
@@ -138,7 +143,7 @@ export default function ChatPage() {
     queryClient.setQueryData(['messages'], (old: any[]) =>
       (old || []).filter(m => m.id !== msgId)
     );
-    familySocket.send({ type: 'message:deleted', messageId: msgId });
+
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -147,7 +152,7 @@ export default function ChatPage() {
     setUploading(true);
     try {
       const { url, type } = await uploadFile(file);
-      sendMessage.mutate({ mediaUrl: url, mediaType: type });
+      await sendMessage.mutateAsync({mediaUrl:url,mediaType:type,...(replyTo?{replyToId:replyTo.id}:{})});setReplyTo(null);
     } catch { alert('Upload failed'); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
   }
@@ -223,15 +228,18 @@ export default function ChatPage() {
         )}
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 12 }}>
+        <div onScroll={e=>{const el=e.currentTarget;nearBottom.current=el.scrollHeight-el.scrollTop-el.clientHeight<100;if(nearBottom.current)setHasNewMessages(false);}} style={{ flex: 1, overflowY: 'auto', paddingBottom: 12 }}>
           {(messages as any[]).map((msg: any) => {
-            const sender = getMember(msg.memberId);
+            const sender = getMember(msg.memberId) || msg.member;
+            const original=(messages as any[]).find(m=>m.id===msg.replyToId);
+            const previous=(messages as any[])[(messages as any[]).indexOf(msg)-1];
+            const showDate=!previous||new Date(previous.createdAt).toDateString()!==new Date(msg.createdAt).toDateString();
             const isMe = msg.memberId === member?.id;
             const isParent = member?.role === 'parent';
             return (
-              <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 10, alignItems: 'flex-end', gap: 6 }}
+              <div key={msg.id}>{showDate&&<div style={{textAlign:'center',fontSize:11,color:'var(--text-muted)',margin:'12px 0'}}>{new Date(msg.createdAt).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</div>}<div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 10, alignItems: 'flex-end', gap: 6 }}
                 onMouseEnter={e => { const el = e.currentTarget.querySelector('.msg-actions') as HTMLElement; if (el) el.style.opacity = '1'; }}
-                onMouseLeave={e => { const el = e.currentTarget.querySelector('.msg-actions') as HTMLElement; if (el) el.style.opacity = '0'; }}>
+                onMouseLeave={e => { const el = e.currentTarget.querySelector('.msg-actions') as HTMLElement; if (el) el.style.opacity = '1'; }}>
                 {!isMe && (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: sender?.color || '#6366F1', border: `2px solid ${sender?.color || '#6366F1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, overflow: 'hidden' }}>
                     {sender?.avatarUrl ? <img src={sender.avatarUrl} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
@@ -247,7 +255,9 @@ export default function ChatPage() {
                       border: msg.pinned ? '1.5px solid rgba(251,191,36,0.4)' : 'none',
                     }}>
                       {msg.pinned && <span style={{ fontSize: 10, marginRight: 6 }}>📌</span>}
-                      {msg.text && <span>{msg.text}</span>}
+                      {msg.replyToId&&<div style={{borderLeft:'3px solid var(--primary)',paddingLeft:8,marginBottom:8,fontSize:11,opacity:0.85}}><strong>Reply to {original?(getMember(original.memberId)?.name || original.member?.name || 'family member'):'earlier message'}</strong><div>{original?(original.text || '📎 Attachment').slice(0,120):'Original message is no longer in this view.'}</div></div>}
+                      {!msg.text&&!msg.mediaUrl&&<span style={{opacity:0.7}}>Earlier message has no text or attachment.</span>}
+                      {msg.text && <span style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{msg.text}</span>}
                       {msg.mediaUrl && msg.mediaType === 'image' && (
                         <a href={msg.mediaUrl} target="_blank" rel="noreferrer">
                           <img src={msg.mediaUrl} alt="shared" style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0, display: 'block' }} />
@@ -259,13 +269,14 @@ export default function ChatPage() {
                     </div>
                     {/* Hover actions */}
                     <div className="msg-actions" style={{
-                      position: 'absolute', top: -28, [isMe ? 'left' : 'right']: 0,
-                      display: 'flex', gap: 4, opacity: 0, transition: 'opacity 0.15s',
+                      position: 'relative', marginTop: 6,
+                      display: 'flex', gap: 8, opacity: 1, transition: 'opacity 0.15s',
                       background: 'var(--bg-secondary)', borderRadius: 8, padding: '3px 6px',
                       border: '1px solid var(--border)', whiteSpace: 'nowrap',
                     }}>
-                      {!msg.pinned && isParent && (
-                        <button onClick={() => handlePin(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Pin">📌</button>
+                      <button aria-label={`Reply to ${sender?.name || 'message'}`} onClick={()=>setReplyTo(msg)} style={{background:'none',border:'none',color:'var(--text-primary)',cursor:'pointer',padding:4}}>↩ Reply</button>
+                      {isParent && (
+                        <button onClick={() => handlePin(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title={msg.pinned?'Unpin':'Pin'}>{msg.pinned?'Unpin':'📌 Pin'}</button>
                       )}
                       {(isMe || isParent) && (
                         <button onClick={() => handleDelete(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Delete">🗑</button>
@@ -276,7 +287,7 @@ export default function ChatPage() {
                     {new Date(msg.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
-              </div>
+              </div></div>
             );
           })}
 
@@ -300,6 +311,7 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
+        {hasNewMessages&&<button onClick={()=>{nearBottom.current=true;bottomRef.current?.scrollIntoView({behavior:'smooth'});setHasNewMessages(false);}} className="btn">Jump to latest messages ↓</button>}
         {/* Quick replies */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8, flexShrink: 0 }}>
           {QUICK_MSGS.map(q => (
@@ -311,19 +323,22 @@ export default function ChatPage() {
           ))}
         </div>
 
+        {replyTo&&<div style={{padding:10,borderLeft:'3px solid var(--primary)',background:'var(--bg-secondary)'}}>Replying to {getMember(replyTo.memberId)?.name || replyTo.member?.name || 'family member'}: {(replyTo.text || '📎 Attachment').slice(0,100)} <button onClick={()=>setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
+        {sendError&&<p role="alert">{sendError}</p>}
         {/* Input */}
         <div style={{ display: 'flex', gap: 8, padding: '10px 0', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
           <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--bg-secondary)', border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>
             {uploading ? '⏳' : '📎'}
           </button>
           <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} style={{ display: 'none' }} />
-          <input className="input" style={{ flex: 1 }} placeholder="Say something..."
+          <textarea aria-label="Family message" rows={2} maxLength={4000} className="input" style={{ flex: 1,resize:'vertical' }} placeholder="Write to your family…"
             value={text} onChange={e => handleTyping(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
           <button onClick={handleSend} disabled={!text.trim() || sendMessage.isPending} className="btn btn-primary" style={{ padding: '10px 16px', flexShrink: 0 }}>
             Send →
           </button>
         </div>
+        <p style={{fontSize:11,color:'var(--text-muted)'}}>Enter to send · Shift + Enter for a new line. Enable Family chat notifications on each device.</p>
       </div>
 
       {/* ── AI Assistant Panel ── */}

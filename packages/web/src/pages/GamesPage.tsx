@@ -1,13 +1,13 @@
 // packages/web/src/pages/GamesPage.tsx
 import { useState } from 'react';
 import TriviaPage from './TriviaPage';
-import MemoryMatch from '../games/MemoryMatch';
+import Codebreaker from '../games/Codebreaker';
 
-type GameKey = 'menu' | 'trivia' | 'memory';
+type GameKey = 'menu' | 'trivia' | 'codebreaker';
 
 const GAMES: { key: GameKey; label: string; emoji: string; desc: string }[] = [
   { key: 'trivia', label: 'Family Trivia', emoji: '🎮', desc: '10 AI questions · live leaderboard' },
-  { key: 'memory', label: 'Memory Match', emoji: '🧠', desc: 'Pass-and-play · fewest moves wins' },
+  { key: 'codebreaker', label: 'Codebreaker Lab', emoji: '🔐', desc: 'Deduction challenge · solo or code maker vs solver' },
 ];
 
 export default function GamesPage() {
@@ -20,10 +20,10 @@ export default function GamesPage() {
     </div>
   );
 
-  if (active === 'memory') return (
+  if (active === 'codebreaker') return (
     <div>
-      <BackBar onBack={() => setActive('menu')} title="Memory Match" />
-      <MemoryMatch />
+      <BackBar onBack={() => setActive('menu')} title="Codebreaker Lab" />
+      <Codebreaker />
     </div>
   );
 
@@ -32,7 +32,7 @@ export default function GamesPage() {
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ fontSize: 56, marginBottom: 8 }}>🕹️</div>
         <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 4px' }}>Family Games</h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Pick something to play together</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Pick a challenge to play together</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 480, margin: '0 auto' }}>
         {GAMES.map(g => (

@@ -70,6 +70,21 @@ export default function RewardsPage() {
         )}
       </div>
 
+      {isParent && <details className="card" style={{padding:14,marginBottom:16}}>
+        <summary style={{cursor:'pointer',fontWeight:700}}>Reward ideas to choose together</summary>
+        <p style={{fontSize:12,color:'var(--text-muted)'}}>Ask each child what they value. These are editable drafts; agree the activity, cost and timing before saving.</p>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          {[
+            {name:'Choose the family board game',emoji:'🎲',cost:15,description:'Choose the game for an agreed family game session.'},
+            {name:'Plan Saturday breakfast',emoji:'🥞',cost:20,description:'Choose the menu within the family budget and help prepare it.'},
+            {name:'Pick the weekend movie',emoji:'🎬',cost:25,description:'Choose an age-appropriate film during existing weekend screen time.'},
+            {name:'Choose a science or building challenge',emoji:'🔬',cost:40,description:'Choose an activity using available materials; agree any purchase budget first.'},
+            {name:'Plan a local adventure',emoji:'🧭',cost:60,description:'Propose a hike, park outing or other local activity. Agree the date and budget together.'},
+            {name:'Choose a book or creative kit',emoji:'📚',cost:80,description:'Choose a book or project within an agreed parent budget. Confirm availability before saving.'},
+          ].map(idea=><button key={idea.name} onClick={()=>{setForm(idea);setShowAdd(true);}} style={{padding:'8px 10px',borderRadius:10,border:'1px solid var(--border)',background:'var(--bg-secondary)',color:'var(--text-primary)',cursor:'pointer'}}>{idea.emoji} {idea.name} · {idea.cost}⭐</button>)}
+        </div>
+      </details>}
+
       {/* My stats */}
       <div style={{
         background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(244,114,182,0.08))',

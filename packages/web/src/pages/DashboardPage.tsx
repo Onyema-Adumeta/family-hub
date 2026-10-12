@@ -414,7 +414,7 @@ export default function DashboardPage() {
     });
   recentMsgs.slice(0, 2).forEach(msg => {
     const who = allMembers.find(m => m.id === msg.memberId);
-    activity.push({ icon: '💬', text: `${who?.name || 'Family'}: "${(msg.content || '').slice(0, 50)}"`, color: '#7C6FF7' });
+    activity.push({ icon: '💬', text: `${who?.name || 'Family'}: "${(msg.text || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 50)}"`, color: '#7C6FF7' });
   });
 
   const isParent = member?.role === 'parent';
@@ -725,7 +725,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: sender?.color || '#A78BFA', marginBottom: 3 }}>{sender?.name || 'Family'}</div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{(msg.content || '').slice(0, 80)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{(msg.text || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 80)}</div>
                     </div>
                   </div>
                 );
