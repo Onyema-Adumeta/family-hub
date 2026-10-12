@@ -37,6 +37,8 @@ export default function ChatPage() {
   const [showPinned, setShowPinned] = useState(false);
   const [replyTo,setReplyTo] = useState<any|null>(null);
   const [sendError,setSendError] = useState('');
+  const [pollOpen,setPollOpen]=useState(false),[pollQuestion,setPollQuestion]=useState(''),[pollOptions,setPollOptions]=useState('');
+  const [actionBusy,setActionBusy]=useState<string|null>(null);
   const [hasNewMessages,setHasNewMessages] = useState(false);
   const nearBottom = useRef(true);
 
@@ -59,6 +61,7 @@ export default function ChatPage() {
 
   // Real-time WebSocket
   useSocket((msg) => {
+    if(msg.type==='message:updated')queryClient.invalidateQueries({queryKey:['messages']});
     if (msg.type === 'message:new') {
       queryClient.setQueryData(['messages'], (old: any[]) => {
         const existing = (old || []).find(m => m.id === msg.message.id);
@@ -118,6 +121,8 @@ export default function ChatPage() {
     return (members as any[]).find(m => m.id === id);
   }
 
+  async function messageAction(id:string,action:'ack'|'vote',data:any){setActionBusy(id);try{await api.post(`/chat/${id}/${action}`,data);await queryClient.invalidateQueries({queryKey:['messages']});}catch{setSendError('Could not save that response. Please try again.');}finally{setActionBusy(null);}}
+  async function createPoll(){if(sendMessage.isPending)return;try{await sendMessage.mutateAsync({pollQuestion,pollOptions:pollOptions.split('\n').map(s=>s.trim()).filter(Boolean)});setPollQuestion('');setPollOptions('');setPollOpen(false);}catch{setSendError('Could not create poll. Use a question and 2–6 different options.');}}
   async function handleSend() {
     if (!text.trim() || sendMessage.isPending) return;
     const draft=text; setSendError('');
@@ -255,8 +260,9 @@ export default function ChatPage() {
                       border: msg.pinned ? '1.5px solid rgba(251,191,36,0.4)' : 'none',
                     }}>
                       {msg.pinned && <span style={{ fontSize: 10, marginRight: 6 }}>📌</span>}
-                      {msg.replyToId&&<div style={{borderLeft:'3px solid var(--primary)',paddingLeft:8,marginBottom:8,fontSize:11,opacity:0.85}}><strong>Reply to {original?(getMember(original.memberId)?.name || original.member?.name || 'family member'):'earlier message'}</strong><div>{original?(original.text || '📎 Attachment').slice(0,120):'Original message is no longer in this view.'}</div></div>}
-                      {!msg.text&&!msg.mediaUrl&&<span style={{opacity:0.7}}>Earlier message has no text or attachment.</span>}
+                      {msg.replyToId&&<div style={{borderLeft:'3px solid var(--primary)',paddingLeft:8,marginBottom:8,fontSize:11,opacity:0.85}}><strong>Reply to {original?(getMember(original.memberId)?.name || original.member?.name || 'family member'):'earlier message'}</strong><div>{original?(original.text || original.pollQuestion || '📎 Attachment').slice(0,120):'Original message is no longer in this view.'}</div></div>}
+                      {!msg.text&&!msg.mediaUrl&&!msg.pollQuestion&&<span style={{opacity:0.7}}>Earlier message has no text or attachment.</span>}
+                      {msg.pollQuestion&&<div><strong>📊 {msg.pollQuestion}</strong>{(msg.pollOptions||[]).map((option:string,index:number)=>{const count=(msg.votes||[]).filter((v:any)=>v.optionIndex===index).length;const selected=(msg.votes||[]).some((v:any)=>v.memberId===member?.id&&v.optionIndex===index);return <button key={index} disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'vote',{optionIndex:index})} style={{display:'block',width:'100%',textAlign:'left',marginTop:6,padding:8,borderRadius:8,border:'1px solid var(--border)',background:selected?'var(--primary)':'var(--bg-secondary)',color:'var(--text-primary)'}}>{selected?'✓ ':''}{option} · {count} votes</button>})}<p style={{fontSize:11}}>One vote per person; tap another option to change your vote.</p></div>}
                       {msg.text && <span style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{msg.text}</span>}
                       {msg.mediaUrl && msg.mediaType === 'image' && (
                         <a href={msg.mediaUrl} target="_blank" rel="noreferrer">
@@ -270,10 +276,12 @@ export default function ChatPage() {
                     {/* Hover actions */}
                     <div className="msg-actions" style={{
                       position: 'relative', marginTop: 6,
-                      display: 'flex', gap: 8, opacity: 1, transition: 'opacity 0.15s',
+                      display: 'flex', gap: 8, flexWrap:'wrap', opacity: 1, transition: 'opacity 0.15s',
                       background: 'var(--bg-secondary)', borderRadius: 8, padding: '3px 6px',
                       border: '1px solid var(--border)', whiteSpace: 'nowrap',
                     }}>
+                      <button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'seen'})}>Seen</button>
+                      <button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'done'})}>Done</button>
                       <button aria-label={`Reply to ${sender?.name || 'message'}`} onClick={()=>setReplyTo(msg)} style={{background:'none',border:'none',color:'var(--text-primary)',cursor:'pointer',padding:4}}>↩ Reply</button>
                       {isParent && (
                         <button onClick={() => handlePin(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title={msg.pinned?'Unpin':'Pin'}>{msg.pinned?'Unpin':'📌 Pin'}</button>
@@ -283,6 +291,7 @@ export default function ChatPage() {
                       )}
                     </div>
                   </div>
+                  {!!msg.acknowledgements?.length&&<div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{msg.acknowledgements.map((a:any)=>`${a.member?.name || 'Family member'}: ${a.kind==='done'?'Done':'Seen'}`).join(' · ')}</div>}
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textAlign: isMe ? 'right' : 'left', paddingLeft: isMe ? 0 : 4 }}>
                     {new Date(msg.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -312,6 +321,8 @@ export default function ChatPage() {
         </div>
 
         {hasNewMessages&&<button onClick={()=>{nearBottom.current=true;bottomRef.current?.scrollIntoView({behavior:'smooth'});setHasNewMessages(false);}} className="btn">Jump to latest messages ↓</button>}
+        <button onClick={()=>setPollOpen(p=>!p)} style={{alignSelf:'flex-start',marginBottom:8}}>📊 {pollOpen?'Cancel poll':'Create family poll'}</button>
+        {pollOpen&&<div className="card" style={{padding:12,marginBottom:12}}><label>Question<input className="input" value={pollQuestion} maxLength={200} onChange={e=>setPollQuestion(e.target.value)}/></label><label>Options (one per line)<textarea className="input" rows={3} value={pollOptions} onChange={e=>setPollOptions(e.target.value)} placeholder="Pasta\nRice\nTacos"/></label><button disabled={sendMessage.isPending||!pollQuestion.trim()} onClick={createPoll}>Post poll</button></div>}
         {/* Quick replies */}
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8, flexShrink: 0 }}>
           {QUICK_MSGS.map(q => (
@@ -323,7 +334,7 @@ export default function ChatPage() {
           ))}
         </div>
 
-        {replyTo&&<div style={{padding:10,borderLeft:'3px solid var(--primary)',background:'var(--bg-secondary)'}}>Replying to {getMember(replyTo.memberId)?.name || replyTo.member?.name || 'family member'}: {(replyTo.text || '📎 Attachment').slice(0,100)} <button onClick={()=>setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
+        {replyTo&&<div style={{padding:10,borderLeft:'3px solid var(--primary)',background:'var(--bg-secondary)'}}>Replying to {getMember(replyTo.memberId)?.name || replyTo.member?.name || 'family member'}: {(replyTo.text || replyTo.pollQuestion || '📎 Attachment').slice(0,100)} <button onClick={()=>setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
         {sendError&&<p role="alert">{sendError}</p>}
         {/* Input */}
         <div style={{ display: 'flex', gap: 8, padding: '10px 0', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
@@ -338,7 +349,7 @@ export default function ChatPage() {
             Send →
           </button>
         </div>
-        <p style={{fontSize:11,color:'var(--text-muted)'}}>Enter to send · Shift + Enter for a new line. Enable Family chat notifications on each device.</p>
+        <p style={{fontSize:11,color:'var(--text-muted)'}}>Enter to send · Shift + Enter for a new line. Enable Family chat notifications in Settings on each device. Seen/Done acknowledges this message; it does not complete a chore.</p>
       </div>
 
       {/* ── AI Assistant Panel ── */}

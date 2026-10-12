@@ -46,10 +46,13 @@ model Member {
   stars           Int            @default(0)
   password        String
   email           String?
+  rewardGoalId String?
   canOpenPersonalOS Boolean @default(false)
   canOpenPremed Boolean @default(false)
   pushToken       String?
   webPushSubscriptions WebPushSubscription[]
+  messageAcknowledgements MessageAcknowledgement[]
+  messagePollVotes MessagePollVote[]
   createdAt       DateTime       @default(now())
   birthday        DateTime?
   wishlist        WishlistItem[]
@@ -87,6 +90,7 @@ enum ChoreStatus {
 }
 
 model Chore {
+  archivedAt DateTime?
   id            String      @id @default(cuid())
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
@@ -181,6 +185,10 @@ model Message {
   mediaUrl  String?
   mediaType String?
   replyToId String?
+  pollQuestion String?
+  pollOptions String[] @default([])
+  acknowledgements MessageAcknowledgement[]
+  votes MessagePollVote[]
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -410,4 +418,23 @@ model WebPushSubscription {
   rewards Boolean @default(true)
   chat Boolean @default(true)
   createdAt DateTime @default(now())
+}
+
+model MessageAcknowledgement {
+ id String @id @default(cuid())
+ messageId String
+ message Message @relation(fields:[messageId], references:[id], onDelete:Cascade)
+ memberId String
+ member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
+ kind String
+ @@unique([messageId, memberId])
+}
+model MessagePollVote {
+ id String @id @default(cuid())
+ messageId String
+ message Message @relation(fields:[messageId], references:[id], onDelete:Cascade)
+ memberId String
+ member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
+ optionIndex Int
+ @@unique([messageId, memberId])
 }

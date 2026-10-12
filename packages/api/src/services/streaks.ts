@@ -65,7 +65,7 @@ export function startStreakCron() {
 
       // Reset daily chores back to pending
       const { count } = await prisma.chore.updateMany({
-        where: { frequency: 'daily', status: 'done' },
+        where: { frequency: 'daily', archivedAt:null, status: 'done' },
         data: { status: 'pending', completedAt: null, completedById: null },
       });
       console.log(`[streaks] Reset ${count} daily chores to pending`);
@@ -99,6 +99,7 @@ export function startStreakCron() {
           const pendingDueToday = await prisma.chore.count({
             where: {
               familyId: family.id,
+              archivedAt:null,
               status: { not: 'done' },
               OR: [
                 { assignees:    { some: { id: member.id } } },
@@ -156,6 +157,7 @@ export function startStreakCron() {
       const doneRecurring = await prisma.chore.findMany({
         where: {
           frequency: 'weekly',
+          archivedAt:null,
           recurring: true,
           status: 'done',
         },
@@ -187,6 +189,7 @@ export function startStreakCron() {
       const overdue = await prisma.chore.findMany({
         where: {
           frequency: 'weekly',
+          archivedAt:null,
           recurring: true,
           status: { not: 'done' },
           dueDate: { lt: today },

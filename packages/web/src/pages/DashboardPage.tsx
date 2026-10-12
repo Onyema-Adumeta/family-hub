@@ -1,5 +1,5 @@
+import RewardGoal from '../components/RewardGoal';
 import DashboardLinks from '../components/DashboardLinks';
-import BrowserNotifications from '../components/BrowserNotifications';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChores, useMembers, useMeals, useEvents, useMessages } from '../hooks/useApi';
@@ -40,7 +40,7 @@ function fmtDate(raw: string | null | undefined, opts: Intl.DateTimeFormatOption
 }
 
 const TODAY_DAY = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];
-const TODAY_STR = new Date().toISOString().split('T')[0];
+const TODAY_STR = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, gradient, shadow, onClick }: {
@@ -382,9 +382,14 @@ export default function DashboardPage() {
 
   const allChores  = chores as any[];
   const allMembers = members as any[];
-  const pending    = allChores.filter(c => (c.status || 'pending') === 'pending');
-  const inProg     = allChores.filter(c => c.status === 'in_progress');
-  const doneToday  = allChores.filter(c => c.status === 'done' && c.completedAt?.startsWith(TODAY_STR));
+  const assignedToMe=(c:any)=>c.assignedToId===member?.id||c.assignees?.some((a:any)=>a.id===member?.id);
+  const visible=member?.role==='parent'?allChores:allChores.filter(assignedToMe);
+  const dueNow=(c:any)=>c.dueDate?c.dueDate.slice(0,10)<=TODAY_STR:c.frequency==='daily';
+  const todayChores=allChores.filter(c=>c.status==='done'?c.completedAt?.startsWith(TODAY_STR):dueNow(c));
+  const relevant=visible.filter(c=>c.status==='done'?c.completedAt?.startsWith(TODAY_STR):dueNow(c));
+  const pending    = relevant.filter(c => (c.status || 'pending') === 'pending');
+  const inProg     = relevant.filter(c => c.status === 'in_progress');
+  const doneToday  = relevant.filter(c => c.status === 'done' && c.completedAt?.startsWith(TODAY_STR));
 
   const tonightMeal      = (meals as any[]).find(m => m.day === TODAY_DAY && m.slot === 'dinner');
   const tonightBreakfast = (meals as any[]).find(m => m.day === TODAY_DAY && m.slot === 'breakfast');
@@ -400,8 +405,9 @@ export default function DashboardPage() {
 
   const recentMsgs  = [...(messages as any[])].reverse().slice(0, 3);
   const leaderboard = [...allMembers].sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 5);
-  const overdue     = allChores.filter(c => c.status !== 'done' && c.dueDate && c.dueDate < TODAY_STR);
-  const myChores    = allChores.filter(c => c.assignedToId === member?.id && c.status !== 'done');
+  const overdue     = visible.filter(c => c.status !== 'done' && c.dueDate && c.dueDate.slice(0,10) < TODAY_STR);
+  const myChores    = allChores.filter(c => assignedToMe(c) && c.status !== 'done' && dueNow(c));
+  const later=visible.filter(c=>c.status!=='done'&&!dueNow(c));
 
   const activity: { icon: string; text: string; color: string }[] = [];
   allChores
@@ -414,7 +420,7 @@ export default function DashboardPage() {
     });
   recentMsgs.slice(0, 2).forEach(msg => {
     const who = allMembers.find(m => m.id === msg.memberId);
-    activity.push({ icon: '💬', text: `${who?.name || 'Family'}: "${(msg.text || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 50)}"`, color: '#7C6FF7' });
+    activity.push({ icon: '💬', text: `${who?.name || 'Family'}: "${(msg.text || msg.pollQuestion || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 50)}"`, color: '#7C6FF7' });
   });
 
   const isParent = member?.role === 'parent';
@@ -443,7 +449,12 @@ export default function DashboardPage() {
       </div>
 
       <DashboardLinks />
-      <BrowserNotifications />
+      <section className="card" style={{padding:16,marginBottom:16}}>
+        <h2 style={{fontSize:16}}>Your tasks today</h2>
+        {!myChores.length?<p>No assigned routines due today.</p>:myChores.map((c:any)=><button key={c.id} onClick={()=>navigate('/chores')} style={{display:'block',width:'100%',textAlign:'left',padding:12,marginTop:6,border:'1px solid var(--border)',borderRadius:10,background:'var(--bg-secondary)',color:'var(--text-primary)',cursor:'pointer'}}>{c.emoji || '✓'} {c.title} · {c.dueDate?.slice(0,10)<TODAY_STR?'Overdue':c.status==='in_progress'?'In progress':'Due today'}</button>)}
+        {!!later.length&&<button onClick={()=>navigate('/chores')} style={{marginTop:10}}>{later.length} later or unscheduled tasks →</button>}
+      </section>
+      <RewardGoal />
       {/* ── Overdue Alert ── */}
       {overdue.length > 0 && (
         <div onClick={() => navigate('/chores')} style={{
@@ -465,7 +476,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Family Pulse ── */}
-      <FamilyPulseBanner members={allMembers} chores={allChores} />
+      <FamilyPulseBanner members={allMembers} chores={todayChores} />
 
       {/* ── Weekly Goal Widget ── */}
       {!isParent && <WeeklyGoalWidget />}
@@ -725,7 +736,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: sender?.color || '#A78BFA', marginBottom: 3 }}>{sender?.name || 'Family'}</div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{(msg.text || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 80)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{(msg.text || msg.pollQuestion || (msg.mediaUrl?'📎 Shared attachment':'Message')).slice(0, 80)}</div>
                     </div>
                   </div>
                 );

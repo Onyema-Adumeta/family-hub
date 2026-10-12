@@ -32,7 +32,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
         select: { id: true, name: true, emoji: true, color: true, stars: true, streakDays: true, badges: true, totalChoresDone: true }
       }),
       prisma.chore.findMany({
-        where: { familyId },
+        where: { familyId, archivedAt:null },
         select: { id: true, title: true, status: true, stars: true, assignedToId: true, completedById: true, completedAt: true, emoji: true }
       }),
       prisma.chore.findMany({

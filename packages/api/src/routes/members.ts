@@ -42,6 +42,17 @@ router.patch('/:id/dashboard-access', async (req: AuthRequest, res) => {
   } catch {res.status(500).json({error:'Could not save dashboard access'});}
 });
 
+router.patch('/:id/reward-goal',async(req:AuthRequest,res)=>{
+ if(req.memberId!==req.params.id&&req.role!=='parent')return res.status(403).json({error:'Choose your own reward goal'});
+ const {rewardId}=req.body||{};
+ if(rewardId!==null&&typeof rewardId!=='string')return res.status(400).json({error:'Choose a reward'});
+ try{
+  if(rewardId){const reward=await prisma.reward.findFirst({where:{id:rewardId,familyId:req.familyId}});if(!reward)return res.status(404).json({error:'Reward not found'});}
+  const result=await prisma.member.updateMany({where:{id:req.params.id,familyId:req.familyId},data:{rewardGoalId:rewardId}});
+  if(!result.count)return res.status(404).json({error:'Member not found'});res.json({ok:true});
+ }catch{res.status(500).json({error:'Could not save reward goal'});}
+});
+
 // PATCH /api/members/:id — update profile (name, emoji, color, avatar)
 router.patch('/:id', async (req: AuthRequest, res) => {
   const { id } = req.params;

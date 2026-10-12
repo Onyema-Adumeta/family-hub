@@ -1,3 +1,5 @@
+import ChoreReview from '../components/ChoreReview';
+import BrowserNotifications from '../components/BrowserNotifications';
 import DashboardLinks from '../components/DashboardLinks';
 import { useState, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
@@ -145,6 +147,8 @@ export default function SettingsPage() {
     <div style={{ padding: '16px 16px 80px', maxWidth: 540, margin: '0 auto' }}>
      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 16px' }}>⚙️ Settings</h1>
      {isParent && <DashboardLinks manage />}
+     <BrowserNotifications />
+     {isParent && <ChoreReview />}
 
       <div style={{ marginBottom: 16 }}>
         <StreakCard />

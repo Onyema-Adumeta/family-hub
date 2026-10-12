@@ -30,7 +30,7 @@ export function setupCron() {
   cron.schedule('0 0 * * *', async () => {
     console.log('Resetting daily chores...');
     await prisma.chore.updateMany({
-      where: { frequency: 'daily' },
+      where: { frequency: 'daily', archivedAt:null },
       data: { status: 'pending', completedAt: null, completedById: null }
     });
   });
@@ -40,7 +40,7 @@ export function setupCron() {
     const families = await prisma.family.findMany({ select: { id: true, name: true } });
     for (const family of families) {
       const pending = await prisma.chore.count({
-        where: { familyId: family.id, status: 'pending', frequency: 'daily' }
+        where: { familyId: family.id, archivedAt:null, status: 'pending', frequency: 'daily' }
       });
       if (pending > 0) {
         await prisma.notification.create({
@@ -60,7 +60,7 @@ export function setupCron() {
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const members=await prisma.member.findMany({select:{id:true,familyId:true}});
     for(const member of members){
-     const chores=await prisma.chore.findMany({where:{familyId:member.familyId,status:{not:'done'},OR:[{assignedToId:member.id},{assignees:{some:{id:member.id}}}]}});
+     const chores=await prisma.chore.findMany({where:{familyId:member.familyId,archivedAt:null,status:{not:'done'},OR:[{assignedToId:member.id},{assignees:{some:{id:member.id}}}]}});
      const due=chores.filter(c=>c.dueDate?c.dueDate.toISOString().slice(0,10)<=today:c.frequency==='daily');
      if(due.length) await sendBrowserPush(member.id,'Tasks need your attention',`${due.length} assigned task${due.length===1?'':'s'} due or overdue.`, '/chores');
     }
@@ -70,7 +70,7 @@ export function setupCron() {
   // Weekly reset on Sunday midnight
   cron.schedule('0 0 * * 0', async () => {
     await prisma.chore.updateMany({
-      where: { frequency: 'weekly' },
+      where: { frequency: 'weekly', archivedAt:null },
       data: { status: 'pending', completedAt: null, completedById: null }
     });
   });

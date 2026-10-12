@@ -61,7 +61,7 @@ async function notifyAssigned(
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const chores = await prisma.chore.findMany({
-      where: { familyId: req.familyId },
+      where: { familyId: req.familyId, archivedAt:null },
       include: choreInclude,
       orderBy: { createdAt: 'desc' },
     });
@@ -69,6 +69,28 @@ router.get('/', async (req: AuthRequest, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Reversible parent review: archive duplicates or restart pending routines.
+router.get('/review',async(req:AuthRequest,res)=>{
+ if(req.role!=='parent')return res.status(403).json({error:'Parents only'});
+ try{res.json(await prisma.chore.findMany({where:{familyId:req.familyId},include:choreInclude,orderBy:{createdAt:'desc'}}));}
+ catch{res.status(500).json({error:'Could not load review'});}
+});
+router.post('/review',async(req:AuthRequest,res)=>{
+ if(req.role!=='parent')return res.status(403).json({error:'Parents only'});
+ const {ids,action}=req.body||{};
+ if(!Array.isArray(ids)||!ids.length||ids.length>100||ids.some((id:any)=>typeof id!=='string')||!['archive','restore','restart'].includes(action))return res.status(400).json({error:'Choose tasks and an action'});
+ try{
+  const selected=await prisma.chore.findMany({where:{id:{in:ids},familyId:req.familyId}});
+  if(selected.length!==new Set(ids).size)return res.status(400).json({error:'Some tasks are no longer available'});
+  if(action!=='restore'&&selected.some(c=>c.status==='done'))return res.status(400).json({error:'Completed tasks are preserved; choose unfinished tasks'});
+  if(action==='restart'&&selected.some(c=>!['daily','weekly'].includes(c.frequency)))return res.status(400).json({error:'Restart is for daily or weekly routines only'});
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const data=action==='archive'?{archivedAt:new Date()}:action==='restore'?{archivedAt:null}:{dueDate:new Date(today+'T23:59:59.999Z'),archivedAt:null};
+  const result=await prisma.chore.updateMany({where:{id:{in:ids},familyId:req.familyId,...(action==='restore'?{}:{status:{not:'done'}})},data});
+  broadcast(req.familyId!,{type:'chores:reviewed'});res.json({updated:result.count});
+ }catch{res.status(500).json({error:'Could not update review'});}
 });
 
 // POST /api/chores
@@ -190,7 +212,8 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         }
 
         // Streak logic applies to all assignees
-        const wasLate = existing.dueDate && new Date() > existing.dueDate;
+        const todayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        const wasLate = existing.dueDate && todayKey > existing.dueDate.toISOString().slice(0,10);
         if (wasLate && effectiveAssigneeIds.length > 0) {
           for (const aid of effectiveAssigneeIds) {
             await prisma.member.update({ where: { id: aid }, data: { streakDays: 0 } });
