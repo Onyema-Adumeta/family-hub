@@ -1,3 +1,4 @@
+import { sendBrowserPush } from './webPush';
 import cron from 'node-cron';
 import { prisma } from '../db';
 import { generateTriviaSession } from '../routes/trivia';
@@ -52,6 +53,19 @@ export function setupCron() {
       }
     }
   });
+
+  // Personal due/overdue reminders, at 4pm Vancouver time (including DST).
+  cron.schedule('0 16 * * *', async () => {
+   try {
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const members=await prisma.member.findMany({select:{id:true,familyId:true}});
+    for(const member of members){
+     const chores=await prisma.chore.findMany({where:{familyId:member.familyId,status:{not:'done'},OR:[{assignedToId:member.id},{assignees:{some:{id:member.id}}}]}});
+     const due=chores.filter(c=>c.dueDate?c.dueDate.toISOString().slice(0,10)<=today:c.frequency==='daily');
+     if(due.length) await sendBrowserPush(member.id,'Tasks need your attention',`${due.length} assigned task${due.length===1?'':'s'} due or overdue.`, '/chores');
+    }
+   }catch(e){console.error('Browser reminder job failed',e);}
+  }, {timezone:'America/Vancouver'});
 
   // Weekly reset on Sunday midnight
   cron.schedule('0 0 * * 0', async () => {

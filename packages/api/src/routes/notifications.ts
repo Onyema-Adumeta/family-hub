@@ -1,3 +1,4 @@
+import { sendBrowserPush, webPushConfigured } from '../services/webPush';
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 
@@ -83,6 +84,8 @@ router.delete('/register-push', async (req: AuthRequest, res) => {
 
 // Shared helper — used by the route below AND importable by cron jobs / other routes
 export async function sendPushToMember(memberId: string, title: string, body: string) {
+  const url = /reward/i.test(title) ? '/rewards' : /chore|task/i.test(title) ? '/chores' : '/';
+  await sendBrowserPush(memberId, title, body, url);
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member?.pushToken) return { sent: false, reason: 'no token' };
 
@@ -176,4 +179,40 @@ router.post('/broadcast', async (req: AuthRequest, res) => {
   }
 });
 
+router.get('/web-push/config', (req: AuthRequest, res) => {
+ res.json({publicKey:webPushConfigured()?process.env.VAPID_PUBLIC_KEY:null});
+});
+router.post('/web-push/subscribe', async (req: AuthRequest, res) => {
+ const {endpoint,keys} = req.body || {};
+ let target: URL;
+ try { target = new URL(endpoint); } catch { return res.status(400).json({error:'Invalid subscription'}); }
+ // Restrict server-side requests to known browser push providers.
+ const host=target.hostname;
+ const allowed=host==='fcm.googleapis.com'||host==='updates.push.services.mozilla.com'||host==='push.services.mozilla.com'||host==='web.push.apple.com'||host.endsWith('.notify.windows.com');
+ if(target.protocol!=='https:'||target.port||target.username||target.password||!allowed||typeof keys?.p256dh!=='string'||typeof keys?.auth!=='string'||keys.p256dh.length>200||keys.auth.length>200) return res.status(400).json({error:'Unsupported subscription'});
+ if(!webPushConfigured()) return res.status(503).json({error:'Browser notifications are not configured yet'});
+ try {
+  // A shared browser can change accounts; the explicit new opt-in transfers its endpoint.
+  await prisma.webPushSubscription.upsert({where:{endpoint},create:{memberId:req.memberId!,endpoint,p256dh:keys.p256dh,auth:keys.auth},update:{memberId:req.memberId!,p256dh:keys.p256dh,auth:keys.auth}});
+  res.json({ok:true});
+ } catch {res.status(500).json({error:'Could not save browser subscription'});}
+});
+router.post('/web-push/unsubscribe', async (req: AuthRequest,res) => {
+ try {await prisma.webPushSubscription.deleteMany({where:{memberId:req.memberId!,endpoint:String(req.body.endpoint || '')}});res.json({ok:true});}
+ catch {res.status(500).json({error:'Could not remove subscription'});}
+});
+router.post('/web-push/status', async(req:AuthRequest,res)=>{
+ try {const subscription=await prisma.webPushSubscription.findFirst({where:{memberId:req.memberId!,endpoint:String(req.body.endpoint||'')}});res.json({enabled:!!subscription,preferences:subscription?{tasks:subscription.tasks,rewards:subscription.rewards,chat:subscription.chat}:null});}
+ catch{res.status(500).json({error:'Could not check subscription'});}
+});
+router.patch('/web-push/preferences',async(req:AuthRequest,res)=>{
+ const {endpoint,tasks,rewards,chat}=req.body||{};
+ if(typeof tasks!=='boolean'||typeof rewards!=='boolean'||typeof chat!=='boolean')return res.status(400).json({error:'Invalid preferences'});
+ try{await prisma.webPushSubscription.updateMany({where:{memberId:req.memberId!,endpoint:String(endpoint||'')},data:{tasks,rewards,chat}});res.json({ok:true});}
+ catch{res.status(500).json({error:'Could not save preferences'});}
+});
+router.post('/web-push/test' , async (req:AuthRequest,res) => {
+ try {const results=await sendBrowserPush(req.memberId!,'FamilyHub notifications','Your browser is connected.','/');res.json({accepted:results.some(r=>r.sent)});}
+ catch {res.status(500).json({error:'Test could not be sent'});}
+});
 export default router;

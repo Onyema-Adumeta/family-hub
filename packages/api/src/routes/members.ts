@@ -17,6 +17,31 @@ router.get('/', async (req: AuthRequest, res) => {
   }
 });
 
+// Name-based dashboard selection. IDs stay internal to the application.
+router.get('/dashboard-access', async (req: AuthRequest, res) => {
+  try {
+    const members = await prisma.member.findMany({
+      where: {familyId: req.familyId, ...(req.role === 'parent' ? {} : {id: req.memberId})},
+      select: {id:true, name:true, role:true, canOpenPersonalOS:true, canOpenPremed:true},
+      orderBy: {createdAt:'asc'},
+    });
+    res.json(members);
+  } catch { res.status(500).json({error:'Could not load dashboard access'}); }
+});
+router.patch('/:id/dashboard-access', async (req: AuthRequest, res) => {
+  if(req.role !== 'parent') return res.status(403).json({error:'Only parents can manage dashboard links'});
+  const {canOpenPersonalOS, canOpenPremed}=req.body || {};
+  if(typeof canOpenPersonalOS !== 'boolean' || typeof canOpenPremed !== 'boolean') return res.status(400).json({error:'Choose dashboard access'});
+  try {
+    const result = await prisma.member.updateMany({
+      where:{id:req.params.id, familyId:req.familyId},
+      data:{canOpenPersonalOS, canOpenPremed},
+    });
+    if(!result.count) return res.status(404).json({error:'Member not found'});
+    res.json({ok:true});
+  } catch {res.status(500).json({error:'Could not save dashboard access'});}
+});
+
 // PATCH /api/members/:id — update profile (name, emoji, color, avatar)
 router.patch('/:id', async (req: AuthRequest, res) => {
   const { id } = req.params;

@@ -46,7 +46,10 @@ model Member {
   stars           Int            @default(0)
   password        String
   email           String?
+  canOpenPersonalOS Boolean @default(false)
+  canOpenPremed Boolean @default(false)
   pushToken       String?
+  webPushSubscriptions WebPushSubscription[]
   createdAt       DateTime       @default(now())
   birthday        DateTime?
   wishlist        WishlistItem[]
@@ -395,4 +398,16 @@ model ItineraryActivity {
   notes     String?
   assignees Member[]     @relation("ActivityAssignees")
   createdAt DateTime     @default(now())
+}
+model WebPushSubscription {
+  id String @id @default(cuid())
+  memberId String
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  endpoint String @unique
+  p256dh String
+  auth String
+  tasks Boolean @default(true)
+  rewards Boolean @default(true)
+  chat Boolean @default(true)
+  createdAt DateTime @default(now())
 }

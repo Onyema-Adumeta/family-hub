@@ -1,4 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+import DashboardLinks from '../components/DashboardLinks';
+import BrowserNotifications from '../components/BrowserNotifications';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChores, useMembers, useMeals, useEvents, useMessages } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
@@ -440,6 +442,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <DashboardLinks />
+      <BrowserNotifications />
       {/* ── Overdue Alert ── */}
       {overdue.length > 0 && (
         <div onClick={() => navigate('/chores')} style={{
