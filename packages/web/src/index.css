@@ -141,3 +141,38 @@ select option { background-color: var(--select-bg); color: var(--text); }
 [data-theme="light"] .toast { background: #1a1733; color: #fff; }
 
 .avatar-ring { box-shadow: 0 0 0 3px var(--primary), 0 0 0 5px rgba(124,111,247,0.2); }
+/* Calm home: one accent, restrained surfaces, readable status labels. */
+.calm-dashboard { --bg-card:#171c25; --bg-secondary:#202733; --bg-tertiary:#263140; --border:#313b49; --text-primary:#edf1f7; --text:#edf1f7; --text-secondary:#bac4d1; --text-muted:#a3afbf; --primary:#8bb6e6; color:var(--text-primary); }
+[data-theme="light"] .calm-dashboard { --bg-card:#ffffff; --bg-secondary:#f3f5f8; --bg-tertiary:#e8edf3; --border:#d5dce5; --text-primary:#1e2938; --text:#1e2938; --text-secondary:#475569; --text-muted:#526173; --primary:#355f88; }
+.calm-dashboard h2 {font-size:17px;font-weight:650;}
+.calm-dashboard .card {background:var(--bg-card)!important;box-shadow:none!important;border:1px solid var(--border)!important;border-radius:14px!important;}
+.calm-dashboard .btn {box-shadow:none;transform:none;border-radius:9px;font-weight:600;}
+.calm-dashboard .btn-ghost {background:transparent;color:var(--text-primary);border:1px solid var(--border);}
+.calm-eyebrow {font-size:11px;letter-spacing:0.14em;font-weight:700;color:var(--text-muted);}
+.calm-muted {color:var(--text-secondary);font-size:13px;line-height:1.6;}
+.calm-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0;}
+.calm-stats>div {padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);}
+.calm-stats span {font-size:12px;color:var(--text-secondary);display:block;}
+.calm-stats strong {font-size:27px;font-weight:650;display:block;margin-top:4px;}
+.calm-section-heading {display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;}
+.calm-task {width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:14px 0;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text-primary);}
+.calm-task strong {font-weight:600;font-size:14px;}
+.calm-task small,.calm-row small {display:block;color:var(--text-secondary);font-size:12px;margin-top:5px;line-height:1.5;}
+.calm-task:hover {background:var(--bg-secondary);}
+.calm-attention {display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;border:1px solid var(--border);border-left:3px solid #c6a66d;border-radius:12px;background:var(--bg-card);}
+.calm-attention strong {font-size:14px;font-weight:600;}
+.calm-attention p {color:var(--text-secondary);font-size:12px;margin-top:5px;line-height:1.5;}
+.calm-two-columns {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+.calm-row {border-top:1px solid var(--border);padding:14px 0;font-size:14px;}
+.calm-tools {display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;}
+.calm-dashboard button:focus-visible,.calm-dashboard a:focus-visible,.calm-dashboard summary:focus-visible {outline:2px solid var(--primary);outline-offset:3px;}
+@media(max-width:620px){.calm-two-columns{grid-template-columns:1fr}.calm-stats{gap:7px}.calm-stats>div{padding:12px}.calm-attention{flex-direction:column;align-items:flex-start}.calm-stats span{font-size:11px}}
+.fh-root { --primary:#496e96; --primary-dark:#355b81; --accent:#8295ac; }
+.fh-sidebar,.fh-topbar,.fh-bottomnav,.drawer-panel {background:#161c25!important;}
+.fh-sidebar nav a,.drawer-panel nav a {box-shadow:none!important;font-weight:600!important;}
+.fh-root .avatar-ring {box-shadow:0 0 0 2px #57677b!important;}
+.fh-root .progress-fill {background:#8295ac!important;}
+[data-theme="light"] .fh-sidebar,[data-theme="light"] .fh-topbar,[data-theme="light"] .fh-bottomnav,[data-theme="light"] .drawer-panel {background:#f5f7fa!important;color:#1e2938;}
+:root,[data-theme="dark"] {--bg:#11161e;--text:#edf1f7;--text-primary:#edf1f7;--text-secondary:#bac4d1;--text-muted:#9ba8b9;}
+[data-theme="light"] {--bg:#f4f6f8;--text:#1e2938;--text-primary:#1e2938;--text-secondary:#475569;--text-muted:#526173;}
+.calm-dashboard progress {accent-color:#8295ac;}

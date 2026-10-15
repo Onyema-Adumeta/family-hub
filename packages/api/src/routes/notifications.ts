@@ -1,4 +1,4 @@
-import { sendBrowserPush, webPushConfigured } from '../services/webPush';
+import { sendBrowserPush, webPushConfigured, browserPushConfiguration } from '../services/webPush';
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 
@@ -180,7 +180,7 @@ router.post('/broadcast', async (req: AuthRequest, res) => {
 });
 
 router.get('/web-push/config', (req: AuthRequest, res) => {
- res.json({publicKey:webPushConfigured()?process.env.VAPID_PUBLIC_KEY:null});
+ const config=browserPushConfiguration();res.json({publicKey:config.publicKey,ready:config.ready,code:config.code});
 });
 router.post('/web-push/subscribe', async (req: AuthRequest, res) => {
  const {endpoint,keys} = req.body || {};
@@ -212,7 +212,9 @@ router.patch('/web-push/preferences',async(req:AuthRequest,res)=>{
  catch{res.status(500).json({error:'Could not save preferences'});}
 });
 router.post('/web-push/test' , async (req:AuthRequest,res) => {
- try {const results=await sendBrowserPush(req.memberId!,'FamilyHub notifications','Your browser is connected.','/');res.json({accepted:results.some(r=>r.sent)});}
+ const endpoint=req.body?.endpoint;
+ if(typeof endpoint!=='string'||!endpoint)return res.status(400).json({error:'Enable notifications on this device first'});
+ try {const results=await sendBrowserPush(req.memberId!,'FamilyHub notification test','This is a server test for this device.','/',endpoint);res.json({accepted:results.some(r=>r.sent),results});}
  catch {res.status(500).json({error:'Test could not be sent'});}
 });
 export default router;

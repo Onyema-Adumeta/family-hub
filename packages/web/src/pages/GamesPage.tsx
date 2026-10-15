@@ -1,13 +1,13 @@
 // packages/web/src/pages/GamesPage.tsx
 import { useState } from 'react';
 import TriviaPage from './TriviaPage';
-import Codebreaker from '../games/Codebreaker';
+import SportsCup from '../games/SportsCup';
 
-type GameKey = 'menu' | 'trivia' | 'codebreaker';
+type GameKey = 'menu' | 'trivia' | 'sports';
 
 const GAMES: { key: GameKey; label: string; emoji: string; desc: string }[] = [
   { key: 'trivia', label: 'Family Trivia', emoji: '🎮', desc: '10 AI questions · live leaderboard' },
-  { key: 'codebreaker', label: 'Codebreaker Lab', emoji: '🔐', desc: 'Deduction challenge · solo or code maker vs solver' },
+  { key: 'sports', label: 'Court & Goal · Family Cup', emoji: '🏆', desc: 'Soccer penalties + tennis rallies · solo or take-turn challenge' },
 ];
 
 export default function GamesPage() {
@@ -20,10 +20,10 @@ export default function GamesPage() {
     </div>
   );
 
-  if (active === 'codebreaker') return (
+  if (active === 'sports') return (
     <div>
-      <BackBar onBack={() => setActive('menu')} title="Codebreaker Lab" />
-      <Codebreaker />
+      <BackBar onBack={() => setActive('menu')} title="Court & Goal" />
+      <SportsCup />
     </div>
   );
 
