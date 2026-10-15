@@ -7,7 +7,7 @@ import { useSocket } from '../hooks/useSocket';
 import { familySocket } from '../lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
 
-const QUICK_MSGS = ['🍕 Pizza tonight?', '⭐ Great job!', '🏠 Heading home', '❓ Anyone home?', '🛒 Need anything?'];
+
 
 const AI_PROMPTS = [
   { label: '🍽️ Meal idea',      prompt: 'Suggest a quick family dinner idea for tonight.' },
@@ -29,6 +29,8 @@ export default function ChatPage() {
   const [text, setText]           = useState('');
   const [uploading, setUploading] = useState(false);
   const [showAI, setShowAI]       = useState(false);
+  const [showExtras,setShowExtras] = useState(false);
+  const [showHelp,setShowHelp] = useState(false);
   const [aiInput, setAiInput]     = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiHistory, setAiHistory] = useState<AIMessage[]>([]);
@@ -189,14 +191,15 @@ export default function ChatPage() {
   );
 
   return (
-    <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 48px)', maxWidth: 960 }}>
+    <div className="clean-chat" style={{ display: 'flex', gap: 16, height: 'calc(100dvh - 120px)', minHeight: 340, maxWidth: 960, position:'relative' }}>
+      <style>{`.clean-chat summary{cursor:pointer;list-style:none}.clean-chat summary::-webkit-details-marker{display:none}.clean-chat button,.clean-chat summary{touch-action:manipulation}.clean-chat .message-menu{position:absolute;z-index:5;right:0;min-width:150px;background:var(--bg-secondary);border:1px solid var(--border);padding:6px;border-radius:12px;box-shadow:0 6px 24px #0003}.clean-chat .message-menu button{display:block;width:100%;padding:10px;text-align:left;border:0;background:transparent;color:var(--text);cursor:pointer}.clean-chat summary:focus-visible{outline:2px solid var(--primary)}.clean-chat .assistant-overlay{position:absolute;inset:0;z-index:10;background:var(--bg-secondary);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}.clean-chat .chat-bubble{max-width:82%}@media(min-width:700px){.clean-chat .chat-bubble{max-width:70%}}`}</style>
 
       {/* ── Family Chat ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div hidden={showAI} style={{ flex: 1, display: showAI?'none':'flex', flexDirection: 'column', minWidth: 0 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900 }}>💬 Family Chat</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800 }}>Family Chat</h1>
           <div style={{ display: 'flex', gap: 8 }}>
             {pinnedMsg && (
               <button onClick={() => setShowPinned(v => !v)} style={{
@@ -206,12 +209,7 @@ export default function ChatPage() {
                 color: showPinned ? '#FBBF24' : 'var(--text)'
               }}>📌 Pinned</button>
             )}
-            <button onClick={() => setShowAI(v => !v)} style={{
-              padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 800, cursor: 'pointer',
-              background: showAI ? 'var(--primary)' : 'var(--bg-secondary)',
-              border: `1.5px solid ${showAI ? 'var(--primary)' : 'var(--border)'}`,
-              color: showAI ? '#fff' : 'var(--text)'
-            }}>🤖 AI {showAI ? '✕' : ''}</button>
+            <button aria-label="Chat help" onClick={()=>setShowHelp(v=>!v)} style={{background:'none',border:'1px solid var(--border)',borderRadius:10,padding:'7px 12px',color:'var(--text)'}}>?</button>
           </div>
         </div>
 
@@ -243,15 +241,14 @@ export default function ChatPage() {
             const isParent = member?.role === 'parent';
             return (
               <div key={msg.id}>{showDate&&<div style={{textAlign:'center',fontSize:11,color:'var(--text-muted)',margin:'12px 0'}}>{new Date(msg.createdAt).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})}</div>}<div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 10, alignItems: 'flex-end', gap: 6 }}
-                onMouseEnter={e => { const el = e.currentTarget.querySelector('.msg-actions') as HTMLElement; if (el) el.style.opacity = '1'; }}
-                onMouseLeave={e => { const el = e.currentTarget.querySelector('.msg-actions') as HTMLElement; if (el) el.style.opacity = '1'; }}>
+>
                 {!isMe && (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: sender?.color || '#6366F1', border: `2px solid ${sender?.color || '#6366F1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, overflow: 'hidden' }}>
                     {sender?.avatarUrl ? <img src={sender.avatarUrl} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
                   </div>
                 )}
-                <div style={{ maxWidth: '70%' }}>
-                  {!isMe && <div style={{ fontSize: 10, fontWeight: 800, color: sender?.color || 'var(--text-muted)', marginBottom: 3, paddingLeft: 4 }}>{sender?.name}</div>}
+                <div className="chat-bubble" style={{minWidth:0}}>
+                  {!isMe && <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 3, paddingLeft: 4 }}>{sender?.name}</div>}
                   <div style={{ position: 'relative' }}>
                     <div style={{
                       padding: '8px 12px', borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
@@ -273,25 +270,17 @@ export default function ChatPage() {
                         <video src={msg.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0 }} />
                       )}
                     </div>
-                    {/* Hover actions */}
-                    <div className="msg-actions" style={{
-                      position: 'relative', marginTop: 6,
-                      display: 'flex', gap: 8, flexWrap:'wrap', opacity: 1, transition: 'opacity 0.15s',
-                      background: 'var(--bg-secondary)', borderRadius: 8, padding: '3px 6px',
-                      border: '1px solid var(--border)', whiteSpace: 'nowrap',
-                    }}>
-                      <button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'seen'})}>Seen</button>
-                      <button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'done'})}>Done</button>
-                      <button aria-label={`Reply to ${sender?.name || 'message'}`} onClick={()=>setReplyTo(msg)} style={{background:'none',border:'none',color:'var(--text-primary)',cursor:'pointer',padding:4}}>↩ Reply</button>
-                      {isParent && (
-                        <button onClick={() => handlePin(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title={msg.pinned?'Unpin':'Pin'}>{msg.pinned?'Unpin':'📌 Pin'}</button>
-                      )}
-                      {(isMe || isParent) && (
-                        <button onClick={() => handleDelete(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Delete">🗑</button>
-                      )}
-                    </div>
+                    <details style={{position:'relative',marginTop:3,textAlign:'right'}}>
+                      <summary aria-label={`Actions for message from ${sender?.name || 'family member'}`} style={{display:'inline-block',padding:'2px 10px',fontSize:20,color:'var(--text-muted)',borderRadius:8}}>⋯</summary>
+                      <div className="message-menu" onClick={e=>{if((e.target as HTMLElement).closest('button'))e.currentTarget.closest('details')?.removeAttribute('open');}}>
+                        <button onClick={()=>setReplyTo(msg)}>Reply</button>
+                        {!isMe&&<><button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'seen'})}>Mark Seen</button><button disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'ack',{kind:'done'})}>Mark Done</button></>}
+                        {isParent&&<button onClick={()=>handlePin(msg.id).catch(()=>setSendError('Could not update the pin. Please try again.'))}>{msg.pinned?'Unpin':'Pin message'}</button>}
+                        {(isMe||isParent)&&<button onClick={()=>handleDelete(msg.id).catch(()=>setSendError('Could not delete the message. Please try again.'))}>Delete message</button>}
+                      </div>
+                    </details>
                   </div>
-                  {!!msg.acknowledgements?.length&&<div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{msg.acknowledgements.map((a:any)=>`${a.member?.name || 'Family member'}: ${a.kind==='done'?'Done':'Seen'}`).join(' · ')}</div>}
+                  {!!msg.acknowledgements?.length&&<details style={{fontSize:11,color:'var(--text-muted)',marginTop:3}}><summary>{['seen','done'].map(kind=>{const n=msg.acknowledgements.filter((a:any)=>a.kind===kind).length;return n?`${kind==='done'?'Done':'Seen'} by ${n}`:null;}).filter(Boolean).join(' · ')}</summary><div style={{padding:'6px 0'}}>{msg.acknowledgements.map((a:any)=>`${a.member?.name || 'Family member'}: ${a.kind==='done'?'Done':'Seen'}`).join(' · ')}</div></details>}
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2, textAlign: isMe ? 'right' : 'left', paddingLeft: isMe ? 0 : 4 }}>
                     {new Date(msg.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -321,42 +310,30 @@ export default function ChatPage() {
         </div>
 
         {hasNewMessages&&<button onClick={()=>{nearBottom.current=true;bottomRef.current?.scrollIntoView({behavior:'smooth'});setHasNewMessages(false);}} className="btn">Jump to latest messages ↓</button>}
-        <button onClick={()=>setPollOpen(p=>!p)} style={{alignSelf:'flex-start',marginBottom:8}}>📊 {pollOpen?'Cancel poll':'Create family poll'}</button>
-        {pollOpen&&<div className="card" style={{padding:12,marginBottom:12}}><label>Question<input className="input" value={pollQuestion} maxLength={200} onChange={e=>setPollQuestion(e.target.value)}/></label><label>Options (one per line)<textarea className="input" rows={3} value={pollOptions} onChange={e=>setPollOptions(e.target.value)} placeholder="Pasta\nRice\nTacos"/></label><button disabled={sendMessage.isPending||!pollQuestion.trim()} onClick={createPoll}>Post poll</button></div>}
-        {/* Quick replies */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8, flexShrink: 0 }}>
-          {QUICK_MSGS.map(q => (
-            <button key={q} onClick={() => sendMessage.mutate({ text: q })} style={{
-              padding: '5px 10px', borderRadius: 16, fontSize: 11, fontWeight: 700,
-              whiteSpace: 'nowrap', cursor: 'pointer',
-              background: 'var(--bg-secondary)', border: '1.5px solid var(--border)', color: 'var(--text)'
-            }}>{q}</button>
-          ))}
-        </div>
-
+        {showHelp&&<div style={{fontSize:12,lineHeight:1.6,padding:12,background:'var(--bg-secondary)',borderRadius:10,marginBottom:8}}>Use ⋯ on a message to reply or acknowledge it. Seen/Done is an acknowledgement, not a chore completion. Enter sends; Shift + Enter adds a line. Enable Family chat notifications in Settings on each device. <button onClick={()=>setShowHelp(false)}>Close help</button></div>}
+        {showExtras&&<div style={{display:'flex',gap:8,flexWrap:'wrap',padding:'8px 0'}}><button className="btn" disabled={uploading} onClick={()=>{fileRef.current?.click();setShowExtras(false);}}>Photo / video</button><button className="btn" onClick={()=>{setPollOpen(true);setShowExtras(false);}}>Create poll</button><button className="btn" onClick={()=>{setShowAI(true);setShowExtras(false);}}>Family assistant</button></div>}
+        {pollOpen&&<div className="card" style={{padding:12,marginBottom:12}}><label>Question<input className="input" value={pollQuestion} maxLength={200} onChange={e=>setPollQuestion(e.target.value)}/></label><label>Options (one per line)<textarea className="input" rows={3} value={pollOptions} onChange={e=>setPollOptions(e.target.value)} placeholder="Pasta\nRice\nTacos"/></label><button disabled={sendMessage.isPending||!pollQuestion.trim()} onClick={createPoll}>Post poll</button> <button onClick={()=>setPollOpen(false)}>Cancel</button></div>}
         {replyTo&&<div style={{padding:10,borderLeft:'3px solid var(--primary)',background:'var(--bg-secondary)'}}>Replying to {getMember(replyTo.memberId)?.name || replyTo.member?.name || 'family member'}: {(replyTo.text || replyTo.pollQuestion || '📎 Attachment').slice(0,100)} <button onClick={()=>setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
         {sendError&&<p role="alert">{sendError}</p>}
         {/* Input */}
         <div style={{ display: 'flex', gap: 8, padding: '10px 0', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--bg-secondary)', border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: 18, flexShrink: 0 }}>
-            {uploading ? '⏳' : '📎'}
-          </button>
+          <button aria-label="Add attachment, poll or open assistant" aria-expanded={showExtras} onClick={()=>setShowExtras(v=>!v)} disabled={uploading} style={{width:44,height:44,borderRadius:12,background:'var(--bg-secondary)',border:'1px solid var(--border)',color:'var(--text)',fontSize:24,flexShrink:0}}>{uploading?'…':showExtras?'×':'+'}</button>
           <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} style={{ display: 'none' }} />
-          <textarea aria-label="Family message" rows={2} maxLength={4000} className="input" style={{ flex: 1,resize:'vertical' }} placeholder="Write to your family…"
+          <textarea aria-label="Family message" rows={1} maxLength={4000} className="input" style={{ flex: 1,minWidth:0,resize:'vertical',minHeight:44,maxHeight:130 }} placeholder="Write to your family…"
             value={text} onChange={e => handleTyping(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
           <button onClick={handleSend} disabled={!text.trim() || sendMessage.isPending} className="btn btn-primary" style={{ padding: '10px 16px', flexShrink: 0 }}>
-            Send →
+            Send
           </button>
         </div>
-        <p style={{fontSize:11,color:'var(--text-muted)'}}>Enter to send · Shift + Enter for a new line. Enable Family chat notifications in Settings on each device. Seen/Done acknowledges this message; it does not complete a chore.</p>
+
       </div>
 
       {/* ── AI Assistant Panel ── */}
       {showAI && (
-        <div style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', borderRadius: 16, border: '1.5px solid var(--border)', overflow: 'hidden' }}>
+        <div className="assistant-overlay" role="region" aria-label="Family assistant" onKeyDown={e=>{if(e.key==='Escape')setShowAI(false);}}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(167,139,250,0.08))' }}>
-            <div style={{ fontWeight: 900, fontSize: 14 }}>🤖 Family Assistant</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><strong>Family Assistant</strong><button autoFocus className="btn" onClick={()=>{setShowAI(false);setShowExtras(true);}}>Back to chat</button></div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2 }}>Ask anything — meals, chores, activities</div>
           </div>
           {aiHistory.length === 0 && (
