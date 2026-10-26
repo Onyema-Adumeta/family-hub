@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 import { google } from 'googleapis';
+import jwt from 'jsonwebtoken';
 const router = Router();
 import { prisma } from '../db';
 
@@ -42,34 +43,10 @@ router.get('/google/auth', async (req: AuthRequest, res) => {
       access_type: 'offline',
       prompt: 'consent',
       scope: ['https://www.googleapis.com/auth/calendar'],
-      state: req.familyId!,
+      state: jwt.sign({ familyId: req.familyId!, purpose: 'google-calendar-oauth' }, process.env.JWT_SECRET!, { expiresIn: '10m', algorithm: 'HS256' }),
     });
     res.json({ url });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/events/google/callback — OAuth callback
-router.get('/google/callback', async (req: any, res) => {
-  const { code, state: familyId } = req.query as { code: string; state: string };
-  try {
-    const auth = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-    console.log('OAuth callback hit. code present:', !!code, 'familyId:', familyId);
-    console.log('Using redirect_uri:', process.env.GOOGLE_REDIRECT_URI);
-    const { tokens } = await auth.getToken(code);
-    await (prisma.family.update as any)({
-      where: { id: familyId },
-      data: { googleTokens: JSON.stringify(tokens) },
-    });
-    res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
-  } catch (e: any) {
-    const detail = e?.response?.data || e?.message || 'unknown';
-    console.error('OAuth callback error:', JSON.stringify(detail));
-    res.status(500).json({ error: 'oauth_failed', detail });
-  }
 });
 
 // GET /api/events/sync — pull events from Google Calendar

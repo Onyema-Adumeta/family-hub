@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -27,6 +27,7 @@ import { startWeeklyRulesCron } from './services/weeklyRulesCron';
 import triviaRoutes from './routes/trivia';
 import wishlistRouter from './routes/wishlist';
 import { google } from 'googleapis';
+import jwt from 'jsonwebtoken';
 import { prisma } from './db';
 import tripsRoutes from './routes/trips';
 
@@ -69,7 +70,14 @@ app.use(express.json({ limit: '50kb' }));
 
 // ── Google Calendar OAuth callback — no auth required ────────────────────────
 app.get('/api/events/google/callback', async (req, res) => {
-  const { code, state: familyId } = req.query as { code: string; state: string };
+  const { code, state } = req.query as { code?: string; state?: string };
+  if (!code || !state || !process.env.JWT_SECRET) return res.status(400).json({ error: 'Invalid OAuth request' });
+  let familyId: string;
+  try {
+    const payload = jwt.verify(state, process.env.JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+    if (payload.purpose !== 'google-calendar-oauth' || typeof payload.familyId !== 'string') throw new Error('Invalid OAuth state');
+    familyId = payload.familyId;
+  } catch { return res.status(400).json({ error: 'Invalid or expired OAuth state' }); }
   try {
     const auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,

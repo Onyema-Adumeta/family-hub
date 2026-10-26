@@ -5,50 +5,60 @@ type MessageHandler = (msg: any) => void;
 class FamilySocket {
   private ws: WebSocket | null = null;
   private handlers: Set<MessageHandler> = new Set();
-  private reconnectTimer: any = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private intentionallyClosed = false;
+  private connectedToken: string | null = null;
 
   connect() {
     const token = useAuthStore.getState().token;
-    if (!token || this.ws?.readyState === WebSocket.OPEN) return;
+    if (!token) { this.disconnect(); return; }
+    this.intentionallyClosed = false;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this.ws && this.connectedToken === token &&
+        (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
+    if (this.ws) { const old = this.ws; this.ws = null; old.close(); }
 
-    const base = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
-    this.ws = new WebSocket(`${base}?token=${token}`);
+    const base = import.meta.env.VITE_WS_URL || 'wss://family-hubapi-production.up.railway.app';
+    const ws = new WebSocket(`${base}?token=${encodeURIComponent(token)}`);
+    this.ws = ws;
+    this.connectedToken = token;
 
-    this.ws.onmessage = (e) => {
+    ws.onmessage = (e) => {
+      if (this.ws !== ws) return;
       try {
         const msg = JSON.parse(e.data);
-        this.handlers.forEach(h => h(msg));
-      } catch { /* ignore */ }
+        this.handlers.forEach(h => { try { h(msg); } catch { /* isolate handlers */ } });
+      } catch { /* ignore malformed messages */ }
     };
 
-    this.ws.onclose = () => {
-      if (this.intentionallyClosed) return;
-      // Auto-reconnect after 3 seconds
-      this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+    ws.onclose = () => {
+      if (this.ws !== ws) return;
+      this.ws = null;
+      this.connectedToken = null;
+      if (!this.intentionallyClosed && useAuthStore.getState().token) {
+        this.reconnectTimer = setTimeout(() => { this.reconnectTimer = null; this.connect(); }, 3000);
+      }
     };
 
-    this.ws.onerror = () => {
-      this.ws?.close();
-    };
+    ws.onerror = () => { ws.close(); };
   }
 
   disconnect() {
     this.intentionallyClosed = true;
-    clearTimeout(this.reconnectTimer);
-    this.ws?.close();
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    const ws = this.ws;
     this.ws = null;
+    this.connectedToken = null;
+    ws?.close();
   }
 
   subscribe(handler: MessageHandler) {
     this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return () => { this.handlers.delete(handler); };
   }
 
   send(data: unknown) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
-    }
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(data));
   }
 }
 
