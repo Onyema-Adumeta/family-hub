@@ -37,6 +37,12 @@ function fmtRange(startIso: string, endIso: string) {
   return `${start.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', { ...opts, year: sameYear ? undefined : 'numeric' })}, ${end.getFullYear()}`;
 }
 
+function uniqueTrips(trips: Trip[]): Trip[] {
+  return Array.from(
+    new Map(trips.map(trip => [trip.id, trip])).values()
+  ).sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
 export default function TripsPage() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -53,7 +59,7 @@ export default function TripsPage() {
   async function fetchTrips() {
     try {
       const { data } = await api.get('/trips');
-      setTrips(data);
+      setTrips(uniqueTrips(data));
     } catch {}
     finally { setLoading(false); }
   }
@@ -61,8 +67,8 @@ export default function TripsPage() {
   useEffect(() => { fetchTrips(); }, []);
 
   useSocket((msg) => {
-    if (msg.type === 'trip:created') setTrips(prev => [...prev, msg.trip].sort((a, b) => a.startDate.localeCompare(b.startDate)));
-    if (msg.type === 'trip:updated') setTrips(prev => prev.map(t => t.id === msg.trip.id ? msg.trip : t));
+    if (msg.type === 'trip:created') setTrips(prev => uniqueTrips([...prev, msg.trip]));
+    if (msg.type === 'trip:updated') setTrips(prev => uniqueTrips(prev.map(t => t.id === msg.trip.id ? msg.trip : t)));
     if (msg.type === 'trip:deleted') setTrips(prev => prev.filter(t => t.id !== msg.tripId));
   });
 
@@ -81,7 +87,7 @@ export default function TripsPage() {
         endDate: anchorDate(endDate),
         notes: notes.trim() || null,
       });
-      setTrips(prev => [...prev, data].sort((a, b) => a.startDate.localeCompare(b.startDate)));
+      setTrips(prev => uniqueTrips([...prev, data]));
       resetForm();
       setShowAdd(false);
     } catch (e: any) {

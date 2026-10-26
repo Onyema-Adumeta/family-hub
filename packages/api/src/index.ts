@@ -36,9 +36,10 @@ app.set('trust proxy', 1);
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
+// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://family-hub-web-omega.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean) as string[];
@@ -46,7 +47,7 @@ const allowedOrigins = [
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.options('*', cors({ origin: allowedOrigins, credentials: true }));
 
-// ── Security headers ──────────────────────────────────────────────────────────
+// â”€â”€ Security headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -55,7 +56,7 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ── Global rate limit: 500 req / 15 min per IP ───────────────────────────────
+// â”€â”€ Global rate limit: 500 req / 15 min per IP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500,
@@ -65,10 +66,10 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// ── Body parsing (50kb max — uploads go via Cloudinary) ──────────────────────
+// â”€â”€ Body parsing (50kb max â€” uploads go via Cloudinary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use(express.json({ limit: '50kb' }));
 
-// ── Google Calendar OAuth callback — no auth required ────────────────────────
+// â”€â”€ Google Calendar OAuth callback â€” no auth required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/events/google/callback', async (req, res) => {
   const { code, state } = req.query as { code?: string; state?: string };
   if (!code || !state || !process.env.JWT_SECRET) return res.status(400).json({ error: 'Invalid OAuth request' });
@@ -96,7 +97,7 @@ app.get('/api/events/google/callback', async (req, res) => {
   }
 });
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
@@ -116,19 +117,19 @@ app.use('/api/wishlist',      authMiddleware, wishlistRouter);
 app.use('/api/games',         authMiddleware, gamesRouter);
 app.use('/api/trips',         authMiddleware, tripsRoutes);
 
-// ── Health check ──────────────────────────────────────────────────────────────
+// â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// ── 404 handler ───────────────────────────────────────────────────────────────
+// â”€â”€ 404 handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
-// ── Global error handler ──────────────────────────────────────────────────────
+// â”€â”€ Global error handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 startStreakCron();
 setupWebSocket(wss);
 setupCron();

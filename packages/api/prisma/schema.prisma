@@ -39,7 +39,7 @@ model Member {
   familyId        String
   family          Family         @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String         @default("Ã°Å¸â„¢â€š")
+  emoji           String         @default("🙂")
   color           String         @default("#6366F1")
   avatarUrl       String?
   role            String         @default("child")
@@ -95,7 +95,7 @@ model Chore {
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String      @default("Ã¢Å“â€¦")
+  emoji         String      @default("✅")
   assignedToId  String?
   assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
   assignees     Member[]    @relation("ChoreAssignees")
@@ -155,7 +155,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("Ã°Å¸Å½Â")
+  emoji          String       @default("🎁")
   cost           Int
   description    String?
   availableCount Int?
@@ -201,7 +201,7 @@ model Quest {
   member      Member?   @relation(fields: [memberId], references: [id])
   title       String
   description String?
-  emoji       String    @default("Ã¢Å¡â€Ã¯Â¸Â")
+  emoji       String    @default("⚡")
   difficulty  String    @default("easy")
   stages      Json      @default("[]")
   stars       Int       @default(10)
