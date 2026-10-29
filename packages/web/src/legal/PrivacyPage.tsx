@@ -53,8 +53,9 @@ export default function PrivacyPage() {
         Anthropic PBC (United States). These features are <strong>off</strong> until a parent turns them on in Settings,
         and a parent can turn them off at any time. When they are on, we replace every family member's name with a label
         such as "Child 1" before anything is sent, and we share only broad age groups (for example "preteen") — never
-        names, birthdays or exact ages. Anything a family member types into the assistant is sent as written, so please
-        don't type personal details there.
+        names, birthdays or exact ages. Anything a family member types into the assistant, and any photo or text given to
+        "Snap or paste" to find calendar dates, is sent as written so it can be read; please don't include personal
+        details you don't want shared. Nothing found is added to the calendar until a family member confirms it.
       </p>
 
       <h2>Who we share it with</h2>

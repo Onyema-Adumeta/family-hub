@@ -34,6 +34,7 @@ import familyRoutes from './routes/family';
 import insightsRoutes from './routes/insights';
 import goalsRoutes from './routes/goals';
 import bankRoutes from './routes/bank';
+import eventImportRoutes, { extractHandler } from './routes/eventImport';
 import { encryptSecret, encryptionConfigured } from './services/secretBox';
 
 const app = express();
@@ -73,6 +74,9 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // â”€â”€ Body parsing (50kb max â€” uploads go via Cloudinary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Flyer photos need a bigger body than everything else, so this one route is
+// registered before the normal 50 kB JSON limit.
+app.post('/api/events/extract', ...extractHandler);
 app.use(express.json({ limit: '50kb' }));
 
 // â”€â”€ Google Calendar OAuth callback â€” no auth required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -111,6 +115,7 @@ app.get('/api/events/google/callback', async (req, res) => {
 app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
+app.use('/api/events',        authMiddleware, eventImportRoutes);
 app.use('/api/events',        authMiddleware, eventsRoutes);
 app.use('/api/rewards',       authMiddleware, rewardsRoutes);
 app.use('/api/chat',          authMiddleware, chatRoutes);

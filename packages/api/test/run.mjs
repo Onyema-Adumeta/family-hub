@@ -80,6 +80,13 @@ const fakeAi = http.createServer((req, res) => {
       reply = JSON.stringify(Array.from({ length: 10 }, (_, i) => ({
         question: `Fake question ${i + 1}?`, options: ['A) one', 'B) two', 'C) three', 'D) four'], answer: 'A) one', difficulty: 'easy',
       })));
+    } else if (/Extract calendar events/.test(text)) {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      reply = JSON.stringify([
+        { title: 'School picture day', date: '2027-01-12', time: '09:00', emoji: '📸', location: 'Gym' },
+        { title: 'Soccer practice', date: today, time: '16:00', emoji: '⚽' },
+        { title: 'Broken item', date: 'next tuesday' },
+      ]);
     } else if (/family coach/i.test(text)) {
       reply = JSON.stringify({ summary: 'Child 1 had a great week and Parent 1 helped.', tips: ['Praise Child 1 for consistency.'], encouragement: 'Well done!' });
     }
