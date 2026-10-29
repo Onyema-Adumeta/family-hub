@@ -46,6 +46,7 @@ router.get('/wins', async (req: AuthRequest, res) => {
         level: lvl.level, levelTitle: lvl.title,
         quests: quests.filter(q => q.memberId === m.id).length,
         achievements: achievements.filter(a => a.memberId === m.id).map(a => a.label),
+        badges: achievements.filter(a => a.memberId === m.id && a.kind === 'badge').map(a => a.label),
       };
     });
 
@@ -67,8 +68,8 @@ router.get('/wins', async (req: AuthRequest, res) => {
     if (improved && improved.id !== star?.id) awards.push({ title: 'Most improved', icon: '📈', memberId: improved.id, name: improved.name, detail: `+${improved.stars - improved.prevStars} stars on last week` });
     const questStar = top(m => m.quests);
     if (questStar) awards.push({ title: 'Quest master', icon: '⚔️', memberId: questStar.id, name: questStar.name, detail: `${questStar.quests} quest${questStar.quests > 1 ? 's' : ''} completed` });
-    const collector = top(m => m.achievements.length);
-    if (collector) awards.push({ title: 'Badge collector', icon: '🏅', memberId: collector.id, name: collector.name, detail: collector.achievements.join(', ') });
+    const collector = top(m => m.badges.length);
+    if (collector) awards.push({ title: 'Badge collector', icon: '🏅', memberId: collector.id, name: collector.name, detail: collector.badges.join(', ') });
 
     const highlights: string[] = [];
     if (familyStars > 0) highlights.push(`Together you earned ${familyStars} stars${changePct !== null ? ` — ${changePct >= 0 ? 'up' : 'down'} ${Math.abs(changePct)}% on last week` : ''}.`);
@@ -154,7 +155,8 @@ export async function buildBriefing(familyId: string, memberId: string, isParent
     if (dinner) bits.push(`${dinner.emoji} ${dinner.name} for dinner`);
     if (waiting) bits.push(`${waiting} chore photo${waiting > 1 ? 's' : ''} to check`);
     if (pendingRewards) bits.push(`${pendingRewards} reward request${pendingRewards > 1 ? 's' : ''} waiting`);
-    let summary = `${greeting}${me ? `, ${me.name}` : ''}! ${bits.length ? bits.join(', ') : 'Nothing scheduled — enjoy the day'}.`;
+    const body = bits.length ? bits.join(', ') : 'nothing scheduled — enjoy the day';
+    let summary = `${greeting}${me ? `, ${me.name}` : ''}! ${body.charAt(0).toUpperCase()}${body.slice(1)}.`;
     if (birthdays.length) summary += ` 🎂 Happy birthday ${birthdays.map(b => b.name).join(' and ')}!`;
     if (me && me.streakDays >= 2 && me.choresToday.length) summary += ` Keep your ${me.streakDays}-day streak going 🔥`;
 

@@ -389,7 +389,9 @@ export default function ChoresPage() {
   const createChore = useCreateChore();
   const updateChore = useUpdateChore();
   const deleteChore = useDeleteChore();
-  const { token } = useAuthStore();
+  const { token, member: me } = useAuthStore();
+  // Editing, duplicating and deleting chores are parent actions (the API enforces it too).
+  const canManage = me?.role === 'parent';
 
   const [tab, setTab]             = useState<Status | 'all'>('all');
   const [showAdd, setShowAdd]     = useState(false);
@@ -538,8 +540,10 @@ export default function ChoresPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {canManage && (<>
           <button onClick={() => { setBulkMode(v => !v); setSelected(new Set()); }} style={{ padding: '9px 14px', background: bulkMode ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1.5px solid ${bulkMode ? 'rgba(124,111,247,0.5)' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: bulkMode ? '#A78BFA' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }} title="Bulk select">☑️</button>
           <button onClick={() => setShowAdd(true)} style={{ padding: '9px 18px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add</button>
+          </>)}
         </div>
       </div>
 
@@ -592,7 +596,7 @@ export default function ChoresPage() {
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
           {tab === 'all'
-            ? <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button>
+            ? canManage && <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button>
             : `No ${tab.replace('_', ' ')} chores`}
         </div>
       ) : list.map((chore: any) => {
@@ -701,14 +705,17 @@ export default function ChoresPage() {
                   </button>
                 </div>
 
+                {canManage && (<>
                 <button className="chore-icon-btn" onClick={() => handleDuplicate(chore)} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)' }} title="Duplicate">📋</button>
                 <button className="chore-icon-btn" onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)' }} title="Edit (assign, due date, more)">✏️</button>
                 <button className="chore-icon-btn" onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16 }} title="Delete">×</button>
+                </>)}
 
                 <select className="status-select" value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ background: meta.bg, border: `1.5px solid ${meta.color}66`, color: meta.color }}>
                   <option value="pending">⏳ Pending</option>
                   <option value="in_progress">🔥 In Progress</option>
                   <option value="done">✅ Done</option>
+                  {status === 'review' && <option value="review" disabled>📸 Waiting for OK</option>}
                 </select>
               </div>
             )}
