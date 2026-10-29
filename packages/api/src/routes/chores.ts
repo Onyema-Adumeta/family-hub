@@ -9,6 +9,9 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { prisma } from '../db';
 import { audit } from '../services/audit';
 import { membersInFamily, requireParent } from '../lib/guards';
+import { notifyParents } from '../services/notify';
+import { checkFamilyGoal } from '../services/goals';
+import { Celebration, bumpStreak, checkAchievements, grantStars, levelsBefore, localDay, revokeStars } from '../services/gamification';
 
 const router = Router();
 
@@ -177,7 +180,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       }
     }
 
-    const { status, title, emoji, frequency, stars, proofRequired, proofUrl, proofType, dueDate } = body;
+    const { status, title, emoji, frequency, stars, proofRequired, proofUrl, proofType, dueDate, priority, notes, recurring } = body;
     const updateData: Prisma.ChoreUpdateInput = {};
     if (title !== undefined) {
       if (typeof title !== 'string' || !title.trim() || title.length > 200) return res.status(400).json({ error: 'Invalid title' });
@@ -194,6 +197,9 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     if (proofUrl      !== undefined) updateData.proofUrl      = proofUrl;
     if (proofType     !== undefined) updateData.proofType     = proofType;
     if (dueDate       !== undefined) updateData.dueDate       = dueDate ? new Date(dueDate) : null;
+    if (priority      !== undefined) updateData.priority      = String(priority).slice(0, 20);
+    if (notes         !== undefined) updateData.notes         = notes ? String(notes).slice(0, 1000) : null;
+    if (recurring     !== undefined) updateData.recurring     = !!recurring;
 
     // Assignee changes (parents only — enforced above): accept assigneeIds[] or legacy assignedToId
     let newAssigneeIds: string[] | undefined;
@@ -207,81 +213,33 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     const addedAssigneeIds = newAssigneeIds ? newAssigneeIds.filter(aid => !previousAssigneeIds.includes(aid)) : [];
 
     if (status !== undefined && !['pending', 'in_progress', 'done'].includes(status)) {
+      // "review" is only set by the photo-proof flow, never directly.
       return res.status(400).json({ error: 'Invalid status: ' + status });
+    }
+
+    // ── Photo proof: a kid's "done" on a proof-required chore waits for a parent ──
+    if (status === 'done' && existing.status !== 'done' && !isParent && existing.proofRequired) {
+      if (existing.status === 'review') return res.status(409).json({ error: 'Already waiting for a parent to check' });
+      const hasProof = !!(proofUrl || existing.proofUrl || existing.photoUrl);
+      if (!hasProof) return res.status(400).json({ error: 'Add a photo first — this chore needs proof' });
+      const chore = await prisma.chore.update({
+        where: { id },
+        data: { ...updateData, status: 'review', submittedAt: new Date(), submittedById: req.memberId, reviewNote: null },
+        include: choreInclude,
+      });
+      const kid = await prisma.member.findUnique({ where: { id: req.memberId }, select: { name: true } });
+      await notifyParents(req.familyId!, 'Chore to check 📸', `${kid?.name} finished "${existing.title}" — tap to approve`, req.memberId);
+      await audit(req, 'chore.submitted', `sent "${existing.title}" for a parent to check`, { type: 'chore', id });
+      broadcast(req.familyId!, { type: 'chore:updated', chore });
+      return res.json({ ...chore, awaitingApproval: true });
     }
 
     // ── Completing a chore ────────────────────────────────────────────────────
     if (status === 'done' && existing.status !== 'done') {
-      const completedAt = new Date();
-      const choreStars = (updateData.stars as number | undefined) ?? existing.stars;
-      const shares = starShares(choreStars, effectiveAssigneeIds, req.memberId!);
-
-      const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-      const wasLate = !!existing.dueDate && todayKey > existing.dueDate.toISOString().slice(0, 10);
-
-      const result = await prisma.$transaction(async tx => {
-        // Atomic claim: only one request can move this chore to done.
-        const claimed = await tx.chore.updateMany({
-          where: { id, familyId: req.familyId, status: { not: 'done' } },
-          data: { status: 'done', completedAt, completedById: req.memberId },
-        });
-        if (claimed.count !== 1) return null;
-
-        for (const [memberId, n] of shares) {
-          await tx.member.update({ where: { id: memberId }, data: { stars: { increment: n } } });
-          await tx.choreCompletion.create({
-            data: { familyId: req.familyId!, choreId: id, choreTitle: existing.title, memberId, stars: n, completedAt },
-          });
-        }
-
-        // Streak logic applies to all assignees
-        for (const aid of effectiveAssigneeIds) {
-          if (wasLate) {
-            await tx.member.update({ where: { id: aid }, data: { streakDays: 0 } });
-            await tx.notification.create({
-              data: { familyId: req.familyId!, memberId: aid, title: 'Chore overdue!', body: '"' + existing.title + '" was completed late - streak reset.' },
-            });
-          } else {
-            await tx.member.update({
-              where: { id: aid },
-              data: { streakDays: { increment: 1 }, streakUpdatedAt: new Date(), totalChoresDone: { increment: 1 } },
-            });
-          }
-        }
-
-        const completedChore = await tx.chore.update({ where: { id }, data: updateData, include: choreInclude });
-
-        // Daily chores: recycle into tomorrow's copy with the same assignees.
-        // The star history lives in ChoreCompletion, so nothing is lost.
-        let newChore = null;
-        if (existing.frequency === 'daily') {
-          await tx.chore.delete({ where: { id } });
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(23, 59, 59, 0);
-          newChore = await tx.chore.create({
-            data: {
-              familyId: existing.familyId, title: completedChore.title, emoji: completedChore.emoji,
-              frequency: 'daily', stars: completedChore.stars, proofRequired: completedChore.proofRequired,
-              assignedToId: effectiveAssigneeIds[0] || null,
-              assignees: effectiveAssigneeIds.length ? { connect: effectiveAssigneeIds.map(aid => ({ id: aid })) } : undefined,
-              dueDate: tomorrow, status: 'pending',
-            },
-            include: choreInclude,
-          });
-        }
-        return { completedChore, newChore };
-      });
-
+      const result = await completeChore(req, existing, req.memberId!, updateData, effectiveAssigneeIds);
       if (!result) return res.status(409).json({ error: 'This chore is already done' });
-      await audit(req, 'chore.completed', `completed "${existing.title}" (${choreStars}⭐)`, { type: 'chore', id });
-      broadcast(req.familyId!, { type: 'chore:updated', chore: result.completedChore });
-      if (result.newChore) {
-        broadcast(req.familyId!, { type: 'chore:deleted', id });
-        broadcast(req.familyId!, { type: 'chore:created', chore: result.newChore });
-      }
       if (addedAssigneeIds.length) await notifyAssigned(req.familyId!, req.memberId, addedAssigneeIds, existing.title);
-      return res.json(result.completedChore);
+      return res.json({ ...result.completedChore, celebrations: result.celebrations });
     }
 
     // ── Undoing a completion (parents only — enforced above) ─────────────────
@@ -295,9 +253,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         if (existing.completedAt) {
           // Take back exactly the stars that this completion gave out.
           const rows = await tx.choreCompletion.findMany({ where: { choreId: id, completedAt: existing.completedAt } });
-          for (const r of rows) {
-            await tx.member.update({ where: { id: r.memberId }, data: { stars: { decrement: r.stars } } });
-          }
+          for (const r of rows) await revokeStars(tx, r.memberId, r.stars);
           await tx.choreCompletion.deleteMany({ where: { choreId: id, completedAt: existing.completedAt } });
         }
         return tx.chore.update({ where: { id }, data: updateData, include: choreInclude });
@@ -308,7 +264,11 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       return res.json(chore);
     }
 
-    if (status !== undefined) updateData.status = status as ChoreStatus;
+    if (status !== undefined) {
+      updateData.status = status as ChoreStatus;
+      // Leaving review (kid withdraws it, or a parent resets it) clears the submission.
+      if (existing.status === 'review') { updateData.submittedAt = null; updateData.submittedById = null; }
+    }
 
     const chore = await prisma.chore.update({ where: { id }, data: updateData, include: choreInclude });
     broadcast(req.familyId!, { type: 'chore:updated', chore });
@@ -323,6 +283,155 @@ router.patch('/:id', async (req: AuthRequest, res) => {
     console.error('PATCH /chores error:', e);
     res.status(400).json({ error: 'Could not update chore' });
   }
+});
+
+type ChoreWithAssignees = Prisma.ChoreGetPayload<{ include: { assignees: { select: { id: true } } } }>;
+
+/**
+ * Marks a chore done and pays out stars exactly once (the ChoreCompletion
+ * ledger), updates streaks, recycles daily chores, then checks for badges and
+ * level-ups. `completerId` is who did the chore (the kid, even when a parent
+ * approves their photo). Returns null if someone else completed it first.
+ */
+async function completeChore(
+  req: AuthRequest,
+  existing: ChoreWithAssignees,
+  completerId: string,
+  updateData: Prisma.ChoreUpdateInput,
+  assigneeIds: string[],
+): Promise<{ completedChore: any; newChore: any; celebrations: Celebration[] } | null> {
+  const id = existing.id;
+  const completedAt = new Date();
+  const choreStars = (updateData.stars as number | undefined) ?? existing.stars;
+  const shares = starShares(choreStars, assigneeIds, completerId);
+  const wasLate = !!existing.dueDate && localDay() > existing.dueDate.toISOString().slice(0, 10);
+  const earners = [...new Set([...shares.keys(), ...assigneeIds])];
+  const before = await levelsBefore(earners);
+
+  const result = await prisma.$transaction(async tx => {
+    // Atomic claim: only one request can move this chore to done.
+    const claimed = await tx.chore.updateMany({
+      where: { id, familyId: req.familyId, status: { not: 'done' } },
+      data: { status: 'done', completedAt, completedById: completerId, submittedAt: null, submittedById: null },
+    });
+    if (claimed.count !== 1) return null;
+
+    for (const [memberId, n] of shares) {
+      await grantStars(tx, memberId, n);
+      await tx.choreCompletion.create({
+        data: { familyId: req.familyId!, choreId: id, choreTitle: existing.title, memberId, stars: n, completedAt },
+      });
+    }
+
+    // Streaks: one per day, for everyone the chore belonged to (or the completer).
+    for (const aid of assigneeIds.length ? assigneeIds : [completerId]) {
+      if (wasLate) {
+        await tx.member.update({ where: { id: aid }, data: { streakDays: 0, totalChoresDone: { increment: 1 } } });
+        await tx.notification.create({
+          data: { familyId: req.familyId!, memberId: aid, title: 'Chore overdue!', body: '"' + existing.title + '" was completed late - streak reset.' },
+        });
+      } else {
+        await bumpStreak(tx, aid);
+      }
+    }
+
+    const completedChore = await tx.chore.update({ where: { id }, data: updateData, include: choreInclude });
+
+    // Daily chores: recycle into tomorrow's copy. The star history lives in
+    // ChoreCompletion, so nothing is lost.
+    let newChore = null;
+    if (existing.frequency === 'daily') {
+      await tx.chore.delete({ where: { id } });
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(23, 59, 59, 0);
+      const next = nextAssignees(existing, assigneeIds);
+      newChore = await tx.chore.create({
+        data: {
+          familyId: existing.familyId, title: completedChore.title, emoji: completedChore.emoji,
+          frequency: 'daily', stars: completedChore.stars, proofRequired: completedChore.proofRequired,
+          priority: completedChore.priority, notes: completedChore.notes,
+          ...rotationCarry(existing),
+          assignedToId: next[0] || null,
+          assignees: next.length ? { connect: next.map(aid => ({ id: aid })) } : undefined,
+          dueDate: tomorrow, status: 'pending',
+        },
+        include: choreInclude,
+      });
+    }
+    return { completedChore, newChore };
+  });
+  if (!result) return null;
+
+  const who = await prisma.member.findUnique({ where: { id: completerId }, select: { name: true } });
+  await audit(
+    req,
+    'chore.completed',
+    completerId === req.memberId ? `completed "${existing.title}" (${choreStars}⭐)` : `approved ${who?.name}'s "${existing.title}" (${choreStars}⭐)`,
+    { type: 'chore', id },
+  );
+  broadcast(req.familyId!, { type: 'chore:updated', chore: result.completedChore });
+  if (result.newChore) {
+    broadcast(req.familyId!, { type: 'chore:deleted', id });
+    broadcast(req.familyId!, { type: 'chore:created', chore: result.newChore });
+  }
+  const celebrations = await checkAchievements(earners, before);
+  await checkFamilyGoal(req.familyId!);
+  if (celebrations.length) broadcast(req.familyId!, { type: 'celebration', celebrations });
+  return { ...result, celebrations };
+}
+
+// Rotation hooks (filled in by the fair-rotation feature).
+function nextAssignees(_existing: ChoreWithAssignees, current: string[]) { return current; }
+function rotationCarry(_existing: ChoreWithAssignees) { return {}; }
+
+// GET /api/chores/awaiting-approval — photo-proof chores waiting for a parent
+router.get('/awaiting-approval', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const chores = await prisma.chore.findMany({
+      where: { familyId: req.familyId, status: 'review', archivedAt: null },
+      include: choreInclude,
+      orderBy: { submittedAt: 'asc' },
+    });
+    const kids = await prisma.member.findMany({ where: { id: { in: chores.map(c => c.submittedById!).filter(Boolean) } }, select: { id: true, name: true, emoji: true, color: true } });
+    res.json(chores.map(c => ({ ...c, submittedBy: kids.find(k => k.id === c.submittedById) || null })));
+  } catch { res.status(500).json({ error: 'Could not load chores to check' }); }
+});
+
+// POST /api/chores/:id/approve — parent approves a photo; stars land
+router.post('/:id/approve', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const existing = await prisma.chore.findFirst({ where: { id: req.params.id, familyId: req.familyId }, include: { assignees: { select: { id: true } } } });
+    if (!existing) return res.status(404).json({ error: 'Chore not found' });
+    if (existing.status !== 'review' || !existing.submittedById) return res.status(409).json({ error: 'This chore is not waiting for approval' });
+    const result = await completeChore(req, existing, existing.submittedById, {}, existing.assignees.map(a => a.id));
+    if (!result) return res.status(409).json({ error: 'This chore is already done' });
+    await notifyMember(req.familyId!, existing.submittedById, 'Approved! ⭐', `"${existing.title}" was approved — ${existing.stars} stars for you`);
+    res.json({ ...result.completedChore, celebrations: result.celebrations });
+  } catch (e) { console.error('approve error', e); res.status(500).json({ error: 'Could not approve' }); }
+});
+
+// POST /api/chores/:id/reject — parent sends it back with a short note
+router.post('/:id/reject', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 300) : '';
+    const existing = await prisma.chore.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!existing) return res.status(404).json({ error: 'Chore not found' });
+    if (existing.status !== 'review') return res.status(409).json({ error: 'This chore is not waiting for approval' });
+    const kidId = existing.submittedById;
+    const chore = await prisma.chore.update({
+      where: { id: existing.id },
+      data: { status: 'pending', submittedAt: null, submittedById: null, reviewNote: note || null, photoUrl: null, proofUrl: null },
+      include: choreInclude,
+    });
+    if (kidId) await notifyMember(req.familyId!, kidId, 'Not quite yet', `"${existing.title}" needs another go${note ? `: ${note}` : ''}`);
+    await audit(req, 'chore.sent_back', `sent "${existing.title}" back${note ? `: ${note}` : ''}`, { type: 'chore', id: existing.id });
+    broadcast(req.familyId!, { type: 'chore:updated', chore });
+    res.json(chore);
+  } catch { res.status(500).json({ error: 'Could not send back' }); }
 });
 
 // PATCH /api/chores/:id/photo

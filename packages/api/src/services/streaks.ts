@@ -1,41 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../db';
 
-export async function awardBadges(memberId: string) {
-  const member = await prisma.member.findUnique({ where: { id: memberId } });
-  if (!member) return;
-
-  const badges = new Set<string>(member.badges || []);
-  const newBadges: string[] = [];
-
-  if (member.totalChoresDone >= 1  && !badges.has('first_chore')) { badges.add('first_chore'); newBadges.push('first_chore'); }
-  if ((member.streakDays ?? 0) >= 7  && !badges.has('streak_7'))  { badges.add('streak_7');   newBadges.push('streak_7');   }
-  if ((member.streakDays ?? 0) >= 30 && !badges.has('streak_30')) { badges.add('streak_30');  newBadges.push('streak_30');  }
-  if (member.stars >= 50  && !badges.has('star_50'))  { badges.add('star_50');  newBadges.push('star_50');  }
-  if (member.stars >= 100 && !badges.has('star_100')) { badges.add('star_100'); newBadges.push('star_100'); }
-
-  if (newBadges.length > 0) {
-    await prisma.member.update({ where: { id: memberId }, data: { badges: [...badges] } });
-    for (const badge of newBadges) {
-      const labels: Record<string, string> = {
-        first_chore: '🌟 First Chore completed!',
-        streak_7:    '🔥 7-day streak — incredible!',
-        streak_30:   '💎 30-day streak — legendary!',
-        star_50:     '⭐ 50 Stars earned!',
-        star_100:    '🌠 100 Stars — amazing!',
-      };
-      await prisma.notification.create({
-        data: {
-          familyId: member.familyId,
-          memberId,
-          title: '🏅 New Badge!',
-          body: labels[badge] || badge,
-          read: false,
-        },
-      });
-    }
-  }
-}
+// Badges and levels now live in services/gamification.ts.
 
 export function startStreakCron() {
   // ── Midnight: reset daily chores + update member streaks ──────────────────
@@ -209,4 +175,3 @@ export function startStreakCron() {
   console.log('[streaks] Cron registered (midnight daily + 8pm warning + 00:05 weekly recurring)');
 }
 
-export { awardBadges as default };

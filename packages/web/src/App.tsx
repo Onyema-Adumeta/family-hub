@@ -20,6 +20,8 @@ import WishlistPage from './pages/WishlistPage';
 import TripsPage from './pages/TripsPage';
 import TripDetailPage from './pages/TripDetailPage';
 import PrivacyPage from './legal/PrivacyPage';
+import WinsPage from './pages/WinsPage';
+import HouseViewPage from './pages/HouseViewPage';
 import TermsPage from './legal/TermsPage';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './pages/AccountEmailPages';
 
@@ -42,7 +44,9 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/house" element={<PrivateRoute><HouseViewPage /></PrivateRoute>} />
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+          <Route path="wins" element={<WinsPage />} />
           <Route index element={<DashboardPage />} />
           <Route path="chores" element={<ChoresPage />} />
           <Route path="meals" element={<MealsPage />} />

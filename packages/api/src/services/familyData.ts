@@ -18,6 +18,7 @@ export async function exportFamilyData(familyId: string) {
   const [
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
+    achievements, goals,
   ] = await Promise.all([
     prisma.member.findMany({ where: { familyId }, select: { ...PUBLIC_MEMBER_SELECT, email: true, emailVerifiedAt: true } }),
     prisma.chore.findMany({ ...byFamily, include: { assignees: { select: { id: true, name: true } } } }),
@@ -37,6 +38,8 @@ export async function exportFamilyData(familyId: string) {
     prisma.trip.findMany({ ...byFamily, include: { packingItems: true, itineraryDays: { include: { activities: { include: { assignees: { select: { id: true, name: true } } } } } } } }),
     prisma.memory.findMany(byFamily),
     prisma.auditLog.findMany({ ...byFamily, orderBy: { createdAt: 'asc' } }),
+    prisma.achievement.findMany(byFamily),
+    prisma.familyGoal.findMany(byFamily),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -44,6 +47,7 @@ export async function exportFamilyData(familyId: string) {
     family: { ...familyOut, googleCalendarConnected: !!googleTokens },
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
+    achievements, goals,
   };
 }
 

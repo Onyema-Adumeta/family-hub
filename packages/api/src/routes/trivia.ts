@@ -4,6 +4,7 @@ import { broadcast } from '../services/websocket';
 
 const router = Router();
 import { prisma } from '../db';
+import { checkAchievements, grantStars, levelsBefore } from '../services/gamification';
 import { aiAllowed, ageBand, ageYears, AI_OFF_MESSAGE } from '../services/aiPrivacy';
 
 const CATEGORY_PACKS = [
@@ -301,10 +302,9 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
     if (ranked.length > 0) {
       const winner = ranked[0];
       const bonusStars = 3;
-      await prisma.member.update({
-        where: { id: winner.member.id },
-        data:  { stars: { increment: bonusStars } },
-      });
+      const before = await levelsBefore([winner.member.id]);
+      await prisma.$transaction(tx => grantStars(tx, winner.member.id, bonusStars));
+      await checkAchievements([winner.member.id], before);
       await prisma.notification.create({
         data: {
           familyId: req.familyId!,

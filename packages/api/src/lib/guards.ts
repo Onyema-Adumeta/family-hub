@@ -13,6 +13,7 @@ export const PUBLIC_MEMBER_SELECT = {
   avatarUrl: true,
   role: true,
   stars: true,
+  lifetimeStars: true,
   streakDays: true,
   streakUpdatedAt: true,
   totalChoresDone: true,

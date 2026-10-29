@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useCelebrations } from '../store/celebrations';
 
 // ── Helper: simple toast without importing context (avoids circular deps) ────
 function toast(msg: string, type: 'success' | 'error' | 'info' = 'success') {
@@ -42,14 +43,18 @@ export function useUpdateChore() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/chores/${id}`, data).then(r => r.data),
-    onSuccess: (_, vars) => {
+    onSuccess: (data: any, vars) => {
       qc.invalidateQueries({ queryKey: ['chores'] });
       qc.invalidateQueries({ queryKey: ['members'] });
-      if (vars.data?.status === 'done') toast('Chore done! ⭐ Stars earned!');
+      qc.invalidateQueries({ queryKey: ['briefing'] });
+      qc.invalidateQueries({ queryKey: ['goal'] });
+      if (data?.awaitingApproval) toast('Sent to a parent to check 📸', 'info');
+      else if (vars.data?.status === 'done') toast('Chore done! ⭐ Stars earned!');
       else if (vars.data?.status === 'in_progress') toast('Chore started 🔥');
       else if (vars.data?.status === 'pending') toast('Chore reset ↩');
+      useCelebrations.getState().push(data?.celebrations);
     },
-    onError: () => toast('Failed to update chore', 'error'),
+    onError: (err: any) => toast(err?.response?.data?.error || 'Failed to update chore', 'error'),
   });
 }
 export function useDeleteChore() {
@@ -271,5 +276,31 @@ export function useDeleteGroceryItem() {
     mutationFn: (id: string) => api.delete(`/grocery/${id}`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['grocery'] }); toast('Item removed', 'info'); },
     onError:   () => toast('Failed to remove item', 'error'),
+  });
+}
+// ── Engagement: briefing, family goal, photo approvals, Weekly Wins ──────────
+export function useBriefing() {
+  return useQuery({ queryKey: ['briefing'], queryFn: () => api.get('/insights/briefing').then(r => r.data), refetchInterval: 60_000 });
+}
+export function useFamilyGoal() {
+  return useQuery({ queryKey: ['goal'], queryFn: () => api.get('/goals').then(r => r.data) });
+}
+export function useApprovals(enabled: boolean) {
+  return useQuery({ queryKey: ['approvals'], queryFn: () => api.get('/chores/awaiting-approval').then(r => r.data), enabled });
+}
+export function useWins(week?: string) {
+  return useQuery({ queryKey: ['wins', week || 'current'], queryFn: () => api.get('/insights/wins', { params: week ? { week } : {} }).then(r => r.data) });
+}
+export function useReviewChore() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, approve, note }: { id: string; approve: boolean; note?: string }) =>
+      api.post(`/chores/${id}/${approve ? 'approve' : 'reject'}`, approve ? {} : { note }).then(r => r.data),
+    onSuccess: (data: any, vars) => {
+      ['approvals', 'chores', 'members', 'briefing', 'goal'].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+      toast(vars.approve ? 'Approved — stars sent ⭐' : 'Sent back with your note', vars.approve ? 'success' : 'info');
+      useCelebrations.getState().push(data?.celebrations);
+    },
+    onError: (err: any) => toast(err?.response?.data?.error || 'Could not update', 'error'),
   });
 }

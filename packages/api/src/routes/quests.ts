@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../db';
 import { audit } from '../services/audit';
+import { checkFamilyGoal } from '../services/goals';
+import { checkAchievements, grantStars, levelsBefore } from '../services/gamification';
 import { memberInFamily, pick, requireParent } from '../lib/guards';
 
 const router = Router();
@@ -62,21 +64,22 @@ router.post('/:id/complete', async (req: AuthRequest, res) => {
     const starsToAward = quest.stars || quest.reward || 10;
     const targetMemberId = quest.memberId || req.memberId!;
 
+    const before = await levelsBefore([targetMemberId]);
     const updated = await prisma.$transaction(async tx => {
       const claimed = await tx.quest.updateMany({
         where: { id: quest.id, familyId: req.familyId, completedAt: null },
         data: { completedAt: new Date(), completed: true },
       });
       if (claimed.count !== 1) return null;
-      await tx.member.update({
-        where: { id: targetMemberId },
-        data: { stars: { increment: starsToAward }, totalChoresDone: { increment: 1 } },
-      });
+      await grantStars(tx, targetMemberId, starsToAward);
+      await tx.member.update({ where: { id: targetMemberId }, data: { totalChoresDone: { increment: 1 } } });
       return tx.quest.findUnique({ where: { id: quest.id } });
     });
     if (!updated) return res.status(400).json({ error: 'Quest already completed' });
     await audit(req, 'quest.completed', `completed quest "${quest.title}" (${starsToAward}⭐)`, { type: 'quest', id: quest.id });
-    res.json(updated);
+    const celebrations = await checkAchievements([targetMemberId], before);
+    await checkFamilyGoal(req.familyId!);
+    res.json({ ...updated, celebrations });
   } catch { res.status(400).json({ error: 'Could not complete quest' }); }
 });
 

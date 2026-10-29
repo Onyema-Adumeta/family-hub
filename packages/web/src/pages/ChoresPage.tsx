@@ -10,12 +10,13 @@ const DAY_SHORT    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-type Status = 'pending' | 'in_progress' | 'done';
+type Status = 'pending' | 'in_progress' | 'done' | 'review';
 
 const STATUS_META: Record<Status, { label: string; icon: string; color: string; bg: string }> = {
   pending:     { label: 'Pending',     icon: '⏳', color: '#94A3B8', bg: 'rgba(148,163,184,0.15)' },
   in_progress: { label: 'In Progress', icon: '🔥', color: '#FBBF24', bg: 'rgba(251,191,36,0.15)'  },
   done:        { label: 'Done',        icon: '✅', color: '#4ADE80', bg: 'rgba(74,222,128,0.15)'  },
+  review:      { label: 'Waiting for OK', icon: '📸', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)' },
 };
 
 /* ------------------------------------------------------------------ *
@@ -589,7 +590,7 @@ export default function ChoresPage() {
         </div>
       ) : list.map((chore: any) => {
         const status: Status = chore.status || 'pending';
-        const meta        = STATUS_META[status];
+        const meta        = STATUS_META[status] || STATUS_META.pending;
         const assigneeIds = choreAssigneeIds(chore);
         const assignees   = assigneeIds.map(aid => memberList.find(m => m.id === aid)).filter(Boolean);
         const overdue     = isOverdue(chore.dueDate, status);
@@ -631,6 +632,8 @@ export default function ChoresPage() {
                   )}
                 </div>
 
+                {status === 'review' && <div style={{ fontSize: 12, color: '#60A5FA', fontWeight: 700, margin: '2px 0' }}>📸 Photo sent — waiting for a parent to approve</div>}
+                {status !== 'review' && chore.reviewNote && <div style={{ fontSize: 12, color: '#F59E0B', fontWeight: 700, margin: '2px 0' }}>↩ Sent back: {chore.reviewNote}</div>}
                 <div className="chore-meta">
                   <span className="chore-meta-item">⭐{chore.stars}{assignees.length > 1 ? ` (split ${assignees.length})` : ''}</span>
                   <span className="chore-meta-item">· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
