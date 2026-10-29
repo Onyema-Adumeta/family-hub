@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import { aiAllowed, makeLabeller } from '../services/aiPrivacy';
 
 const router = Router();
 import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'missing' });
 
 function getWeekStart() {
   const d = new Date();
@@ -29,7 +30,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
     const [members, allChores, completedThisWeek, messages, meals] = await Promise.all([
       prisma.member.findMany({
         where: { familyId },
-        select: { id: true, name: true, emoji: true, color: true, stars: true, streakDays: true, badges: true, totalChoresDone: true }
+        select: { id: true, name: true, role: true, emoji: true, color: true, stars: true, streakDays: true, badges: true, totalChoresDone: true }
       }),
       prisma.chore.findMany({
         where: { familyId, archivedAt:null },
@@ -85,8 +86,12 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
     let aiInsights = '';
     let aiTips: string[] = [];
 
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (await aiAllowed(familyId)) {
       try {
+        // Names never leave the server: the AI sees "Parent 1" / "Child 2", and
+        // we swap the real names back into its reply here.
+        const labeller = makeLabeller(memberStats);
+        const labelOf = (m: typeof memberStats[number] | undefined) => (m ? labeller.label(m) : 'N/A');
         const prompt = `You are a warm, encouraging family coach. Based on this week's Family Hub data, give 3 short actionable parenting tips and a brief family summary.
 
 Family stats this week:
@@ -96,10 +101,10 @@ Family stats this week:
 - Messages sent: ${messages.length}
 
 Member breakdown:
-${memberStats.map(m => `- ${m.name}: ${m.doneThisWeek} chores done, ${m.starsEarned} stars earned, ${m.streakDays || 0} day streak`).join('\n')}
+${memberStats.map(m => `- ${labelOf(m)}: ${m.doneThisWeek} chores done, ${m.starsEarned} stars earned, ${m.streakDays || 0} day streak`).join('\n')}
 
-Top performer: ${topMember?.name || 'N/A'}
-Streak leader: ${streakLeader?.name || 'N/A'} (${streakLeader?.streakDays || 0} days)
+Top performer: ${labelOf(topMember)}
+Streak leader: ${labelOf(streakLeader)} (${streakLeader?.streakDays || 0} days)
 
 Respond in JSON format only, no markdown:
 {
@@ -116,9 +121,9 @@ Respond in JSON format only, no markdown:
 
         const text = response.content[0].type === 'text' ? response.content[0].text : '';
         const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
-        aiInsights = parsed.summary || '';
-        aiTips     = parsed.tips || [];
-        if (parsed.encouragement) aiTips.push(parsed.encouragement);
+        aiInsights = labeller.restore(String(parsed.summary || ''));
+        aiTips     = (Array.isArray(parsed.tips) ? parsed.tips : []).map((t: any) => labeller.restore(String(t)));
+        if (parsed.encouragement) aiTips.push(labeller.restore(String(parsed.encouragement)));
       } catch (e) {
         aiInsights = `Your family completed ${familyPct}% of chores this week. ${topMember ? `${topMember.name} led the way with ${topMember.starsEarned} stars!` : ''} Keep building those good habits!`;
         aiTips = [
@@ -155,7 +160,7 @@ Respond in JSON format only, no markdown:
 
   } catch (e: any) {
     console.error('Report error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Could not build the report' });
   }
 });
 

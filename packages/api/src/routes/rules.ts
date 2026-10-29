@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 import { prisma } from '../db';
+import { memberInFamily } from '../lib/guards';
 
 // GET /api/rules — list all rules for the family
 router.get('/', async (req: AuthRequest, res) => {
@@ -30,6 +31,7 @@ router.post('/', async (req: AuthRequest, res) => {
   if (!assignedToId || !minStars) {
     return res.status(400).json({ error: 'assignedToId and minStars are required' });
   }
+  if (!(await memberInFamily(assignedToId, req.familyId!))) return res.status(400).json({ error: 'Invalid member' });
 
   try {
     const rule = await prisma.weeklyRule.create({
@@ -60,8 +62,10 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 
   const { label, minStars, consequenceNote, active } = req.body;
   try {
+    const existing = await prisma.weeklyRule.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!existing) return res.status(404).json({ error: 'Rule not found' });
     const rule = await prisma.weeklyRule.update({
-      where: { id: req.params.id },
+      where: { id: existing.id },
       data: {
         ...(label           !== undefined && { label }),
         ...(minStars        !== undefined && { minStars: Number(minStars) }),
@@ -83,6 +87,8 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 router.delete('/:id', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
+    const existing = await prisma.weeklyRule.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!existing) return res.status(404).json({ error: 'Rule not found' });
     // Delete child records first
     await prisma.ruleOutcome.deleteMany({ where: { ruleId: req.params.id } });
     await prisma.weeklyRule.delete({ where: { id: req.params.id } });
@@ -96,7 +102,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 router.get('/my', async (req: AuthRequest, res) => {
   try {
     const rules = await prisma.weeklyRule.findMany({
-      where: { assignedToId: req.memberId, active: true },
+      where: { assignedToId: req.memberId, familyId: req.familyId, active: true },
       include: {
         outcomes: { orderBy: { createdAt: 'desc' }, take: 4 },
       },

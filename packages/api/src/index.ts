@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -27,17 +27,25 @@ import { startWeeklyRulesCron } from './services/weeklyRulesCron';
 import triviaRoutes from './routes/trivia';
 import wishlistRouter from './routes/wishlist';
 import { google } from 'googleapis';
+import jwt from 'jsonwebtoken';
 import { prisma } from './db';
 import tripsRoutes from './routes/trips';
+import familyRoutes from './routes/family';
+import insightsRoutes from './routes/insights';
+import goalsRoutes from './routes/goals';
+import bankRoutes from './routes/bank';
+import eventImportRoutes, { extractHandler } from './routes/eventImport';
+import { encryptSecret, encryptionConfigured } from './services/secretBox';
 
 const app = express();
 app.set('trust proxy', 1);
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
+// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://family-hub-web-omega.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean) as string[];
@@ -45,7 +53,7 @@ const allowedOrigins = [
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.options('*', cors({ origin: allowedOrigins, credentials: true }));
 
-// ── Security headers ──────────────────────────────────────────────────────────
+// â”€â”€ Security headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -54,22 +62,37 @@ app.use((_req, res, next) => {
   next();
 });
 
-// ── Global rate limit: 500 req / 15 min per IP ───────────────────────────────
+// â”€â”€ Global rate limit: 500 req / 15 min per IP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  // RATE_LIMIT_MULTIPLIER is only for the automated test suite; leave unset in production.
+  max: 500 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please slow down.' },
 });
 app.use(globalLimiter);
 
-// ── Body parsing (50kb max — uploads go via Cloudinary) ──────────────────────
+// â”€â”€ Body parsing (50kb max â€” uploads go via Cloudinary) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Flyer photos need a bigger body than everything else, so this one route is
+// registered before the normal 50 kB JSON limit.
+app.post('/api/events/extract', ...extractHandler);
 app.use(express.json({ limit: '50kb' }));
 
-// ── Google Calendar OAuth callback — no auth required ────────────────────────
+// â”€â”€ Google Calendar OAuth callback â€” no auth required â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/events/google/callback', async (req, res) => {
-  const { code, state: familyId } = req.query as { code: string; state: string };
+  const { code, state } = req.query as { code?: string; state?: string };
+  if (!code || !state || !process.env.JWT_SECRET) return res.status(400).json({ error: 'Invalid OAuth request' });
+  let familyId: string;
+  try {
+    const payload = jwt.verify(state, process.env.JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload;
+    if (payload.purpose !== 'google-calendar-oauth' || typeof payload.familyId !== 'string') throw new Error('Invalid OAuth state');
+    familyId = payload.familyId;
+  } catch { return res.status(400).json({ error: 'Invalid or expired OAuth state' }); }
+  if (!encryptionConfigured()) {
+    console.error('Google OAuth callback: TOKEN_ENCRYPTION_KEY is not set; refusing to store tokens unencrypted');
+    return res.status(500).json({ error: 'Google Calendar is not configured on the server yet' });
+  }
   try {
     const auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -79,19 +102,20 @@ app.get('/api/events/google/callback', async (req, res) => {
     const { tokens } = await auth.getToken(code);
     await (prisma.family.update as any)({
       where: { id: familyId },
-      data: { googleTokens: JSON.stringify(tokens) },
+      data: { googleTokens: encryptSecret(JSON.stringify(tokens)) },
     });
     res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
   } catch (e: any) {
     console.error('Google OAuth callback error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Could not connect Google Calendar' });
   }
 });
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// â”€â”€ Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use('/api/auth',          authRoutes);
 app.use('/api/chores',        authMiddleware, choresRoutes);
 app.use('/api/meals',         authMiddleware, mealsRoutes);
+app.use('/api/events',        authMiddleware, eventImportRoutes);
 app.use('/api/events',        authMiddleware, eventsRoutes);
 app.use('/api/rewards',       authMiddleware, rewardsRoutes);
 app.use('/api/chat',          authMiddleware, chatRoutes);
@@ -107,24 +131,43 @@ app.use('/api/trivia',        authMiddleware, triviaRoutes);
 app.use('/api/wishlist',      authMiddleware, wishlistRouter);
 app.use('/api/games',         authMiddleware, gamesRouter);
 app.use('/api/trips',         authMiddleware, tripsRoutes);
+app.use('/api/family',        authMiddleware, familyRoutes);
+app.use('/api/insights',      authMiddleware, insightsRoutes);
+app.use('/api/goals',         authMiddleware, goalsRoutes);
+app.use('/api/bank',          authMiddleware, bankRoutes);
 
-// ── Health check ──────────────────────────────────────────────────────────────
+// â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
+// Deeper check for uptime monitors (e.g. UptimeRobot): fails if the database is unreachable.
+app.get('/health/ready', async (_req, res) => {
+  const started = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: 'ok', dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()) });
+  } catch (e) {
+    console.error('[health] database check failed', e);
+    res.status(503).json({ ok: false, db: 'unreachable' });
+  }
+});
 
-// ── 404 handler ───────────────────────────────────────────────────────────────
+// â”€â”€ 404 handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
-// ── Global error handler ──────────────────────────────────────────────────────
+// â”€â”€ Global error handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Log crashes clearly so they show up in Railway's logs and alerts.
+process.on('unhandledRejection', (reason) => console.error('[fatal] unhandled promise rejection', reason));
+process.on('uncaughtException', (err) => { console.error('[fatal] uncaught exception', err); process.exit(1); });
+
 startStreakCron();
 setupWebSocket(wss);
 setupCron();
 startWeeklyRulesCron();
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));// redeploy googleTokens
+server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));

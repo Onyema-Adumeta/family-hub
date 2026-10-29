@@ -1,6 +1,8 @@
 import ChoreReview from '../components/ChoreReview';
 import BrowserNotifications from '../components/BrowserNotifications';
 import DashboardLinks from '../components/DashboardLinks';
+import FamilySafety from '../components/FamilySafety';
+import AccountAndData from '../components/AccountAndData';
 import { useState, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useMembers } from '../hooks/useApi';
@@ -111,6 +113,46 @@ export default function SettingsPage() {
     }
   }
 
+  async function changeRole(m: any) {
+    const next = m.role === 'parent' ? 'child' : 'parent';
+    if (!confirm(next === 'parent' ? `Make ${m.name} a parent? Parents can approve rewards, edit chores and manage the family.` : `Change ${m.name} to a kid account?`)) return;
+    try {
+      await api.patch(`/members/${m.id}/role`, { role: next });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    } catch (e: any) { alert(e.response?.data?.error || 'Could not change role'); }
+  }
+
+  async function setPasswordFor(m: any) {
+    const isSelf = m.id === member?.id;
+    const currentPassword = isSelf ? prompt('Your current password or PIN') : undefined;
+    if (isSelf && currentPassword === null) return;
+    const password = prompt(isSelf ? 'New password or PIN (4+ characters)' : `New password or PIN for ${m.name} (4+ characters)`);
+    if (!password) return;
+    try {
+      const { data } = await api.put(`/members/${m.id}/password`, { password, currentPassword });
+      // Changing a password signs that person out everywhere else; keep this device signed in.
+      if (isSelf && data?.token) useAuthStore.setState({ token: data.token });
+      alert(isSelf ? 'Password changed. Your other devices have been signed out.' : `${m.name}'s password was reset and they were signed out everywhere. Tell them the new one.`);
+    } catch (e: any) { alert(e.response?.data?.error || 'Could not change password'); }
+  }
+
+  async function signOutMember(m: any) {
+    const isSelf = m.id === member?.id;
+    if (!confirm(isSelf ? 'Sign out on all your devices, including this one?' : `Sign ${m.name} out on all their devices? They will need their password to get back in.`)) return;
+    try {
+      if (isSelf) { await api.post('/auth/sign-out-everywhere'); logout(); navigate('/login'); }
+      else { await api.post(`/members/${m.id}/sign-out`); alert(`${m.name} has been signed out.`); }
+    } catch (e: any) { alert(e.response?.data?.error || 'Could not sign out'); }
+  }
+
+  async function rotateCode() {
+    if (!confirm('Make a new family code? The old code stops working for new sign-ins and joins. Everyone already signed in stays signed in.')) return;
+    try {
+      const { data } = await api.post('/auth/rotate-code');
+      useAuthStore.setState({ family: data.family });
+    } catch (e: any) { alert(e.response?.data?.error || 'Could not change the family code'); }
+  }
+
   async function handleRemoveMember(id: string) {
     setRemovingId(id);
     try {
@@ -149,6 +191,8 @@ export default function SettingsPage() {
      {isParent && <DashboardLinks manage />}
      <BrowserNotifications />
      {isParent && <ChoreReview />}
+     {isParent && <FamilySafety />}
+     <AccountAndData />
 
       <div style={{ marginBottom: 16 }}>
         <StreakCard />
@@ -190,6 +234,12 @@ export default function SettingsPage() {
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, textAlign: 'center' }}>
           Family members join at <strong>{window.location.origin}/join</strong>
         </div>
+        {isParent && (
+          <button onClick={rotateCode} style={{
+            marginTop: 10, width: '100%', padding: '8px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-muted)', cursor: 'pointer',
+          }}>🔄 Make a new family code (if this one was shared by mistake)</button>
+        )}
       </div>
 
       {/* ── MY STATS ── */}
@@ -444,6 +494,28 @@ export default function SettingsPage() {
                   )
                 )}
               </div>
+
+              {/* ── Account controls ── */}
+              {(isParent || isMe) && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => setPasswordFor(m)} style={{
+                    padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                    background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer',
+                  }}>🔑 {isMe ? 'Change my password' : 'Reset password'}</button>
+                  {(isMe || isParent) && (
+                    <button onClick={() => signOutMember(m)} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer',
+                    }}>🚪 {isMe ? 'Sign out everywhere' : 'Sign out'}</button>
+                  )}
+                  {isParent && !isMe && (
+                    <button onClick={() => changeRole(m)} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer',
+                    }}>{m.role === 'parent' ? '👦 Make kid' : '👨 Make parent'}</button>
+                  )}
+                </div>
+              )}
 
               {/* ── Birthday row (parents can edit anyone's; kids can only edit their own) ── */}
               {(isParent || isMe) && (

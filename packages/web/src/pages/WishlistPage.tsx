@@ -16,7 +16,8 @@ const STATUS_META: Record<string, { label: string; color: string; icon: string }
 };
 
 export default function WishlistPage() {
-  const { member, isParent } = useAuthStore();
+  const { member } = useAuthStore();
+  const isParent = member?.role === 'parent';
   const qc = useQueryClient();
   const [selectedMemberId, setSelectedMemberId] = useState<string>(member?.id || '');
   useEffect(() => { if (!selectedMemberId && member?.id) setSelectedMemberId(member.id); }, [member?.id]);

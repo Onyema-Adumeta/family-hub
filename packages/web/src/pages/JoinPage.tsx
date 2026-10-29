@@ -12,7 +12,7 @@ export default function JoinPage() {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('👦');
   const [color, setColor] = useState('#F472B6');
-  const [role, setRole] = useState('child');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
@@ -25,7 +25,7 @@ export default function JoinPage() {
       const { data } = await api.post('/auth/join', {
         inviteCode: inviteCode.trim().toUpperCase(),
         name: name.trim(),
-        emoji, color, role,
+        emoji, color, password,
       });
       setAuth(data.token, data.member, data.family);
       navigate('/');
@@ -45,7 +45,7 @@ export default function JoinPage() {
           <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Join your family!
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>No password needed — just your family code + your name</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>Kids and grown-ups join here. A parent can make another adult a parent in Settings.</p>
         </div>
 
         <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -73,11 +73,17 @@ export default function JoinPage() {
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Role</label>
-            <select className="input" value={role} onChange={e => setRole(e.target.value)}>
-              <option value="child">👦 Kid</option>
-              <option value="parent">👨 Parent</option>
-            </select>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Choose a password or PIN (4+ characters)</label>
+            <input
+              className="input"
+              type="password"
+              placeholder="At least 4 characters"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={4}
+              required
+            />
           </div>
 
           <div>
@@ -109,6 +115,7 @@ export default function JoinPage() {
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
           <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 800 }}>Sign in instead</Link>
+          <div style={{ marginTop: 10, fontSize: 11 }}>By joining you agree to the <Link to="/terms" style={{ color: 'var(--text-muted)' }}>Terms</Link> and <Link to="/privacy" style={{ color: 'var(--text-muted)' }}>Privacy Policy</Link> your parent accepted.</div>
         </div>
       </div>
     </div>

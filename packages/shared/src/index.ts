@@ -17,7 +17,12 @@ export interface Member {
   stars: number;
   streakDays?: number;
   streakUpdatedAt?: string | null;
-  pushToken?: string;
+  avatarUrl?: string | null;
+  birthday?: string | null;
+  badges?: string[];
+  totalChoresDone?: number;
+  email?: string | null; // only present on your own account
+  emailVerifiedAt?: string | null;
 }
 
 export interface Chore {

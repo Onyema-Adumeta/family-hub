@@ -12,6 +12,13 @@ model Family {
   name             String
   inviteCode       String          @unique
   googleTokens  String?
+  aiConsentAt      DateTime?
+  aiConsentById    String?
+  // Parent's acceptance of the terms/privacy policy and consent for children's data.
+  termsAcceptedAt   DateTime?
+  termsVersion      String?
+  termsAcceptedById String?
+  childConsentAt    DateTime?
   createdAt        DateTime        @default(now())
   plan             String          @default("free")
   stripeCustomerId String?         @unique
@@ -32,6 +39,15 @@ model Family {
   triviaSessions   TriviaSession[]
   gameScores       GameScore[]
   trips            Trip[]
+  choreCompletions ChoreCompletion[]
+  auditLogs        AuditLog[]
+  achievements     Achievement[]
+  goals            FamilyGoal[]
+  bankEntries      BankEntry[]
+  // Stars-to-value rates set by a parent. null = that bank is switched off.
+  screenMinutesPerStar Int?
+  centsPerStar         Int?
+  currency             String  @default("CAD")
 }
 
 model Member {
@@ -39,13 +55,20 @@ model Member {
   familyId        String
   family          Family         @relation(fields: [familyId], references: [id])
   name            String
-  emoji           String         @default("Ã°Å¸â„¢â€š")
+  emoji           String         @default("🙂")
   color           String         @default("#6366F1")
   avatarUrl       String?
   role            String         @default("child")
   stars           Int            @default(0)
+  // Every star ever earned (never goes down when stars are spent). Drives levels.
+  lifetimeStars   Int            @default(0)
+  achievements    Achievement[]
+  bankEntries     BankEntry[]
   password        String
+  tokenVersion    Int            @default(0)
   email           String?
+  emailVerifiedAt DateTime?
+  authTokens      AuthToken[]
   rewardGoalId String?
   canOpenPersonalOS Boolean @default(false)
   canOpenPremed Boolean @default(false)
@@ -81,12 +104,14 @@ model Member {
   tripsCreated    Trip[]               @relation("TripCreator")
   packingItems    PackingItem[]        @relation("PackingItems")
   activityAssignments  ItineraryActivity[]  @relation("ActivityAssignees")
+  choreCompletions     ChoreCompletion[]
 }
 
 enum ChoreStatus {
   pending
   in_progress
   done
+  review
 }
 
 model Chore {
@@ -95,7 +120,7 @@ model Chore {
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
   title         String
-  emoji         String      @default("Ã¢Å“â€¦")
+  emoji         String      @default("✅")
   assignedToId  String?
   assignedTo    Member?     @relation("AssignedChores", fields: [assignedToId], references: [id])
   assignees     Member[]    @relation("ChoreAssignees")
@@ -109,6 +134,14 @@ model Chore {
   notes         String?
   dueDate       DateTime?
   completedAt   DateTime?
+  // Photo-proof flow: a kid submits, a parent approves (stars land) or sends it back.
+  // Fair rotation: the chore takes turns between these members, in order.
+  rotate        Boolean     @default(false)
+  rotationIds   String[]    @default([])
+  rotationIndex Int         @default(0)
+  submittedAt   DateTime?
+  submittedById String?
+  reviewNote    String?
   photoUrl      String?
   photoedAt     DateTime?
   completedById String?
@@ -155,7 +188,7 @@ model Reward {
   familyId       String
   family         Family       @relation(fields: [familyId], references: [id])
   name           String
-  emoji          String       @default("Ã°Å¸Å½Â")
+  emoji          String       @default("🎁")
   cost           Int
   description    String?
   availableCount Int?
@@ -201,7 +234,7 @@ model Quest {
   member      Member?   @relation(fields: [memberId], references: [id])
   title       String
   description String?
-  emoji       String    @default("Ã¢Å¡â€Ã¯Â¸Â")
+  emoji       String    @default("⚡")
   difficulty  String    @default("easy")
   stages      Json      @default("[]")
   stars       Int       @default(10)
@@ -437,4 +470,111 @@ model MessagePollVote {
  member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
  optionIndex Int
  @@unique([messageId, memberId])
+}
+
+// One row per member per chore completion: the stars that member actually received.
+// Not linked to Chore by foreign key, so history survives when a daily chore is recycled.
+// Undoing a completion removes these rows and takes the same stars back, so
+// done -> pending -> done can never award stars twice.
+model ChoreCompletion {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  choreId     String
+  choreTitle  String
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  stars       Int
+  completedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([familyId, completedAt])
+  @@index([choreId, completedAt])
+}
+
+// Who did what, for parents. Never stores passwords, tokens or message text.
+model AuditLog {
+  id         String   @id @default(cuid())
+  familyId   String
+  family     Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actorName  String
+  action     String
+  targetType String?
+  targetId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  @@index([familyId, createdAt])
+}
+
+// One-time links sent by email (verify address, reset password).
+// Only a SHA-256 hash of the token is stored; the link itself is never saved.
+model AuthToken {
+  id        String    @id @default(cuid())
+  memberId  String
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  purpose   String
+  tokenHash String    @unique
+  email     String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([memberId, purpose])
+}
+
+// Badges and level-ups, with the moment they happened (for celebrations and Weekly Wins).
+model Achievement {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  kind      String   // "badge" | "level"
+  code      String   // badge code, or the level number
+  label     String
+  createdAt DateTime @default(now())
+
+  @@index([familyId, createdAt])
+  @@unique([memberId, kind, code])
+}
+
+// A shared target the whole family works toward ("500 stars = pizza and movie night").
+// Progress = stars everyone earns from chores and quests since the goal started.
+model FamilyGoal {
+  id          String    @id @default(cuid())
+  familyId    String
+  family      Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  title       String
+  emoji       String    @default("🎯")
+  reward      String?
+  targetStars Int
+  startsAt    DateTime  @default(now())
+  reachedAt   DateTime?
+  archivedAt  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([familyId, archivedAt])
+}
+
+// Screen-time and allowance bank: a ledger, not real money. FamilyHub never
+// holds or moves money; a parent hands over the real thing and records it here.
+// amount: minutes (kind "screen") or cents (kind "money"); + in, - out.
+model BankEntry {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  kind        String   // "screen" | "money"
+  bucket      String?  // money only: "spend" | "save" | "give"
+  amount      Int
+  stars       Int?     // stars converted, for deposits
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([familyId, memberId, kind])
 }

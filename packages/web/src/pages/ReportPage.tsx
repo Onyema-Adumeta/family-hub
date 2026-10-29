@@ -3,6 +3,8 @@ import { useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import Recommendations from '../components/Recommendations';
+import FairnessMeter from '../components/FairnessMeter';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -120,6 +122,8 @@ export default function ReportPage() {
         @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
       `}</style>
+      <Recommendations />
+      <FairnessMeter />
 
       {/* ── Header ── */}
       <div style={{ marginBottom: 24 }}>

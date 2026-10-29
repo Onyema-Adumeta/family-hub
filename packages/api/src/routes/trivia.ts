@@ -4,6 +4,8 @@ import { broadcast } from '../services/websocket';
 
 const router = Router();
 import { prisma } from '../db';
+import { checkAchievements, grantStars, levelsBefore } from '../services/gamification';
+import { aiAllowed, ageBand, ageYears, AI_OFF_MESSAGE } from '../services/aiPrivacy';
 
 const CATEGORY_PACKS = [
   {
@@ -44,42 +46,26 @@ const CATEGORY_PACKS = [
   },
 ];
 
-function getAgeLabel(birthday: Date | null): string {
-  if (!birthday) return 'unknown age';
-  const age = Math.floor((Date.now() - birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  if (age < 7)  return `${age}-year-old (very young child)`;
-  if (age < 11) return `${age}-year-old (young child)`;
-  if (age < 14) return `${age}-year-old (preteen)`;
-  if (age < 18) return `${age}-year-old (teenager)`;
-  return `${age}-year-old (adult)`;
-}
-
 // ── Shared generation logic — used by BOTH the manual "/generate" route
 // and the daily cron job. Do not fork this logic again; if the daily cron
 // needs to behave differently, add a parameter here instead of duplicating
 // the prompt/category-rotation/repeat-avoidance code elsewhere. ──────────────
 export async function generateTriviaSession(familyId: string) {
+  if (!(await aiAllowed(familyId))) return { error: AI_OFF_MESSAGE };
   const members = await prisma.member.findMany({
     where: { familyId },
-    select: { name: true, role: true, birthday: true },
+    select: { role: true, birthday: true },
   });
 
-  const memberDescriptions = members.map(m =>
-    `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
-  ).join(', ');
+  // Only counts by broad age band leave the server: no names, no birthdays, no exact ages.
+  const bandCounts = new Map<string, number>();
+  for (const m of members) { const b = ageBand(m.birthday, m.role); bandCounts.set(b, (bandCounts.get(b) || 0) + 1); }
+  const memberDescriptions = [...bandCounts.entries()].map(([b, n]) => `${n} ${b}${n > 1 ? 's' : ''}`).join(', ');
 
   const kids   = members.filter(m => m.role === 'child');
   const adults = members.filter(m => m.role === 'parent');
-  const hasYoungKids = kids.some(m => {
-    if (!m.birthday) return false;
-    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-    return age < 11;
-  });
-  const hasTeens = kids.some(m => {
-    if (!m.birthday) return false;
-    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-    return age >= 11 && age < 18;
-  });
+  const hasYoungKids = kids.some(m => { const a = ageYears(m.birthday); return a !== null && a < 11; });
+  const hasTeens = kids.some(m => { const a = ageYears(m.birthday); return a !== null && a >= 11 && a < 18; });
 
   let easyCount = 2, mediumCount = 4, hardCount = 4;
   if (hasYoungKids)  { easyCount = 4; mediumCount = 4; hardCount = 2; }
@@ -110,7 +96,7 @@ export async function generateTriviaSession(familyId: string) {
 
   const prompt = `Generate 10 trivia questions for a family game night.
 
-Family members: ${memberDescriptions}
+Players: ${memberDescriptions}
 
 Today's category theme: ${pack.name}
 
@@ -138,7 +124,7 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
 
 Make sure the answer exactly matches one of the options.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch((process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com') + '/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -226,11 +212,15 @@ router.post('/generate', async (req: AuthRequest, res) => {
 
   try {
     const result = await generateTriviaSession(req.familyId!);
-    if ('error' in result) return res.status(500).json(result);
+    if ('error' in result) {
+      if (result.error === AI_OFF_MESSAGE) return res.status(403).json({ error: AI_OFF_MESSAGE });
+      console.error('Trivia generation failed:', result);
+      return res.status(502).json({ error: 'Trivia could not be generated right now. Please try again later.' });
+    }
     res.json({ ...result.session, categoryName: result.categoryName });
   } catch (e: any) {
     console.error('Trivia generate error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Trivia could not be generated right now. Please try again later.' });
   }
 });
 
@@ -241,7 +231,7 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
   if (!questionId || !answer) return res.status(400).json({ error: 'questionId and answer required' });
 
   try {
-    const session = await prisma.triviaSession.findUnique({ where: { id: sessionId } });
+    const session = await prisma.triviaSession.findFirst({ where: { id: sessionId, familyId: req.familyId } });
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (session.status !== 'active') return res.status(400).json({ error: 'Session is not active' });
 
@@ -250,7 +240,7 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
     });
     if (existing) return res.status(400).json({ error: 'Already answered' });
 
-    const question = await prisma.triviaQuestion.findUnique({ where: { id: questionId } });
+    const question = await prisma.triviaQuestion.findFirst({ where: { id: questionId, sessionId } });
     if (!question) return res.status(404).json({ error: 'Question not found' });
     const correct = answer === question.answer;
 
@@ -269,8 +259,8 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
 // Parents can finish at any time. Members can finish only after answering all questions.
 router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
   try {
-    const sessionWithQuestions = await prisma.triviaSession.findUnique({
-      where: { id: req.params.sessionId },
+    const sessionWithQuestions = await prisma.triviaSession.findFirst({
+      where: { id: req.params.sessionId, familyId: req.familyId },
       include: {
         questions: true,
         answers: { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
@@ -288,9 +278,14 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
       }
     }
 
-    const session = await prisma.triviaSession.update({
-      where: { id: req.params.sessionId },
+    // Atomic: only one finish request can award the winner's bonus.
+    const finished = await prisma.triviaSession.updateMany({
+      where: { id: req.params.sessionId, familyId: req.familyId, status: 'active' },
       data:  { status: 'finished' },
+    });
+    if (finished.count !== 1) return res.status(400).json({ error: 'Session already finished' });
+    const session = await prisma.triviaSession.findUniqueOrThrow({
+      where: { id: req.params.sessionId },
       include: {
         questions: { orderBy: { order: 'asc' } },
         answers:   { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
@@ -307,10 +302,9 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
     if (ranked.length > 0) {
       const winner = ranked[0];
       const bonusStars = 3;
-      await prisma.member.update({
-        where: { id: winner.member.id },
-        data:  { stars: { increment: bonusStars } },
-      });
+      const before = await levelsBefore([winner.member.id]);
+      await prisma.$transaction(tx => grantStars(tx, winner.member.id, bonusStars));
+      await checkAchievements([winner.member.id], before);
       await prisma.notification.create({
         data: {
           familyId: req.familyId!,
@@ -337,10 +331,11 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
 router.delete('/:sessionId', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
-    await prisma.triviaSession.update({
-      where: { id: req.params.sessionId },
+    const result = await prisma.triviaSession.updateMany({
+      where: { id: req.params.sessionId, familyId: req.familyId },
       data: { status: 'abandoned' },
     });
+    if (!result.count) return res.status(404).json({ error: 'Session not found' });
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

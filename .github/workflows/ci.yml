@@ -1,0 +1,76 @@
+name: CI
+
+# Runs on every push and pull request. A red X on GitHub means something broke.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — type-check, migrations, security tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: familyhub_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install (API and web only — the mobile app is not needed here)
+        run: pnpm install --frozen-lockfile --filter "@family-hub/api..." --filter "@family-hub/web..."
+      - name: Check installed tools
+        run: |
+          echo "::notice::api bin: $(ls packages/api/node_modules/.bin 2>&1 | tr '\n' ' ')"
+          echo "::notice::pnpm $(pnpm -v), node $(node -v)"
+      - name: Validate Prisma schema
+        working-directory: packages/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/familyhub_test
+        run: pnpm exec prisma validate
+      - name: Type-check API
+        working-directory: packages/api
+        # Errors are also printed as annotations so they show on the PR page.
+        run: |
+          pnpm exec tsc --noEmit --pretty false > tsc.log 2>&1 || { cat tsc.log; head -30 tsc.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+      - name: Fresh database from migrations + API test suite
+        working-directory: packages/api
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/familyhub_test
+          SHOW_API_LOG: '1'
+        run: |
+          pnpm test 2>&1 | tee test.log; status=${PIPESTATUS[0]}
+          if [ "$status" != 0 ]; then grep -E "^not ok|error:" test.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; fi
+          exit $status
+
+  web:
+    name: Web — type-check and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@family-hub/web..."
+      - name: Type-check web
+        run: |
+          pnpm --filter @family-hub/web typecheck > tsc.log 2>&1 || { cat tsc.log; grep "error TS" tsc.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+      - name: Build web
+        run: pnpm --filter @family-hub/web build

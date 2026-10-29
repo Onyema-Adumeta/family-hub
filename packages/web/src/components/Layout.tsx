@@ -1,5 +1,8 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import ConsentGate from './ConsentGate';
+import CelebrationOverlay from './CelebrationOverlay';
+import { levelFor } from '../lib/levels';
 import { useAuthStore } from '../store/auth';
 import { useNotifications, useMembers, useMarkRead, useMarkAllRead } from '../hooks/useApi';
 import { useRealtime } from '../hooks/useRealtime';
@@ -7,14 +10,6 @@ import { QuickActionFAB } from './QuickActionFAB';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 function avatarSrc(url?: string | null) { if (!url) return null; return url.startsWith('http') ? url : `${API_BASE}${url}`; }
-function getLevel(stars: number) {
-  if (stars < 50)  return { level: 1, title: 'Rookie',   next: 50 };
-  if (stars < 150) return { level: 2, title: 'Helper',   next: 150 };
-  if (stars < 300) return { level: 3, title: 'Champion', next: 300 };
-  if (stars < 500) return { level: 4, title: 'Hero',     next: 500 };
-  return             { level: 5, title: 'Legend',         next: 1000 };
-}
-
 // ── Relative time formatter for notification timestamps ──────────────
 function timeAgo(iso?: string | null) {
   if (!iso) return '';
@@ -162,6 +157,7 @@ const NAV_SECONDARY = [
   { path:'/trips',    icon:'✈️', label:'Trips'    },
 ];
 const NAV_ADVANCED  = [
+  { path:'/wins',     icon:'🏆', label:'Weekly Wins' },
   { path:'/report',   icon:'📊', label:'Insights' },
   { path:'/quests',   icon:'🗯️', label:'Quests'   },
   { path:'/games',    icon:'🕹️', label:'Games'    },
@@ -227,8 +223,8 @@ export default function Layout() {
   const freshMember = (members as any[]).find((m: any) => m.id === member?.id) || member;
   const stars  = freshMember?.stars || 0;
   const streak = freshMember?.streakDays || 0;
-  const { level, title, next } = getLevel(stars);
-  const levelPct = Math.min(100, Math.round((stars / next) * 100));
+  const lifetime = freshMember?.lifetimeStars ?? stars;
+  const { level, title, next, pct: levelPct } = levelFor(lifetime);
   const unread   = (notifications as any[]).filter((n: any) => !n.read).length;
   const avatarUrl = avatarSrc(member?.avatarUrl);
 
@@ -335,7 +331,7 @@ export default function Layout() {
               </div>
             </div>
             <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-              <span>Lv.{level} {title}</span><span>{stars}/{next}</span>
+              <span>Lv.{level} {title}</span><span>{lifetime}/{next ?? 'MAX'}</span>
             </div>
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${levelPct}%` }} /></div>
             <div style={{ marginTop: 8, display: 'flex', gap: 5 }}>
@@ -390,6 +386,8 @@ export default function Layout() {
 
         {/* ── MAIN CONTENT ── */}
         <main className="fh-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+          <ConsentGate />
+          <CelebrationOverlay />
           <Outlet />
         </main>
 
@@ -459,7 +457,7 @@ export default function Layout() {
               </div>
             </div>
             <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
-              <span>Lv.{level} {title}</span><span>{stars}/{next}</span>
+              <span>Lv.{level} {title}</span><span>{lifetime}/{next ?? 'MAX'}</span>
             </div>
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${levelPct}%` }} /></div>
           </div>

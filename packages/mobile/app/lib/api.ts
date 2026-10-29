@@ -14,7 +14,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) useAuthStore.getState().logout();
+    // A wrong password on the sign-in screen is also a 401; only log out for real sessions.
+    const isSignIn = /\/auth\/(login|join|register)$/.test(err.config?.url || '');
+    if (err.response?.status === 401 && !isSignIn) useAuthStore.getState().logout();
     return Promise.reject(err);
   }
 );

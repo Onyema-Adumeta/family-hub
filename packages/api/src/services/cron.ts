@@ -2,9 +2,12 @@ import { sendBrowserPush } from './webPush';
 import cron from 'node-cron';
 import { prisma } from '../db';
 import { generateTriviaSession } from '../routes/trivia';
+import { buildBriefing } from '../routes/insights';
+import { rotateFinishedWeeklyChores } from './rotation';
 
 async function generateDailyTrivia() {
-  const families = await prisma.family.findMany({ select: { id: true, name: true } });
+  // Only families where a parent has switched AI features on.
+  const families = await prisma.family.findMany({ where: { aiConsentAt: { not: null } }, select: { id: true, name: true } });
   for (const family of families) {
     // Check if a session already exists for today
     const today = new Date();
@@ -35,24 +38,20 @@ export function setupCron() {
     });
   });
 
-  // Morning reminder notification at 8am
-  cron.schedule('0 8 * * *', async () => {
-    const families = await prisma.family.findMany({ select: { id: true, name: true } });
-    for (const family of families) {
-      const pending = await prisma.chore.count({
-        where: { familyId: family.id, archivedAt:null, status: 'pending', frequency: 'daily' }
-      });
-      if (pending > 0) {
-        await prisma.notification.create({
-          data: {
-            familyId: family.id,
-            title: '🌅 Good morning!',
-            body: `${pending} chore${pending > 1 ? 's' : ''} to do today. Let's crush it! ⭐`
-          }
-        });
+  // Morning briefing at 7:30 Vancouver time: a personal summary for each member
+  // ("Good morning, Maya! 3 chores for you today, soccer at 16:00, tacos for dinner").
+  cron.schedule('30 7 * * *', async () => {
+    try {
+      const members = await prisma.member.findMany({ select: { id: true, familyId: true, role: true } });
+      for (const m of members) {
+        try {
+          const b = await buildBriefing(m.familyId, m.id, m.role === 'parent');
+          await prisma.notification.create({ data: { familyId: m.familyId, memberId: m.id, title: '☀️ Your day', body: b.summary } });
+          await sendBrowserPush(m.id, '☀️ Your day', b.summary, '/');
+        } catch (e) { console.error('[briefing] failed for member', m.id, e); }
       }
-    }
-  });
+    } catch (e) { console.error('[briefing] job failed', e); }
+  }, { timezone: 'America/Vancouver' });
 
   // Personal due/overdue reminders, at 4pm Vancouver time (including DST).
   cron.schedule('0 16 * * *', async () => {
@@ -69,6 +68,8 @@ export function setupCron() {
 
   // Weekly reset on Sunday midnight
   cron.schedule('0 0 * * 0', async () => {
+    // Rotating weekly chores pass to the next person first.
+    await rotateFinishedWeeklyChores().catch(e => console.error('[rotation] weekly rotate failed', e));
     await prisma.chore.updateMany({
       where: { frequency: 'weekly', archivedAt:null },
       data: { status: 'pending', completedAt: null, completedById: null }

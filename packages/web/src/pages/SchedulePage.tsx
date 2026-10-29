@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+﻿import EventImport from '../components/EventImport';
+import { useState, useEffect } from 'react';
 import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/useApi';
 import { api } from '../lib/api';
 
@@ -148,6 +149,7 @@ export default function SchedulePage() {
   const { data: events = [], isLoading, refetch } = useEvents();
   const { data: members = [] }                    = useMembers();
   const createEvent = useCreateEvent();
+  const [showImport, setShowImport] = useState(false);
   const deleteEvent = useDeleteEvent();
   const isMobile    = useIsMobile();
 
@@ -256,6 +258,7 @@ export default function SchedulePage() {
 
   return (
     <div style={{ width: '100%', maxWidth: 1000, paddingBottom: 90 }}>
+      {showImport && <EventImport onClose={() => setShowImport(false)} />}
       <style>{`
         @keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
         @keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
@@ -270,7 +273,11 @@ export default function SchedulePage() {
             {upcomingEvents.length} upcoming event{upcomingEvents.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => setShowImport(true)} style={{
+            padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 800,
+            background: 'rgba(251,191,36,0.15)', color: '#FBBF24', border: '1.5px solid rgba(251,191,36,0.35)', cursor: 'pointer',
+          }}>📸 Snap or paste</button>
           <button onClick={handleGoogleSync} disabled={syncing} style={{
             padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 800,
             background: 'rgba(66,133,244,0.15)', color: '#4285F4',

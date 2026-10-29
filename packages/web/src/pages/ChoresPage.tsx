@@ -10,12 +10,13 @@ const DAY_SHORT    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-type Status = 'pending' | 'in_progress' | 'done';
+type Status = 'pending' | 'in_progress' | 'done' | 'review';
 
 const STATUS_META: Record<Status, { label: string; icon: string; color: string; bg: string }> = {
   pending:     { label: 'Pending',     icon: '⏳', color: '#94A3B8', bg: 'rgba(148,163,184,0.15)' },
   in_progress: { label: 'In Progress', icon: '🔥', color: '#FBBF24', bg: 'rgba(251,191,36,0.15)'  },
   done:        { label: 'Done',        icon: '✅', color: '#4ADE80', bg: 'rgba(74,222,128,0.15)'  },
+  review:      { label: 'Waiting for OK', icon: '📸', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)' },
 };
 
 /* ------------------------------------------------------------------ *
@@ -143,7 +144,8 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
   const [dayOfWeek, setDay]         = useState(chore.dayOfWeek || 'Monday');
   const [recurring, setRecurring]   = useState(chore.recurring ?? false);
   const [dueDate, setDueDate]       = useState(chore.dueDate ? chore.dueDate.substring(0,10) : '');
-  const [assigneeIds, setAssigneeIds] = useState<string[]>(choreAssigneeIds(chore));
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(chore.rotate && chore.rotationIds?.length ? chore.rotationIds : choreAssigneeIds(chore));
+  const [rotate, setRotate]         = useState<boolean>(!!chore.rotate);
   const [proofRequired, setProof]   = useState(chore.proofRequired ?? false);
   const [priority, setPriority]     = useState(chore.priority || 'normal');
   const [notes, setNotes]           = useState(chore.notes || '');
@@ -156,7 +158,7 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), emoji, stars, frequency, ...(frequency === 'weekly' && { dayOfWeek, recurring }), dueDate: dueDate || null, assigneeIds, proofRequired, priority, notes: notes || null });
+      await onSave({ title: title.trim(), emoji, stars, frequency, ...(frequency === 'weekly' && { dayOfWeek, recurring }), dueDate: dueDate || null, assigneeIds, proofRequired, priority, notes: notes || null, rotate: rotate && assigneeIds.length > 1 });
     } finally { setSaving(false); }
   }
 
@@ -216,6 +218,12 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
         ))}
       </div>
       {assigneeIds.length > 1 && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: rotate ? '#60A5FA' : 'var(--text-muted)', marginBottom: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={rotate} onChange={e => setRotate(e.target.checked)} />
+          🔄 Take turns instead of splitting {rotate ? `(one at a time, starting with the first person)` : ''}
+        </label>
+      )}
+      {assigneeIds.length > 1 && !rotate && (
         <div style={{ fontSize: 11, color: '#A78BFA', marginBottom: 10, fontWeight: 600 }}>
           ⭐ {stars} stars split {assigneeIds.length} ways · ~{Math.floor(stars / assigneeIds.length)} each
         </div>
@@ -381,7 +389,9 @@ export default function ChoresPage() {
   const createChore = useCreateChore();
   const updateChore = useUpdateChore();
   const deleteChore = useDeleteChore();
-  const { token } = useAuthStore();
+  const { token, member: me } = useAuthStore();
+  // Editing, duplicating and deleting chores are parent actions (the API enforces it too).
+  const canManage = me?.role === 'parent';
 
   const [tab, setTab]             = useState<Status | 'all'>('all');
   const [showAdd, setShowAdd]     = useState(false);
@@ -397,7 +407,7 @@ export default function ChoresPage() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const [form, setForm] = useState({
-    title: '', emoji: '🧹', assigneeIds: [] as string[],
+    title: '', emoji: '🧹', assigneeIds: [] as string[], rotate: false,
     frequency: 'daily' as typeof FREQS[number],
     dayOfWeek: 'Monday', recurring: false,
     stars: 5, proofRequired: false, dueDate: '',
@@ -502,13 +512,13 @@ export default function ChoresPage() {
         dueDate = next.toISOString().split('T')[0];
       }
       await createChore.mutateAsync({
-        title: form.title.trim(), emoji: form.emoji, assigneeIds: form.assigneeIds,
+        title: form.title.trim(), emoji: form.emoji, assigneeIds: form.assigneeIds, rotate: form.rotate && form.assigneeIds.length > 1,
         frequency: form.frequency, stars: form.stars, proofRequired: form.proofRequired,
         status: 'pending', dueDate, priority: form.priority, notes: form.notes || null,
         recurring: form.frequency === 'weekly' ? form.recurring : false,
         ...(form.frequency === 'weekly' && { dayOfWeek: form.dayOfWeek }),
       });
-      setForm({ title: '', emoji: '🧹', assigneeIds: [], frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '', priority: 'normal', notes: '' });
+      setForm({ title: '', emoji: '🧹', assigneeIds: [], rotate: false, frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '', priority: 'normal', notes: '' });
       setShowAdd(false);
     } catch (e) { console.error(e); }
   };
@@ -530,8 +540,10 @@ export default function ChoresPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {canManage && (<>
           <button onClick={() => { setBulkMode(v => !v); setSelected(new Set()); }} style={{ padding: '9px 14px', background: bulkMode ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1.5px solid ${bulkMode ? 'rgba(124,111,247,0.5)' : 'rgba(255,255,255,0.12)'}`, borderRadius: 10, color: bulkMode ? '#A78BFA' : 'var(--text-muted)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }} title="Bulk select">☑️</button>
           <button onClick={() => setShowAdd(true)} style={{ padding: '9px 18px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add</button>
+          </>)}
         </div>
       </div>
 
@@ -584,12 +596,12 @@ export default function ChoresPage() {
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
           {tab === 'all'
-            ? <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button>
+            ? canManage && <button onClick={() => setShowAdd(true)} style={{ marginTop: 8, padding: '10px 20px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ Add first chore</button>
             : `No ${tab.replace('_', ' ')} chores`}
         </div>
       ) : list.map((chore: any) => {
         const status: Status = chore.status || 'pending';
-        const meta        = STATUS_META[status];
+        const meta        = STATUS_META[status] || STATUS_META.pending;
         const assigneeIds = choreAssigneeIds(chore);
         const assignees   = assigneeIds.map(aid => memberList.find(m => m.id === aid)).filter(Boolean);
         const overdue     = isOverdue(chore.dueDate, status);
@@ -631,6 +643,16 @@ export default function ChoresPage() {
                   )}
                 </div>
 
+                {chore.rotate && chore.rotationIds?.length > 1 && (
+                  <div style={{ fontSize: 12, color: '#60A5FA', fontWeight: 700, margin: '2px 0' }}>
+                    🔄 Takes turns: {chore.rotationIds.map((id: string, i: number) => {
+                      const m = memberList.find((x: any) => x.id === id);
+                      return <span key={id} style={{ opacity: i === (chore.rotationIndex % chore.rotationIds.length) ? 1 : 0.5 }}>{i ? ' → ' : ''}{m?.name || '…'}</span>;
+                    })}
+                  </div>
+                )}
+                {status === 'review' && <div style={{ fontSize: 12, color: '#60A5FA', fontWeight: 700, margin: '2px 0' }}>📸 Photo sent — waiting for a parent to approve</div>}
+                {status !== 'review' && chore.reviewNote && <div style={{ fontSize: 12, color: '#F59E0B', fontWeight: 700, margin: '2px 0' }}>↩ Sent back: {chore.reviewNote}</div>}
                 <div className="chore-meta">
                   <span className="chore-meta-item">⭐{chore.stars}{assignees.length > 1 ? ` (split ${assignees.length})` : ''}</span>
                   <span className="chore-meta-item">· {chore.frequency}{chore.dayOfWeek ? ` · ${chore.dayOfWeek}` : ''}{isRecurring ? ' · 🔁' : ''}</span>
@@ -683,14 +705,17 @@ export default function ChoresPage() {
                   </button>
                 </div>
 
+                {canManage && (<>
                 <button className="chore-icon-btn" onClick={() => handleDuplicate(chore)} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)' }} title="Duplicate">📋</button>
                 <button className="chore-icon-btn" onClick={() => setEditingId(isEditing ? null : chore.id)} style={{ background: isEditing ? 'rgba(124,111,247,0.2)' : 'rgba(255,255,255,0.07)', border: `1px solid ${isEditing ? 'rgba(124,111,247,0.4)' : 'rgba(255,255,255,0.12)'}`, color: isEditing ? '#A78BFA' : 'var(--text-muted)' }} title="Edit (assign, due date, more)">✏️</button>
                 <button className="chore-icon-btn" onClick={() => { if (confirm('Delete?')) deleteChore.mutate(chore.id); }} style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#F87171', fontSize: 16 }} title="Delete">×</button>
+                </>)}
 
                 <select className="status-select" value={status} onChange={e => changeStatus(chore, e.target.value as Status)} style={{ background: meta.bg, border: `1.5px solid ${meta.color}66`, color: meta.color }}>
                   <option value="pending">⏳ Pending</option>
                   <option value="in_progress">🔥 In Progress</option>
                   <option value="done">✅ Done</option>
+                  {status === 'review' && <option value="review" disabled>📸 Waiting for OK</option>}
                 </select>
               </div>
             )}
@@ -758,6 +783,12 @@ export default function ChoresPage() {
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 700 }}>👥 ASSIGN TO (one or more)</div>
                 <AssigneeChecklist members={memberList} selected={form.assigneeIds} onToggle={toggleFormAssignee} />
                 {form.assigneeIds.length > 1 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: form.rotate ? '#60A5FA' : 'var(--text-muted)', marginTop: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.rotate} onChange={e => setForm(f => ({ ...f, rotate: e.target.checked }))} />
+                    🔄 Take turns instead of splitting {form.rotate ? '(one at a time, in the order picked)' : ''}
+                  </label>
+                )}
+                {form.assigneeIds.length > 1 && !form.rotate && (
                   <div style={{ fontSize: 11, color: '#A78BFA', marginTop: 6, fontWeight: 600 }}>
                     ⭐ {form.stars} stars split {form.assigneeIds.length} ways · ~{Math.floor(form.stars / form.assigneeIds.length)} each
                   </div>
