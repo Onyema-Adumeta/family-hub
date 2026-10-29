@@ -44,11 +44,11 @@ const env = {
   GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '',
   TEST_API_URL: `http://127.0.0.1:${PORT}`,
 };
-const shell = process.platform === 'win32';
-const npx = shell ? 'npx.cmd' : 'npx';
 
 console.log('▶ Rebuilding the test database from migrations…');
-const reset = spawnSync(npx, ['prisma', 'migrate', 'reset', '--force', '--skip-seed', '--skip-generate'], { cwd: apiDir, env, stdio: 'inherit', shell });
+// Use this project's own Prisma CLI (never whatever npx might download).
+const prismaCli = join(apiDir, 'node_modules', 'prisma', 'build', 'index.js');
+const reset = spawnSync(process.execPath, [prismaCli, 'migrate', 'reset', '--force', '--skip-seed', '--skip-generate'], { cwd: apiDir, env, stdio: 'inherit' });
 if (reset.status !== 0) { console.error('✖ Migrations failed on a fresh database'); process.exit(1); }
 
 // Make sure nothing else is already answering on the test port — otherwise the
