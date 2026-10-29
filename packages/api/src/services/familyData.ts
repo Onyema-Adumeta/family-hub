@@ -10,7 +10,7 @@ import { PUBLIC_FAMILY_SELECT, PUBLIC_MEMBER_SELECT } from '../lib/guards';
 export async function exportFamilyData(familyId: string) {
   const family = await prisma.family.findUniqueOrThrow({
     where: { id: familyId },
-    select: { ...PUBLIC_FAMILY_SELECT, aiConsentAt: true, termsAcceptedAt: true, termsVersion: true, childConsentAt: true, googleTokens: true },
+    select: { ...PUBLIC_FAMILY_SELECT, aiConsentAt: true, termsAcceptedAt: true, termsVersion: true, childConsentAt: true, googleTokens: true, screenMinutesPerStar: true, centsPerStar: true, currency: true },
   });
   const { googleTokens, ...familyOut } = family;
   const memberIds = (await prisma.member.findMany({ where: { familyId }, select: { id: true } })).map(m => m.id);
@@ -18,7 +18,7 @@ export async function exportFamilyData(familyId: string) {
   const [
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
-    achievements, goals,
+    achievements, goals, bankEntries,
   ] = await Promise.all([
     prisma.member.findMany({ where: { familyId }, select: { ...PUBLIC_MEMBER_SELECT, email: true, emailVerifiedAt: true } }),
     prisma.chore.findMany({ ...byFamily, include: { assignees: { select: { id: true, name: true } } } }),
@@ -40,6 +40,7 @@ export async function exportFamilyData(familyId: string) {
     prisma.auditLog.findMany({ ...byFamily, orderBy: { createdAt: 'asc' } }),
     prisma.achievement.findMany(byFamily),
     prisma.familyGoal.findMany(byFamily),
+    prisma.bankEntry.findMany(byFamily),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -47,7 +48,7 @@ export async function exportFamilyData(familyId: string) {
     family: { ...familyOut, googleCalendarConnected: !!googleTokens },
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
-    achievements, goals,
+    achievements, goals, bankEntries,
   };
 }
 

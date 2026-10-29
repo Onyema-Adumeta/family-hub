@@ -43,6 +43,11 @@ model Family {
   auditLogs        AuditLog[]
   achievements     Achievement[]
   goals            FamilyGoal[]
+  bankEntries      BankEntry[]
+  // Stars-to-value rates set by a parent. null = that bank is switched off.
+  screenMinutesPerStar Int?
+  centsPerStar         Int?
+  currency             String  @default("CAD")
 }
 
 model Member {
@@ -58,6 +63,7 @@ model Member {
   // Every star ever earned (never goes down when stars are spent). Drives levels.
   lifetimeStars   Int            @default(0)
   achievements    Achievement[]
+  bankEntries     BankEntry[]
   password        String
   tokenVersion    Int            @default(0)
   email           String?
@@ -551,4 +557,24 @@ model FamilyGoal {
   createdAt   DateTime  @default(now())
 
   @@index([familyId, archivedAt])
+}
+
+// Screen-time and allowance bank: a ledger, not real money. FamilyHub never
+// holds or moves money; a parent hands over the real thing and records it here.
+// amount: minutes (kind "screen") or cents (kind "money"); + in, - out.
+model BankEntry {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  kind        String   // "screen" | "money"
+  bucket      String?  // money only: "spend" | "save" | "give"
+  amount      Int
+  stars       Int?     // stars converted, for deposits
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([familyId, memberId, kind])
 }

@@ -1,3 +1,4 @@
+import StarBank from '../components/StarBank';
 import { useState } from 'react';
 import { useRewards, useRedemptions, useCreateReward, useDeleteReward, useRedeemReward, useApproveRedemption, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
@@ -55,6 +56,7 @@ export default function RewardsPage() {
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
+      <StarBank />
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>

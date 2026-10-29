@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <h2>What we collect</h2>
       <ul>
         <li><strong>Account details:</strong> family name; each member's name, role (parent or kid), chosen emoji and colour, and an optional birthday. A parent's email address. Passwords are stored only as one-way hashes.</li>
-        <li><strong>What your family puts in the app:</strong> chores, stars, rewards and requests, meals, grocery lists, calendar events, trips, wishlists, quests, game scores and trivia answers, and family chat messages, photos and polls.</li>
+        <li><strong>What your family puts in the app:</strong> chores, stars, rewards and requests, screen-time and allowance bank records (a record only — we never hold or move money), meals, grocery lists, calendar events, trips, wishlists, quests, game scores and trivia answers, and family chat messages, photos and polls.</li>
         <li><strong>Activity records:</strong> a family activity log (for example "Parent changed a chore to 8 stars") so parents can see who did what. It never contains passwords or message text.</li>
         <li><strong>Technical information:</strong> sign-in records needed to keep accounts secure, push-notification addresses for devices you enable notifications on, and server logs (IP address, time, and errors) kept for security and troubleshooting.</li>
       </ul>

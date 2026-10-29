@@ -33,6 +33,7 @@ import tripsRoutes from './routes/trips';
 import familyRoutes from './routes/family';
 import insightsRoutes from './routes/insights';
 import goalsRoutes from './routes/goals';
+import bankRoutes from './routes/bank';
 import { encryptSecret, encryptionConfigured } from './services/secretBox';
 
 const app = express();
@@ -128,6 +129,7 @@ app.use('/api/trips',         authMiddleware, tripsRoutes);
 app.use('/api/family',        authMiddleware, familyRoutes);
 app.use('/api/insights',      authMiddleware, insightsRoutes);
 app.use('/api/goals',         authMiddleware, goalsRoutes);
+app.use('/api/bank',          authMiddleware, bankRoutes);
 
 // â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
