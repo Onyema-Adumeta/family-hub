@@ -13,7 +13,6 @@ export default function JoinScreen() {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('👦');
   const [color, setColor] = useState('#F472B6');
-  const [role, setRole] = useState('child');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
@@ -22,7 +21,7 @@ export default function JoinScreen() {
     if (!inviteCode || !name || !password) { Alert.alert('Missing fields'); return; }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/join', { inviteCode: inviteCode.toUpperCase(), name, emoji, color, password, role });
+      const { data } = await api.post('/auth/join', { inviteCode: inviteCode.toUpperCase(), name, emoji, color, password });
       await setAuth(data.token, data.member, data.family);
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -42,16 +41,7 @@ export default function JoinScreen() {
           <Text style={styles.label}>Your Name</Text>
           <TextInput style={styles.input} placeholder="Jamie" placeholderTextColor="#666" value={name} onChangeText={setName} />
 
-          <Text style={styles.label}>Role</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {['child','parent'].map(r => (
-              <TouchableOpacity key={r} onPress={() => setRole(r)} style={[styles.roleBtn, role === r && styles.roleBtnActive]}>
-                <Text style={{ color: role === r ? '#fff' : 'rgba(240,240,245,0.5)', fontWeight: '800', fontSize: 13 }}>
-                  {r === 'child' ? '👦 Kid' : '👨 Parent'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={{ color: 'rgba(240,240,245,0.5)', fontSize: 12, marginBottom: 4 }}>Everyone joins as a kid. A parent can make another adult a parent in Settings.</Text>
 
           <Text style={styles.label}>Your Emoji</Text>
           <View style={styles.row}>

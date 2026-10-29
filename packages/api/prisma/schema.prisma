@@ -32,6 +32,7 @@ model Family {
   triviaSessions   TriviaSession[]
   gameScores       GameScore[]
   trips            Trip[]
+  choreCompletions ChoreCompletion[]
 }
 
 model Member {
@@ -81,6 +82,7 @@ model Member {
   tripsCreated    Trip[]               @relation("TripCreator")
   packingItems    PackingItem[]        @relation("PackingItems")
   activityAssignments  ItineraryActivity[]  @relation("ActivityAssignees")
+  choreCompletions     ChoreCompletion[]
 }
 
 enum ChoreStatus {
@@ -437,4 +439,24 @@ model MessagePollVote {
  member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
  optionIndex Int
  @@unique([messageId, memberId])
+}
+
+// One row per member per chore completion: the stars that member actually received.
+// Not linked to Chore by foreign key, so history survives when a daily chore is recycled.
+// Undoing a completion removes these rows and takes the same stars back, so
+// done -> pending -> done can never award stars twice.
+model ChoreCompletion {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  choreId     String
+  choreTitle  String
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  stars       Int
+  completedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([familyId, completedAt])
+  @@index([choreId, completedAt])
 }

@@ -1,15 +1,19 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { prisma } from '../db';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { PUBLIC_FAMILY_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
 
 const router = Router();
-import { prisma } from '../db';
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 20 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
   message: { error: 'Too many attempts, please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -17,16 +21,22 @@ const authLimiter = rateLimit({
 
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 50,
+  max: 50 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
   message: { error: 'Too many accounts created, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
+// "password" can be a 4+ digit PIN for kids or a longer password for parents.
+export const PasswordSchema = z.string()
+  .min(4, 'Password or PIN must be at least 4 characters')
+  .max(72, 'Password is too long');
+
 const RegisterSchema = z.object({
   familyName: z.string().min(1).max(50).trim(),
   name:       z.string().min(1).max(50).trim(),
+  password:   PasswordSchema,
   emoji:      z.string().max(10).optional(),
   color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   email:      z.string().email().optional().or(z.literal('')),
@@ -35,53 +45,71 @@ const RegisterSchema = z.object({
 const LoginSchema = z.object({
   familyCode: z.string().min(1).max(20).trim().toUpperCase().transform(s => s.replace(/\s+/g, '')),
   name:       z.string().min(1).max(50).trim(),
+  password:   PasswordSchema,
 });
 
+// Anyone joining with the invite code joins as a child.
+// A parent promotes another adult from Settings (PATCH /api/members/:id/role).
 const JoinSchema = z.object({
   inviteCode: z.string().min(1).max(20).trim().toUpperCase(),
   name:       z.string().min(1).max(50).trim(),
+  password:   PasswordSchema,
   emoji:      z.string().max(10).optional(),
   color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  role:       z.enum(['parent', 'child']).optional(),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function makeInviteCode() {
-  return 'FAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+// No 0/O/1/I to keep codes easy to read aloud. 31^6 ≈ 887 million combinations.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export function makeInviteCode() {
+  const bytes = crypto.randomBytes(6);
+  let out = '';
+  for (const b of bytes) out += CODE_ALPHABET[b % CODE_ALPHABET.length];
+  return 'FAM-' + out;
+}
+async function uniqueInviteCode() {
+  for (let i = 0; i < 5; i++) {
+    const code = makeInviteCode();
+    if (!(await prisma.family.findUnique({ where: { inviteCode: code } }))) return code;
+  }
+  throw new Error('Could not generate an invite code');
 }
 function makeToken(memberId: string, familyId: string, role: string) {
-  return jwt.sign({ memberId, familyId, role }, process.env.JWT_SECRET!, { expiresIn: '30d' });
+  return jwt.sign({ memberId, familyId, role }, process.env.JWT_SECRET!, { expiresIn: '30d', algorithm: 'HS256' });
 }
-const MEMBER_SELECT = {
-  id: true, name: true, emoji: true, color: true,
-  role: true, stars: true, avatarUrl: true, email: true, createdAt: true, streakDays: true, streakUpdatedAt: true,
-};
+export const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
+
+// Same error for unknown family, unknown name and wrong password, so the
+// login form can't be used to discover who is in a family.
+const LOGIN_FAILED = 'Family code, name or password is incorrect';
+// A fixed hash so a missing member costs the same time as a wrong password.
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
 // ── Register ──────────────────────────────────────────────────────────────────
 router.post('/register', registerLimiter, async (req, res) => {
   try {
     const parsed = RegisterSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors[0].message });
-    }
-    const { familyName, name, emoji, color, email } = parsed.data;
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
+    const { familyName, name, password, emoji, color, email } = parsed.data;
     const family = await prisma.family.create({
       data: {
         name: familyName,
-        inviteCode: makeInviteCode(),
+        inviteCode: await uniqueInviteCode(),
         members: {
           create: {
             name, emoji: emoji || '👨', color: color || '#6366F1',
-            role: 'parent', password: '', email: email || null, stars: 0,
+            role: 'parent', password: await hashPassword(password), email: email || null, stars: 0,
           },
         },
       },
-      include: { members: { select: MEMBER_SELECT } },
+      select: { ...PUBLIC_FAMILY_SELECT, members: { select: SELF_MEMBER_SELECT } },
     });
-    const member = family.members[0];
-    res.json({ token: makeToken(member.id, family.id, member.role), member, family });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
+    const { members, ...familyOut } = family;
+    const member = members[0];
+    res.json({ token: makeToken(member.id, family.id, member.role), member, family: familyOut });
+  } catch (e) {
+    console.error('register error', e);
+    res.status(500).json({ error: 'Could not create family' });
   }
 });
 
@@ -89,20 +117,42 @@ router.post('/register', registerLimiter, async (req, res) => {
 router.post('/login', authLimiter, async (req, res) => {
   try {
     const parsed = LoginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors[0].message });
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
+    const { familyCode, name, password } = parsed.data;
+
+    const family = await prisma.family.findUnique({ where: { inviteCode: familyCode }, select: PUBLIC_FAMILY_SELECT });
+    const found = family
+      ? await prisma.member.findFirst({
+          where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
+          select: { id: true, password: true },
+        })
+      : null;
+
+    let passwordCreated = false;
+    if (!family || !found) {
+      await bcrypt.compare(password, DUMMY_HASH);
+      return res.status(401).json({ error: LOGIN_FAILED });
     }
-    const { familyCode, name } = parsed.data;
-    const family = await prisma.family.findUnique({ where: { inviteCode: familyCode } });
-    if (!family) return res.status(400).json({ error: 'Family not found — check your family code' });
-    const member = await prisma.member.findFirst({
-      where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
-      select: MEMBER_SELECT,
-    });
-    if (!member) return res.status(400).json({ error: 'Name not found in this family' });
-    res.json({ token: makeToken(member.id, family.id, member.role), member, family });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
+
+    if (!found.password) {
+      // Accounts created before passwords existed have an empty password.
+      // The first successful sign-in sets it; after that it is required.
+      // updateMany with password:'' makes this a one-time claim even under races.
+      const claimed = await prisma.member.updateMany({
+        where: { id: found.id, password: '' },
+        data: { password: await hashPassword(password) },
+      });
+      if (claimed.count !== 1) return res.status(401).json({ error: LOGIN_FAILED });
+      passwordCreated = true;
+    } else if (!(await bcrypt.compare(password, found.password))) {
+      return res.status(401).json({ error: LOGIN_FAILED });
+    }
+
+    const member = await prisma.member.findUniqueOrThrow({ where: { id: found.id }, select: SELF_MEMBER_SELECT });
+    res.json({ token: makeToken(member.id, family.id, member.role), member, family, passwordCreated });
+  } catch (e) {
+    console.error('login error', e);
+    res.status(500).json({ error: 'Could not sign in' });
   }
 });
 
@@ -110,11 +160,9 @@ router.post('/login', authLimiter, async (req, res) => {
 router.post('/join', authLimiter, async (req, res) => {
   try {
     const parsed = JoinSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors[0].message });
-    }
-    const { inviteCode, name, emoji, color, role } = parsed.data;
-    const family = await prisma.family.findUnique({ where: { inviteCode } });
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
+    const { inviteCode, name, password, emoji, color } = parsed.data;
+    const family = await prisma.family.findUnique({ where: { inviteCode }, select: PUBLIC_FAMILY_SELECT });
     if (!family) return res.status(400).json({ error: 'Invalid invite code' });
 
     const existing = await prisma.member.findFirst({
@@ -125,30 +173,42 @@ router.post('/join', authLimiter, async (req, res) => {
     const member = await prisma.member.create({
       data: {
         familyId: family.id, name, emoji: emoji || '🙂',
-        color: color || '#F472B6', role: role || 'child', password: '', stars: 0,
+        color: color || '#F472B6', role: 'child', password: await hashPassword(password), stars: 0,
       },
-      select: MEMBER_SELECT,
+      select: SELF_MEMBER_SELECT,
     });
     res.json({ token: makeToken(member.id, family.id, member.role), member, family });
-  } catch (e: any) {
-    res.status(400).json({ error: e.message });
+  } catch (e) {
+    console.error('join error', e);
+    res.status(500).json({ error: 'Could not join family' });
   }
 });
 
 // ── Me ────────────────────────────────────────────────────────────────────────
-router.get('/me', async (req, res) => {
+router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No token' });
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    const member = await prisma.member.findUnique({
-      where: { id: payload.memberId },
-      select: MEMBER_SELECT,
-    });
-    const family = await prisma.family.findUnique({ where: { id: payload.familyId } });
+    const member = await prisma.member.findUnique({ where: { id: req.memberId }, select: SELF_MEMBER_SELECT });
+    const family = await prisma.family.findUnique({ where: { id: req.familyId }, select: PUBLIC_FAMILY_SELECT });
     res.json({ member, family });
   } catch {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(500).json({ error: 'Could not load account' });
+  }
+});
+
+// ── Rotate the family code (parent only) ─────────────────────────────────────
+// Use this if the code has been shared with someone outside the family.
+// Everyone keeps their current session; new sign-ins need the new code.
+router.post('/rotate-code', authMiddleware, async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const family = await prisma.family.update({
+      where: { id: req.familyId },
+      data: { inviteCode: await uniqueInviteCode() },
+      select: PUBLIC_FAMILY_SELECT,
+    });
+    res.json({ family });
+  } catch {
+    res.status(500).json({ error: 'Could not change the family code' });
   }
 });
 

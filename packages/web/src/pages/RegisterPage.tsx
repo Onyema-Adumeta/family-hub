@@ -9,6 +9,7 @@ const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A7
 export default function RegisterPage() {
   const [familyName, setFamilyName] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [emoji, setEmoji] = useState('👨');
   const [color, setColor] = useState('#6366F1');
   const [error, setError] = useState('');
@@ -20,7 +21,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { familyName, name, emoji, color });
+      const { data } = await api.post('/auth/register', { familyName, name, emoji, color, password });
       setAuth(data.token, data.member, data.family);
       navigate('/');
     } catch (err: any) {
@@ -39,7 +40,7 @@ export default function RegisterPage() {
           <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Create your family
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>No passwords needed — just your family code!</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>You'll get a family code to share. Everyone signs in with their own password or PIN.</p>
         </div>
 
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -52,6 +53,19 @@ export default function RegisterPage() {
             <input className="input" placeholder="Alex" value={name} onChange={e => setName(e.target.value)} required />
           </div>
 
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Password (4+ characters)</label>
+            <input
+              className="input"
+              type="password"
+              placeholder="At least 4 characters"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={4}
+              required
+            />
+          </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 8 }}>Your Emoji</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

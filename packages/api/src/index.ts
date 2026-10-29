@@ -59,7 +59,8 @@ app.use((_req, res, next) => {
 // â”€â”€ Global rate limit: 500 req / 15 min per IP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  // RATE_LIMIT_MULTIPLIER is only for the automated test suite; leave unset in production.
+  max: 500 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please slow down.' },

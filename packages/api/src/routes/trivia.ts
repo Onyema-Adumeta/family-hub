@@ -241,7 +241,7 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
   if (!questionId || !answer) return res.status(400).json({ error: 'questionId and answer required' });
 
   try {
-    const session = await prisma.triviaSession.findUnique({ where: { id: sessionId } });
+    const session = await prisma.triviaSession.findFirst({ where: { id: sessionId, familyId: req.familyId } });
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (session.status !== 'active') return res.status(400).json({ error: 'Session is not active' });
 
@@ -250,7 +250,7 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
     });
     if (existing) return res.status(400).json({ error: 'Already answered' });
 
-    const question = await prisma.triviaQuestion.findUnique({ where: { id: questionId } });
+    const question = await prisma.triviaQuestion.findFirst({ where: { id: questionId, sessionId } });
     if (!question) return res.status(404).json({ error: 'Question not found' });
     const correct = answer === question.answer;
 
@@ -269,8 +269,8 @@ router.post('/:sessionId/answer', async (req: AuthRequest, res) => {
 // Parents can finish at any time. Members can finish only after answering all questions.
 router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
   try {
-    const sessionWithQuestions = await prisma.triviaSession.findUnique({
-      where: { id: req.params.sessionId },
+    const sessionWithQuestions = await prisma.triviaSession.findFirst({
+      where: { id: req.params.sessionId, familyId: req.familyId },
       include: {
         questions: true,
         answers: { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
@@ -288,9 +288,14 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
       }
     }
 
-    const session = await prisma.triviaSession.update({
-      where: { id: req.params.sessionId },
+    // Atomic: only one finish request can award the winner's bonus.
+    const finished = await prisma.triviaSession.updateMany({
+      where: { id: req.params.sessionId, familyId: req.familyId, status: 'active' },
       data:  { status: 'finished' },
+    });
+    if (finished.count !== 1) return res.status(400).json({ error: 'Session already finished' });
+    const session = await prisma.triviaSession.findUniqueOrThrow({
+      where: { id: req.params.sessionId },
       include: {
         questions: { orderBy: { order: 'asc' } },
         answers:   { include: { member: { select: { id: true, name: true, emoji: true, color: true } } } },
@@ -337,10 +342,11 @@ router.post('/:sessionId/finish', async (req: AuthRequest, res) => {
 router.delete('/:sessionId', async (req: AuthRequest, res) => {
   if (req.role !== 'parent') return res.status(403).json({ error: 'Parents only' });
   try {
-    await prisma.triviaSession.update({
-      where: { id: req.params.sessionId },
+    const result = await prisma.triviaSession.updateMany({
+      where: { id: req.params.sessionId, familyId: req.familyId },
       data: { status: 'abandoned' },
     });
+    if (!result.count) return res.status(404).json({ error: 'Session not found' });
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

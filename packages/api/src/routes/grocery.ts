@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
+import { pick } from '../lib/guards';
 
 const router = Router();
 import { prisma } from '../db';
@@ -48,9 +49,12 @@ router.post('/', async (req: AuthRequest, res) => {
 // PATCH /api/grocery/:id
 router.patch('/:id', async (req: AuthRequest, res) => {
   try {
+    const existing = await prisma.groceryItem.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!existing) return res.status(404).json({ error: 'Item not found' });
+    const data = pick(req.body, ['name', 'qty', 'category', 'listType', 'priority', 'notes', 'checked'] as const);
     const item = await prisma.groceryItem.update({
-      where: { id: req.params.id },
-      data:  req.body,
+      where: { id: existing.id },
+      data,
       include: { addedBy: { select: { id: true, name: true, emoji: true, color: true } } },
     });
     broadcast(req.familyId!, { type: 'grocery:updated', item });
@@ -63,7 +67,8 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 // DELETE /api/grocery/:id
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
-    await prisma.groceryItem.delete({ where: { id: req.params.id } });
+    const result = await prisma.groceryItem.deleteMany({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!result.count) return res.status(404).json({ error: 'Item not found' });
     broadcast(req.familyId!, { type: 'grocery:deleted', id: req.params.id });
     res.json({ ok: true });
   } catch (e: any) {
@@ -138,43 +143,8 @@ Be practical and specific. Include quantities where helpful (e.g. "2 lbs", "1 do
     res.json({ suggestions, mealCount: meals.length });
   } catch (e: any) {
     console.error('Grocery suggest error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Suggestions are unavailable right now' });
   }
 });
 
-// POST /api/grocery/suggest — AI suggestions from meal plan
-router.post('/suggest', async (req: AuthRequest, res) => {
-  try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const { week } = req.body;
-    const meals = await prisma.meal.findMany({
-      where: { familyId: req.familyId!, ...(week ? { week } : {}) },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (meals.length === 0) return res.json({ suggestions: [], message: 'No meals planned this week.' });
-
-    const existing = await prisma.groceryItem.findMany({
-      where: { familyId: req.familyId!, checked: false },
-      select: { name: true },
-    });
-    const existingNames = existing.map(i => i.name.toLowerCase());
-    const mealList = meals.map(m => `${m.day} ${m.slot}: ${m.name}${m.notes ? ` (${m.notes})` : ''}`).join('\n');
-    const existingList = existingNames.length > 0 ? `\nAlready on list: ${existingNames.join(', ')}` : '';
-
-    const prompt = `You are a helpful family meal planning assistant. Based on these planned meals, suggest the grocery items needed.\n\nMeals this week:\n${mealList}${existingList}\n\nReturn ONLY a JSON array. Do not include items already on the list. Format:\n[\n  { "name": "item name", "qty": "amount", "category": "Produce|Meat & Fish|Dairy|Pantry|Frozen|Bakery|Drinks|Snacks|Household|Other" }\n]\n\nBe practical and specific. Include quantities where helpful. No markdown, no explanation, just the JSON array.`;
-
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : '[]';
-    const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim());
-    res.json({ suggestions, mealCount: meals.length });
-  } catch (e: any) {
-    console.error('Grocery suggest error:', e);
-    res.status(500).json({ error: e.message });
-  }
-});
 export default router;

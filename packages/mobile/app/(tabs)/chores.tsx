@@ -35,7 +35,7 @@ export default function ChoresScreen() {
   function resetForm() { setNewChore({ title: '', emoji: '🧹', assignedToId: '', frequency: 'daily', stars: 5, proofRequired: false }); }
 
   const filtered = (chores as any[]).filter(c =>
-    filter === 'all' ? true : filter === 'pending' ? !c.done : c.done
+    filter === 'all' ? true : filter === 'pending' ? c.status !== 'done' : c.status === 'done'
   );
 
   async function handleComplete(chore: any) {
@@ -43,7 +43,7 @@ export default function ChoresScreen() {
       setProofChoreId(chore.id);
       return;
     }
-    updateChore.mutate({ id: chore.id, data: { done: !chore.done } });
+    updateChore.mutate({ id: chore.id, data: { status: chore.status === 'done' ? 'pending' : 'done' } });
   }
 
   async function pickProof(useCamera: boolean) {
@@ -60,7 +60,7 @@ export default function ChoresScreen() {
     form.append('file', { uri: asset.uri, name: isVideo ? 'proof.mp4' : 'proof.jpg', type: isVideo ? 'video/mp4' : 'image/jpeg' } as any);
     try {
       const { data } = await api.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-      updateChore.mutate({ id: proofChoreId, data: { done: true, proofUrl: data.url, proofType: data.type } });
+      updateChore.mutate({ id: proofChoreId, data: { status: 'done', proofUrl: data.url, proofType: data.type } });
       setProofChoreId(null);
     } catch { Alert.alert('Upload failed', 'Try again'); }
   }
@@ -92,13 +92,13 @@ export default function ChoresScreen() {
           const assignee = (members as any[]).find(m => m.id === chore.assignedToId);
           return (
             <View key={chore.id}>
-              <View style={[styles.chore, chore.done && styles.choreDone]}>
-                <TouchableOpacity onPress={() => handleComplete(chore)} style={[styles.checkbox, chore.done && styles.checkboxDone]}>
-                  {chore.done && <Text style={{ color: '#fff', fontSize: 12 }}>✓</Text>}
+              <View style={[styles.chore, chore.status === 'done' && styles.choreDone]}>
+                <TouchableOpacity onPress={() => handleComplete(chore)} style={[styles.checkbox, chore.status === 'done' && styles.checkboxDone]}>
+                  {chore.status === 'done' && <Text style={{ color: '#fff', fontSize: 12 }}>✓</Text>}
                 </TouchableOpacity>
                 <Text style={{ fontSize: 20 }}>{chore.emoji}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.choreTitle, chore.done && styles.choreTitleDone]}>{chore.title}</Text>
+                  <Text style={[styles.choreTitle, chore.status === 'done' && styles.choreTitleDone]}>{chore.title}</Text>
                   <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                     {assignee && <Text style={styles.choreDetail}>{assignee.emoji} {assignee.name}</Text>}
                     <Text style={styles.choreDetail}>{chore.frequency}</Text>

@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth';
 export default function LoginPage() {
   const [familyCode, setFamilyCode] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
@@ -18,7 +19,9 @@ export default function LoginPage() {
       const { data } = await api.post('/auth/login', {
         familyCode: familyCode.trim().toUpperCase(),
         name: name.trim(),
+        password,
       });
+      if (data.passwordCreated) alert('Your password is now set. Use it every time you sign in.');
       setAuth(data.token, data.member, data.family);
       navigate('/');
     } catch (err: any) {
@@ -43,7 +46,7 @@ export default function LoginPage() {
 
         {/* Info banner */}
         <div style={{ padding: '12px 16px', background: 'rgba(99,102,241,0.1)', border: '1.5px solid rgba(99,102,241,0.25)', borderRadius: 12, marginBottom: 20, fontSize: 13, color: '#A78BFA', fontWeight: 600, textAlign: 'center' }}>
-          Just your family code + your name — no password needed! 🎉
+          Family code, your name and your password or PIN 🔒<br/><span style={{ fontWeight: 500 }}>First time since passwords were added? Type the password you want to use — it will be saved.</span>
         </div>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -66,6 +69,20 @@ export default function LoginPage() {
               placeholder="Alex"
               value={name}
               onChange={e => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Password or PIN</label>
+            <input
+              className="input"
+              type="password"
+              placeholder="••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              minLength={4}
               required
             />
           </div>

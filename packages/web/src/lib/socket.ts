@@ -18,7 +18,7 @@ class FamilySocket {
         (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
     if (this.ws) { const old = this.ws; this.ws = null; old.close(); }
 
-    const base = import.meta.env.VITE_WS_URL || 'wss://family-hubapi-production.up.railway.app';
+    const base = socketBase();
     const ws = new WebSocket(`${base}?token=${encodeURIComponent(token)}`);
     this.ws = ws;
     this.connectedToken = token;
@@ -63,3 +63,17 @@ class FamilySocket {
 }
 
 export const familySocket = new FamilySocket();
+
+// Where the realtime connection goes. Never hard-code production here: a local
+// build would otherwise send a dev login token to the live server.
+//   1. VITE_WS_URL if set
+//   2. otherwise the API address (VITE_API_URL) with http(s) -> ws(s)
+//   3. otherwise this page's own host via the dev proxy (/ws -> API, see vite.config.ts)
+function socketBase(): string {
+  const explicit = import.meta.env.VITE_WS_URL;
+  if (explicit) return explicit;
+  const api = import.meta.env.VITE_API_URL;
+  if (api) return api.replace(/^http/, 'ws').replace(/\/+$/, '');
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws`;
+}

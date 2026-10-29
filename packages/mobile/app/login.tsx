@@ -16,6 +16,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { familyCode: familyCode.toUpperCase(), name, password });
+      if (data.passwordCreated) Alert.alert('Password saved', 'Your password is now set. Use it every time you sign in.');
       await setAuth(data.token, data.member, data.family);
       router.replace('/(tabs)');
     } catch (err: any) {

@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 import { prisma } from '../db';
+import { memberInFamily, requireParent } from '../lib/guards';
 
 // ─── Read notifications ───────────────────────────────────────────────────────
 
@@ -25,10 +26,11 @@ router.get('/', async (req: AuthRequest, res) => {
 
 router.patch('/:id/read', async (req: AuthRequest, res) => {
   try {
-    await prisma.notification.update({
-      where: { id: req.params.id },
+    const result = await prisma.notification.updateMany({
+      where: { id: req.params.id, familyId: req.familyId, OR: [{ memberId: req.memberId }, { memberId: null }] },
       data: { read: true },
     });
+    if (!result.count) return res.status(404).json({ error: 'Notification not found' });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'Failed to mark read' });
@@ -122,10 +124,15 @@ export async function sendPushToMember(memberId: string, title: string, body: st
 // Body: { memberId, title, body }
 // Also saves a DB notification record so it shows up in the bell/list.
 router.post('/send', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
   const { memberId, title, body } = req.body as { memberId?: string; title?: string; body?: string };
   if (!memberId || !title || !body) {
     return res.status(400).json({ error: 'memberId, title, and body are required' });
   }
+  if (typeof title !== 'string' || typeof body !== 'string' || title.length > 120 || body.length > 500) {
+    return res.status(400).json({ error: 'Title or message is too long' });
+  }
+  if (!(await memberInFamily(memberId, req.familyId!))) return res.status(404).json({ error: 'Member not found' });
 
   try {
     // Save to DB so it shows in the notification list regardless of push delivery
@@ -149,12 +156,17 @@ router.post('/send', async (req: AuthRequest, res) => {
 // POST /api/notifications/broadcast
 // Sends to every member in the family who has a push token
 router.post('/broadcast', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
   const { title, body } = req.body as { title?: string; body?: string };
   if (!title || !body) return res.status(400).json({ error: 'title and body are required' });
+  if (typeof title !== 'string' || typeof body !== 'string' || title.length > 120 || body.length > 500) {
+    return res.status(400).json({ error: 'Title or message is too long' });
+  }
 
   try {
     const members = await prisma.member.findMany({
       where: { familyId: req.familyId },
+      select: { id: true, pushToken: true },
     });
 
     // Save one DB notification per member

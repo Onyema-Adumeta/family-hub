@@ -5,6 +5,9 @@ import { google } from 'googleapis';
 import jwt from 'jsonwebtoken';
 const router = Router();
 import { prisma } from '../db';
+import { memberInFamily, requireParent } from '../lib/guards';
+
+const EVENT_FIELDS = ['title', 'emoji', 'time', 'color', 'notes', 'assignedToId'] as const;
 
 async function getCalendarClient(familyId: string) {
   const family = await (prisma.family.findUnique as any)({ where: { id: familyId } });
@@ -24,7 +27,7 @@ router.get('/', async (req: AuthRequest, res) => {
   try {
     const events = await prisma.event.findMany({
       where: { familyId: req.familyId },
-      include: { assignedTo: true },
+      include: { assignedTo: { select: { id: true, name: true, emoji: true, color: true } } },
       orderBy: { date: 'asc' },
     });
     res.json(events);
@@ -33,6 +36,7 @@ router.get('/', async (req: AuthRequest, res) => {
 
 // GET /api/events/google/auth — get OAuth URL
 router.get('/google/auth', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
   try {
     const auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -100,21 +104,27 @@ router.get('/sync', async (req: AuthRequest, res) => {
     res.json({ imported, total: googleEvents.length });
   } catch (e: any) {
     console.error('Google Calendar sync error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Google Calendar sync failed' });
   }
 });
 
 // POST /api/events — create and optionally push to Google Calendar
 router.post('/', async (req: AuthRequest, res) => {
   try {
+    const body = req.body || {};
+    if (typeof body.title !== 'string' || !body.title.trim()) return res.status(400).json({ error: 'title is required' });
+    if (typeof body.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    if (body.assignedToId && !(await memberInFamily(body.assignedToId, req.familyId!))) return res.status(400).json({ error: 'Invalid member' });
+    const fields: any = {};
+    for (const k of EVENT_FIELDS) if (body[k] !== undefined) fields[k] = body[k] === '' && k === 'assignedToId' ? null : body[k];
     const event = await prisma.event.create({
       data: {
+        ...fields,
         familyId: req.familyId!,
-        ...req.body,
-        date:   new Date(req.body.date + 'T12:00:00'),
+        date:   new Date(body.date + 'T12:00:00'),
         source: 'app',
       } as any,
-      include: { assignedTo: true },
+      include: { assignedTo: { select: { id: true, name: true, emoji: true, color: true } } },
     });
 
     // Push to Google Calendar if connected
@@ -151,7 +161,8 @@ router.post('/', async (req: AuthRequest, res) => {
 // DELETE /api/events/:id — delete from app and Google Calendar
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
-    const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+    const event = await prisma.event.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
 
     if ((event as any)?.googleEventId) {
       try {
@@ -167,7 +178,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       }
     }
 
-    await prisma.event.delete({ where: { id: req.params.id } });
+    await prisma.event.delete({ where: { id: event.id } });
     broadcast(req.familyId!, { type: 'event:deleted', id: req.params.id });
     res.json({ ok: true });
   } catch (e: any) { res.status(400).json({ error: e.message }); }

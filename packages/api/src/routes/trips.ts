@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 import { prisma } from '../db';
+import { memberInFamily, membersInFamily } from '../lib/guards';
 
 const router = Router();
 
@@ -137,6 +138,7 @@ router.post('/:tripId/packing', async (req: AuthRequest, res) => {
   try {
     const trip = await prisma.trip.findFirst({ where: { id: req.params.tripId, familyId: req.familyId! } });
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
+    if (memberId && !(await memberInFamily(memberId, req.familyId!))) return res.status(400).json({ error: 'Invalid member' });
 
     // Defaults to the requesting member's own list if memberId isn't specified,
     // but allows adding to someone else's list (e.g. a parent packing for a
@@ -283,6 +285,7 @@ router.post('/days/:dayId/activities', async (req: AuthRequest, res) => {
       where: { id: req.params.dayId, trip: { familyId: req.familyId! } },
     });
     if (!day) return res.status(404).json({ error: 'Itinerary day not found' });
+    if (assigneeIds !== undefined && !(await membersInFamily(assigneeIds, req.familyId!))) return res.status(400).json({ error: 'Invalid assignee' });
 
     const activity = await prisma.itineraryActivity.create({
       data: {
@@ -322,6 +325,7 @@ router.patch('/activities/:activityId', async (req: AuthRequest, res) => {
       where: { id: req.params.activityId, day: { trip: { familyId: req.familyId! } } },
     });
     if (!existing) return res.status(404).json({ error: 'Activity not found' });
+    if (assigneeIds !== undefined && !(await membersInFamily(assigneeIds, req.familyId!))) return res.status(400).json({ error: 'Invalid assignee' });
 
     const activity = await prisma.itineraryActivity.update({
       where: { id: req.params.activityId },
