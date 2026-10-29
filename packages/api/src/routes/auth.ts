@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { PUBLIC_FAMILY_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
+import { audit } from '../services/audit';
 
 const router = Router();
 
@@ -17,6 +18,24 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts, please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Per-account limit: 10 failed sign-ins for the same family code + name in
+// 15 minutes, no matter which network they come from. Successful sign-ins
+// don't count. (The per-IP limit above still applies too.)
+const accountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const code = String(req.body?.familyCode || '').trim().toUpperCase().replace(/\s+/g, '');
+    const name = String(req.body?.name || '').trim().toLowerCase();
+    return `acct:${code}:${name}`;
+  },
+  message: { error: 'Too many wrong attempts for this account. Try again in 15 minutes, or ask a parent to reset your password.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
 });
 
 const registerLimiter = rateLimit({
@@ -74,8 +93,11 @@ async function uniqueInviteCode() {
   }
   throw new Error('Could not generate an invite code');
 }
-function makeToken(memberId: string, familyId: string, role: string) {
-  return jwt.sign({ memberId, familyId, role }, process.env.JWT_SECRET!, { expiresIn: '30d', algorithm: 'HS256' });
+// Sign-ins last 14 days and are renewed while the app is in use (POST /auth/refresh).
+// "tv" is the member's tokenVersion: bumping it signs that member out everywhere.
+export const TOKEN_LIFETIME = '14d';
+export function makeToken(memberId: string, familyId: string, role: string, tokenVersion: number) {
+  return jwt.sign({ memberId, familyId, role, tv: tokenVersion }, process.env.JWT_SECRET!, { expiresIn: TOKEN_LIFETIME, algorithm: 'HS256' });
 }
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
 
@@ -106,7 +128,8 @@ router.post('/register', registerLimiter, async (req, res) => {
     });
     const { members, ...familyOut } = family;
     const member = members[0];
-    res.json({ token: makeToken(member.id, family.id, member.role), member, family: familyOut });
+    await audit({ familyId: family.id, memberId: member.id } as any, 'family.created', `created the family "${familyName}"`, { type: 'family', id: family.id });
+    res.json({ token: makeToken(member.id, family.id, member.role, 0), member, family: familyOut });
   } catch (e) {
     console.error('register error', e);
     res.status(500).json({ error: 'Could not create family' });
@@ -114,7 +137,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 });
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-router.post('/login', authLimiter, async (req, res) => {
+router.post('/login', authLimiter, accountLimiter, async (req, res) => {
   try {
     const parsed = LoginSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
@@ -124,7 +147,7 @@ router.post('/login', authLimiter, async (req, res) => {
     const found = family
       ? await prisma.member.findFirst({
           where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
-          select: { id: true, password: true },
+          select: { id: true, password: true, tokenVersion: true },
         })
       : null;
 
@@ -149,7 +172,7 @@ router.post('/login', authLimiter, async (req, res) => {
     }
 
     const member = await prisma.member.findUniqueOrThrow({ where: { id: found.id }, select: SELF_MEMBER_SELECT });
-    res.json({ token: makeToken(member.id, family.id, member.role), member, family, passwordCreated });
+    res.json({ token: makeToken(member.id, family.id, member.role, found.tokenVersion), member, family, passwordCreated });
   } catch (e) {
     console.error('login error', e);
     res.status(500).json({ error: 'Could not sign in' });
@@ -177,7 +200,8 @@ router.post('/join', authLimiter, async (req, res) => {
       },
       select: SELF_MEMBER_SELECT,
     });
-    res.json({ token: makeToken(member.id, family.id, member.role), member, family });
+    await audit({ familyId: family.id, memberId: member.id } as any, 'member.joined', `joined the family`, { type: 'member', id: member.id });
+    res.json({ token: makeToken(member.id, family.id, member.role, 0), member, family });
   } catch (e) {
     console.error('join error', e);
     res.status(500).json({ error: 'Could not join family' });
@@ -195,6 +219,24 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Refresh: swap a valid sign-in for a fresh 14-day one ─────────────────────
+router.post('/refresh', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const member = await prisma.member.findUniqueOrThrow({ where: { id: req.memberId }, select: { ...SELF_MEMBER_SELECT, tokenVersion: true } });
+    const { tokenVersion, ...memberOut } = member;
+    res.json({ token: makeToken(member.id, member.familyId, member.role, tokenVersion), member: memberOut });
+  } catch { res.status(500).json({ error: 'Could not refresh sign-in' }); }
+});
+
+// ── Sign out of every device (including this one) ────────────────────────────
+router.post('/sign-out-everywhere', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    await prisma.member.update({ where: { id: req.memberId }, data: { tokenVersion: { increment: 1 } } });
+    await audit(req, 'member.signed_out_everywhere', 'signed out on all devices', { type: 'member', id: req.memberId });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Could not sign out' }); }
+});
+
 // ── Rotate the family code (parent only) ─────────────────────────────────────
 // Use this if the code has been shared with someone outside the family.
 // Everyone keeps their current session; new sign-ins need the new code.
@@ -206,6 +248,7 @@ router.post('/rotate-code', authMiddleware, async (req: AuthRequest, res) => {
       data: { inviteCode: await uniqueInviteCode() },
       select: PUBLIC_FAMILY_SELECT,
     });
+    await audit(req, 'family.code_rotated', 'made a new family code', { type: 'family', id: req.familyId });
     res.json({ family });
   } catch {
     res.status(500).json({ error: 'Could not change the family code' });

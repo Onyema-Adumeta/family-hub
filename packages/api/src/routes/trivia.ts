@@ -4,6 +4,7 @@ import { broadcast } from '../services/websocket';
 
 const router = Router();
 import { prisma } from '../db';
+import { aiAllowed, ageBand, ageYears, AI_OFF_MESSAGE } from '../services/aiPrivacy';
 
 const CATEGORY_PACKS = [
   {
@@ -44,42 +45,26 @@ const CATEGORY_PACKS = [
   },
 ];
 
-function getAgeLabel(birthday: Date | null): string {
-  if (!birthday) return 'unknown age';
-  const age = Math.floor((Date.now() - birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-  if (age < 7)  return `${age}-year-old (very young child)`;
-  if (age < 11) return `${age}-year-old (young child)`;
-  if (age < 14) return `${age}-year-old (preteen)`;
-  if (age < 18) return `${age}-year-old (teenager)`;
-  return `${age}-year-old (adult)`;
-}
-
 // ── Shared generation logic — used by BOTH the manual "/generate" route
 // and the daily cron job. Do not fork this logic again; if the daily cron
 // needs to behave differently, add a parameter here instead of duplicating
 // the prompt/category-rotation/repeat-avoidance code elsewhere. ──────────────
 export async function generateTriviaSession(familyId: string) {
+  if (!(await aiAllowed(familyId))) return { error: AI_OFF_MESSAGE };
   const members = await prisma.member.findMany({
     where: { familyId },
-    select: { name: true, role: true, birthday: true },
+    select: { role: true, birthday: true },
   });
 
-  const memberDescriptions = members.map(m =>
-    `${m.name} (${m.role === 'parent' ? 'parent' : getAgeLabel(m.birthday)})`
-  ).join(', ');
+  // Only counts by broad age band leave the server: no names, no birthdays, no exact ages.
+  const bandCounts = new Map<string, number>();
+  for (const m of members) { const b = ageBand(m.birthday, m.role); bandCounts.set(b, (bandCounts.get(b) || 0) + 1); }
+  const memberDescriptions = [...bandCounts.entries()].map(([b, n]) => `${n} ${b}${n > 1 ? 's' : ''}`).join(', ');
 
   const kids   = members.filter(m => m.role === 'child');
   const adults = members.filter(m => m.role === 'parent');
-  const hasYoungKids = kids.some(m => {
-    if (!m.birthday) return false;
-    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-    return age < 11;
-  });
-  const hasTeens = kids.some(m => {
-    if (!m.birthday) return false;
-    const age = Math.floor((Date.now() - m.birthday.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-    return age >= 11 && age < 18;
-  });
+  const hasYoungKids = kids.some(m => { const a = ageYears(m.birthday); return a !== null && a < 11; });
+  const hasTeens = kids.some(m => { const a = ageYears(m.birthday); return a !== null && a >= 11 && a < 18; });
 
   let easyCount = 2, mediumCount = 4, hardCount = 4;
   if (hasYoungKids)  { easyCount = 4; mediumCount = 4; hardCount = 2; }
@@ -110,7 +95,7 @@ export async function generateTriviaSession(familyId: string) {
 
   const prompt = `Generate 10 trivia questions for a family game night.
 
-Family members: ${memberDescriptions}
+Players: ${memberDescriptions}
 
 Today's category theme: ${pack.name}
 
@@ -138,7 +123,7 @@ Respond with ONLY a valid JSON array, no markdown, no explanation:
 
 Make sure the answer exactly matches one of the options.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch((process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com') + '/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -226,11 +211,15 @@ router.post('/generate', async (req: AuthRequest, res) => {
 
   try {
     const result = await generateTriviaSession(req.familyId!);
-    if ('error' in result) return res.status(500).json(result);
+    if ('error' in result) {
+      if (result.error === AI_OFF_MESSAGE) return res.status(403).json({ error: AI_OFF_MESSAGE });
+      console.error('Trivia generation failed:', result);
+      return res.status(502).json({ error: 'Trivia could not be generated right now. Please try again later.' });
+    }
     res.json({ ...result.session, categoryName: result.categoryName });
   } catch (e: any) {
     console.error('Trivia generate error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Trivia could not be generated right now. Please try again later.' });
   }
 });
 

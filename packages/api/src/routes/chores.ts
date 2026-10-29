@@ -7,6 +7,7 @@ import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { prisma } from '../db';
+import { audit } from '../services/audit';
 import { membersInFamily, requireParent } from '../lib/guards';
 
 const router = Router();
@@ -138,6 +139,7 @@ router.post('/', async (req: AuthRequest, res) => {
     });
     broadcast(req.familyId!, { type: 'chore:created', chore });
     await notifyAssigned(req.familyId!, req.memberId, assigneeIds, chore.title);
+    await audit(req, 'chore.created', `created chore "${chore.title}" (${chore.stars}⭐)`, { type: 'chore', id: chore.id });
     res.json(chore);
   } catch (e) {
     console.error('POST /chores error:', e);
@@ -272,6 +274,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       });
 
       if (!result) return res.status(409).json({ error: 'This chore is already done' });
+      await audit(req, 'chore.completed', `completed "${existing.title}" (${choreStars}⭐)`, { type: 'chore', id });
       broadcast(req.familyId!, { type: 'chore:updated', chore: result.completedChore });
       if (result.newChore) {
         broadcast(req.familyId!, { type: 'chore:deleted', id });
@@ -300,6 +303,7 @@ router.patch('/:id', async (req: AuthRequest, res) => {
         return tx.chore.update({ where: { id }, data: updateData, include: choreInclude });
       });
       if (!chore) return res.status(409).json({ error: 'This chore was already reopened' });
+      await audit(req, 'chore.reopened', `undid completion of "${existing.title}" (stars taken back)`, { type: 'chore', id });
       broadcast(req.familyId!, { type: 'chore:updated', chore });
       return res.json(chore);
     }
@@ -308,6 +312,11 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 
     const chore = await prisma.chore.update({ where: { id }, data: updateData, include: choreInclude });
     broadcast(req.familyId!, { type: 'chore:updated', chore });
+    if (isParent && (stars !== undefined && chore.stars !== existing.stars)) {
+      await audit(req, 'chore.stars_changed', `changed "${chore.title}" from ${existing.stars}⭐ to ${chore.stars}⭐`, { type: 'chore', id });
+    } else if (isParent) {
+      await audit(req, 'chore.edited', `edited chore "${chore.title}"`, { type: 'chore', id });
+    }
     if (addedAssigneeIds.length) await notifyAssigned(req.familyId!, req.memberId, addedAssigneeIds, chore.title);
     res.json(chore);
   } catch (e) {
@@ -347,8 +356,10 @@ router.patch('/:id/photo', async (req: AuthRequest, res, next) => {
 router.delete('/:id', async (req: AuthRequest, res) => {
   if (!requireParent(req, res)) return;
   try {
+    const victim = await prisma.chore.findFirst({ where: { id: req.params.id, familyId: req.familyId }, select: { title: true } });
     const result = await prisma.chore.deleteMany({ where: { id: req.params.id, familyId: req.familyId } });
     if (!result.count) return res.status(404).json({ error: 'Chore not found' });
+    await audit(req, 'chore.deleted', `deleted chore "${victim?.title}"`, { type: 'chore', id: req.params.id });
     broadcast(req.familyId!, { type: 'chore:deleted', id: req.params.id });
     res.json({ ok: true });
   } catch {

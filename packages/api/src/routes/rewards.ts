@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 import { notifyMember, notifyParents } from '../services/notify';
 import { prisma } from '../db';
+import { audit } from '../services/audit';
 import { requireParent } from '../lib/guards';
 
 const router = Router();
@@ -40,6 +41,7 @@ router.post('/', async (req: AuthRequest, res) => {
       },
     });
     broadcast(req.familyId!, { type: 'reward:created', reward });
+    await audit(req, 'reward.created', `created reward "${reward.name}" (${reward.cost}⭐)`, { type: 'reward', id: reward.id });
     res.json(reward);
   } catch { res.status(400).json({ error: 'Could not create reward' }); }
 });
@@ -58,6 +60,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       prisma.reward.delete({ where: { id: reward.id } }),
     ]);
     broadcast(req.familyId!, { type: 'reward:deleted', id: req.params.id });
+    await audit(req, 'reward.deleted', `deleted reward "${reward.name}"`, { type: 'reward', id: reward.id });
     res.json({ ok: true });
   } catch { res.status(400).json({ error: 'Could not delete reward' }); }
 });
@@ -106,6 +109,7 @@ router.post('/redeem/:rewardId', async (req: AuthRequest, res) => {
     }
 
     broadcast(req.familyId!, { type: 'redemption:requested', redemption: result });
+    await audit(req, 'reward.requested', `asked for "${reward.name}" (${reward.cost}⭐)`, { type: 'redemption', id: result.id });
     await notifyParents(
       req.familyId!,
       'Reward to approve',
@@ -141,6 +145,8 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res) => {
       return true;
     });
     if (!decided) return res.status(409).json({ error: 'This request has already been decided' });
+    const who = await prisma.member.findUnique({ where: { id: redemption.memberId }, select: { name: true } });
+    await audit(req, approved ? 'reward.approved' : 'reward.declined', `${approved ? 'approved' : 'declined'} ${who?.name}'s "${redemption.reward.name}"${approved ? '' : ' (stars refunded)'}`, { type: 'redemption', id: redemption.id });
 
     const updated = approved
       ? await prisma.redemption.findUnique({ where: { id: redemption.id }, include: redemptionInclude })

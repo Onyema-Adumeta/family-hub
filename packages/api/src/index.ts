@@ -30,6 +30,8 @@ import { google } from 'googleapis';
 import jwt from 'jsonwebtoken';
 import { prisma } from './db';
 import tripsRoutes from './routes/trips';
+import familyRoutes from './routes/family';
+import { encryptSecret, encryptionConfigured } from './services/secretBox';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -80,6 +82,10 @@ app.get('/api/events/google/callback', async (req, res) => {
     if (payload.purpose !== 'google-calendar-oauth' || typeof payload.familyId !== 'string') throw new Error('Invalid OAuth state');
     familyId = payload.familyId;
   } catch { return res.status(400).json({ error: 'Invalid or expired OAuth state' }); }
+  if (!encryptionConfigured()) {
+    console.error('Google OAuth callback: TOKEN_ENCRYPTION_KEY is not set; refusing to store tokens unencrypted');
+    return res.status(500).json({ error: 'Google Calendar is not configured on the server yet' });
+  }
   try {
     const auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -89,12 +95,12 @@ app.get('/api/events/google/callback', async (req, res) => {
     const { tokens } = await auth.getToken(code);
     await (prisma.family.update as any)({
       where: { id: familyId },
-      data: { googleTokens: JSON.stringify(tokens) },
+      data: { googleTokens: encryptSecret(JSON.stringify(tokens)) },
     });
     res.redirect((process.env.FRONTEND_URL || 'http://localhost:5173') + '/schedule?connected=1');
   } catch (e: any) {
     console.error('Google OAuth callback error:', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Could not connect Google Calendar' });
   }
 });
 
@@ -117,6 +123,7 @@ app.use('/api/trivia',        authMiddleware, triviaRoutes);
 app.use('/api/wishlist',      authMiddleware, wishlistRouter);
 app.use('/api/games',         authMiddleware, gamesRouter);
 app.use('/api/trips',         authMiddleware, tripsRoutes);
+app.use('/api/family',        authMiddleware, familyRoutes);
 
 // â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -137,4 +144,4 @@ setupCron();
 startWeeklyRulesCron();
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));// redeploy googleTokens
+server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));

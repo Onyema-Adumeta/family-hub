@@ -103,10 +103,11 @@ test('Passwords: change your own (needs current), parent can reset a kid, kid ca
   assert.equal(noCurrent.status, 400);
   const own = await put(`/api/members/${fam.kid1.id}/password`, fam.kid1.token, { password: 'brand-new', currentPassword: '1234' });
   assert.equal(own.status, 200);
+  const kidToken = own.body.token; // a password change hands this device a fresh sign-in
 
-  const kidResetsSibling = await put(`/api/members/${fam.kid2.id}/password`, fam.kid1.token, { password: 'hacked1' });
+  const kidResetsSibling = await put(`/api/members/${fam.kid2.id}/password`, kidToken, { password: 'hacked1' });
   assert.equal(kidResetsSibling.status, 403);
-  const kidResetsParent = await put(`/api/members/${fam.parent.id}/password`, fam.kid1.token, { password: 'hacked1' });
+  const kidResetsParent = await put(`/api/members/${fam.parent.id}/password`, kidToken, { password: 'hacked1' });
   assert.equal(kidResetsParent.status, 403);
 
   const parentReset = await put(`/api/members/${fam.kid2.id}/password`, fam.parent.token, { password: 'reset-9' });

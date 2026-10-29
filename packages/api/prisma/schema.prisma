@@ -12,6 +12,8 @@ model Family {
   name             String
   inviteCode       String          @unique
   googleTokens  String?
+  aiConsentAt      DateTime?
+  aiConsentById    String?
   createdAt        DateTime        @default(now())
   plan             String          @default("free")
   stripeCustomerId String?         @unique
@@ -33,6 +35,7 @@ model Family {
   gameScores       GameScore[]
   trips            Trip[]
   choreCompletions ChoreCompletion[]
+  auditLogs        AuditLog[]
 }
 
 model Member {
@@ -46,6 +49,7 @@ model Member {
   role            String         @default("child")
   stars           Int            @default(0)
   password        String
+  tokenVersion    Int            @default(0)
   email           String?
   rewardGoalId String?
   canOpenPersonalOS Boolean @default(false)
@@ -459,4 +463,20 @@ model ChoreCompletion {
 
   @@index([familyId, completedAt])
   @@index([choreId, completedAt])
+}
+
+// Who did what, for parents. Never stores passwords, tokens or message text.
+model AuditLog {
+  id         String   @id @default(cuid())
+  familyId   String
+  family     Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actorName  String
+  action     String
+  targetType String?
+  targetId   String?
+  summary    String
+  createdAt  DateTime @default(now())
+
+  @@index([familyId, createdAt])
 }

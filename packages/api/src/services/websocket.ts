@@ -1,19 +1,23 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../db';
 
 interface FamilyClient { ws: WebSocket; familyId: string; memberId: string; }
 const clients = new Set<FamilyClient>();
 
 export function setupWebSocket(wss: WebSocketServer) {
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', async (ws, req) => {
     const url = new URL(req.url || '/', 'ws://localhost');
     const token = url.searchParams.get('token');
     if (!token || !process.env.JWT_SECRET) { ws.close(1008, 'Unauthorized'); return; }
     let familyId: string;
     let memberId: string;
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET) as jwt.JwtPayload;
+      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] }) as jwt.JwtPayload;
       if (typeof payload.familyId !== 'string' || typeof payload.memberId !== 'string' || !payload.familyId || !payload.memberId) throw new Error('Invalid claims');
+      // Same checks as the REST API: member still exists, same family, not signed out remotely.
+      const member = await prisma.member.findUnique({ where: { id: payload.memberId }, select: { familyId: true, tokenVersion: true } });
+      if (!member || member.familyId !== payload.familyId || (payload.tv ?? 0) !== member.tokenVersion) throw new Error('Signed out');
       familyId = payload.familyId;
       memberId = payload.memberId;
     } catch { ws.close(1008, 'Unauthorized'); return; }

@@ -23,10 +23,14 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
   try {
     const member = await prisma.member.findUnique({
       where: { id: String(payload.memberId || '') },
-      select: { id: true, familyId: true, role: true },
+      select: { id: true, familyId: true, role: true, tokenVersion: true },
     });
     if (!member || member.familyId !== payload.familyId) {
       return res.status(401).json({ error: 'Account no longer exists' });
+    }
+    // Signed out remotely (password change, "sign out everywhere", parent action).
+    if ((payload.tv ?? 0) !== member.tokenVersion) {
+      return res.status(401).json({ error: 'Signed out. Please sign in again.' });
     }
     req.memberId = member.id;
     req.familyId = member.familyId;

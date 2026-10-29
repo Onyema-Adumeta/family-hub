@@ -4,7 +4,8 @@ import { prisma } from '../db';
 import { generateTriviaSession } from '../routes/trivia';
 
 async function generateDailyTrivia() {
-  const families = await prisma.family.findMany({ select: { id: true, name: true } });
+  // Only families where a parent has switched AI features on.
+  const families = await prisma.family.findMany({ where: { aiConsentAt: { not: null } }, select: { id: true, name: true } });
   for (const family of families) {
     // Check if a session already exists for today
     const today = new Date();

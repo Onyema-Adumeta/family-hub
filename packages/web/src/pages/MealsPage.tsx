@@ -101,13 +101,13 @@ export default function MealsPage() {
   async function getAiSuggestions() {
     setAiLoading(true);
     try {
-      const res = await api.post('/ai', {
+      const res = await api.post('/ai/chat', {
         messages: [{
           role: 'user',
           content: `Suggest 7 family-friendly ${viewSlot} ideas, one for each day of the week. Format as a numbered list:\n1. Meal Name - short description\n...Keep it simple and kid-friendly.`
         }]
       });
-      const text = res.data?.message || '';
+      const text = res.data?.text || '';
       const lines = text.split('\n').filter((l: string) => /^\d+/.test(l.trim()));
       for (let i = 0; i < Math.min(lines.length, 7); i++) {
         const match = lines[i].match(/^\d+[\.\)]\s*\*{0,2}(.+?)\*{0,2}(?:\s*[-–:]\s*(.+))?$/);
@@ -120,8 +120,9 @@ export default function MealsPage() {
           });
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('AI suggestions failed', e);
+      if (e?.response?.status === 403) alert(e.response.data?.error || 'AI features are off.');
     }
     setAiLoading(false);
   }

@@ -3,6 +3,7 @@ import { Stack, router } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from './store/auth';
+import { api } from './lib/api';
 import { familySocket } from './lib/socket';
 
 // Boot WebSocket on app load
@@ -21,7 +22,15 @@ export default function RootLayout() {
   const { token, loadFromStorage } = useAuthStore();
 
   useEffect(() => {
-    loadFromStorage();
+    // Restore the saved sign-in, then renew it (sign-ins last 14 days).
+    loadFromStorage().then(async () => {
+      const { token: saved, family, setAuth } = useAuthStore.getState();
+      if (!saved || !family) return;
+      try {
+        const { data } = await api.post('/auth/refresh');
+        if (data?.token && data?.member) await setAuth(data.token, data.member, family);
+      } catch { /* offline, or signed out (the api interceptor logs out on 401) */ }
+    });
   }, []);
 
   useEffect(() => {

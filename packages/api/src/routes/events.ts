@@ -9,16 +9,28 @@ import { memberInFamily, requireParent } from '../lib/guards';
 
 const EVENT_FIELDS = ['title', 'emoji', 'time', 'color', 'notes', 'assignedToId'] as const;
 
+import { decryptSecret, encryptSecret, encryptionConfigured, isEncrypted } from '../services/secretBox';
+
+// Google tokens are stored encrypted (AES-256-GCM). Tokens saved before
+// encryption existed are read as-is and re-saved encrypted on first use.
 async function getCalendarClient(familyId: string) {
-  const family = await (prisma.family.findUnique as any)({ where: { id: familyId } });
-  const tokens = family?.googleTokens;
-  if (!tokens) return null;
+  const family = await prisma.family.findUnique({ where: { id: familyId }, select: { googleTokens: true } });
+  const stored = family?.googleTokens;
+  if (!stored) return null;
+  const tokens = JSON.parse(decryptSecret(stored));
+  const save = async (t: any) => {
+    if (!encryptionConfigured()) return;
+    await prisma.family.update({ where: { id: familyId }, data: { googleTokens: encryptSecret(JSON.stringify(t)) } });
+  };
+  if (!isEncrypted(stored)) await save(tokens).catch(e => console.error('Could not encrypt legacy Google tokens', e));
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
-  auth.setCredentials(JSON.parse(tokens));
+  auth.setCredentials(tokens);
+  // Keep refreshed access tokens (Google sends these when the old one expires).
+  auth.on('tokens', t => { save({ ...tokens, ...t }).catch(e => console.error('Could not save refreshed Google tokens', e)); });
   return google.calendar({ version: 'v3', auth });
 }
 

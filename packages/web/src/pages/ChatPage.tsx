@@ -174,11 +174,11 @@ export default function ChatPage() {
     try {
       const { data } = await api.post('/ai/chat', {
         messages: newHistory.map(m => ({ role: m.role, content: m.content })),
-        system: `You are a helpful, friendly family assistant for the ${member?.name || 'family'}'s household. Keep responses concise, warm, and practical. Use emojis occasionally. Never suggest anything inappropriate for children.`
       });
       setAiHistory(h => [...h, { role: 'assistant', content: data.text }]);
-    } catch {
-      setAiHistory(h => [...h, { role: 'assistant', content: '😕 Sorry, I had trouble responding. Please try again!' }]);
+    } catch (err: any) {
+      const msg = err?.response?.status === 403 ? (err.response.data?.error || 'AI features are off.') : '😕 Sorry, I had trouble responding. Please try again!';
+      setAiHistory(h => [...h, { role: 'assistant', content: msg }]);
     } finally { setAiLoading(false); }
   }
 

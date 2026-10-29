@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
 import { pick } from '../lib/guards';
+import { aiAllowed, AI_OFF_MESSAGE } from '../services/aiPrivacy';
 
 const router = Router();
 import { prisma } from '../db';
@@ -90,10 +91,11 @@ router.delete('/checked/all', async (req: AuthRequest, res) => {
 });
 
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'missing' });
 
 // POST /api/grocery/suggest
 router.post('/suggest', async (req: AuthRequest, res) => {
+  if (!(await aiAllowed(req.familyId!))) return res.status(403).json({ error: AI_OFF_MESSAGE });
   try {
     const { week } = req.body;
 

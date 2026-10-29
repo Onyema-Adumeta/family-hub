@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../db';
+import { audit } from '../services/audit';
 import { memberInFamily, pick, requireParent } from '../lib/guards';
 
 const router = Router();
@@ -44,6 +45,7 @@ router.post('/', async (req: AuthRequest, res) => {
       },
       include: questInclude,
     });
+    await audit(req, 'quest.created', `created quest "${quest.title}" (${quest.stars}⭐)`, { type: 'quest', id: quest.id });
     res.json(quest);
   } catch { res.status(400).json({ error: 'Could not create quest' }); }
 });
@@ -73,6 +75,7 @@ router.post('/:id/complete', async (req: AuthRequest, res) => {
       return tx.quest.findUnique({ where: { id: quest.id } });
     });
     if (!updated) return res.status(400).json({ error: 'Quest already completed' });
+    await audit(req, 'quest.completed', `completed quest "${quest.title}" (${starsToAward}⭐)`, { type: 'quest', id: quest.id });
     res.json(updated);
   } catch { res.status(400).json({ error: 'Could not complete quest' }); }
 });
@@ -113,8 +116,10 @@ router.patch('/:id', async (req: AuthRequest, res) => {
 router.delete('/:id', async (req: AuthRequest, res) => {
   if (!requireParent(req, res)) return;
   try {
+    const victim = await prisma.quest.findFirst({ where: { id: req.params.id, familyId: req.familyId }, select: { title: true } });
     const result = await prisma.quest.deleteMany({ where: { id: req.params.id, familyId: req.familyId } });
     if (!result.count) return res.status(404).json({ error: 'Quest not found' });
+    await audit(req, 'quest.deleted', `deleted quest "${victim?.title}"`, { type: 'quest', id: req.params.id });
     res.json({ ok: true });
   } catch { res.status(400).json({ error: 'Could not delete quest' }); }
 });

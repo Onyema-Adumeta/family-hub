@@ -1,0 +1,9 @@
+{
+  "//": "Type-check only (vite build does not type-check). Run: pnpm --filter web typecheck",
+  "compilerOptions": {
+    "target": "ES2020", "module": "ESNext", "moduleResolution": "bundler", "jsx": "react-jsx",
+    "strict": false, "noEmit": true, "skipLibCheck": true, "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true, "lib": ["ES2022", "DOM", "DOM.Iterable"], "types": []
+  },
+  "include": ["src/**/*"]
+}

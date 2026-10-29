@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../db";
+import { audit } from "../services/audit";
 import { AuthRequest } from "../middleware/auth";
 import { notifyParents } from "../services/notify";
 import { memberInFamily, requireParent } from "../lib/guards";
@@ -96,6 +97,7 @@ router.patch("/:id/approve", async (req: AuthRequest, res) => {
       where: { id: existing.id },
       data: { status: "approved", declineReason: null, deferUntil: null, reviewedBy: req.memberId, reviewedAt: new Date() },
     });
+    await audit(req, "wish.approved", `approved wish "${item.title}"`, { type: "wish", id: item.id });
     res.json(item);
   } catch { res.status(500).json({ error: "Could not approve wish" }); }
 });
@@ -110,6 +112,7 @@ router.patch("/:id/decline", async (req: AuthRequest, res) => {
       where: { id: existing.id },
       data: { status: "declined", declineReason: reason || null, deferUntil: null, reviewedBy: req.memberId, reviewedAt: new Date() },
     });
+    await audit(req, "wish.declined", `declined wish "${item.title}"`, { type: "wish", id: item.id });
     res.json(item);
   } catch { res.status(500).json({ error: "Could not decline wish" }); }
 });
