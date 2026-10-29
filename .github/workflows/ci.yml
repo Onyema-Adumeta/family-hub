@@ -40,13 +40,18 @@ jobs:
         run: npx prisma validate
       - name: Type-check API
         working-directory: packages/api
-        run: npx tsc --noEmit
+        # Errors are also printed as annotations so they show on the PR page.
+        run: |
+          npx tsc --noEmit --pretty false > tsc.log 2>&1 || { cat tsc.log; head -30 tsc.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
       - name: Fresh database from migrations + API test suite
         working-directory: packages/api
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/familyhub_test
           SHOW_API_LOG: '1'
-        run: pnpm test
+        run: |
+          pnpm test 2>&1 | tee test.log; status=${PIPESTATUS[0]}
+          if [ "$status" != 0 ]; then grep -E "^not ok|error:" test.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; fi
+          exit $status
 
   web:
     name: Web — type-check and build
@@ -61,6 +66,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --filter "@family-hub/web..."
       - name: Type-check web
-        run: pnpm --filter @family-hub/web typecheck
+        run: |
+          pnpm --filter @family-hub/web typecheck > tsc.log 2>&1 || { cat tsc.log; grep "error TS" tsc.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
       - name: Build web
         run: pnpm --filter @family-hub/web build
