@@ -33,16 +33,20 @@ jobs:
           cache: pnpm
       - name: Install (API and web only — the mobile app is not needed here)
         run: pnpm install --frozen-lockfile --filter "@family-hub/api..." --filter "@family-hub/web..."
+      - name: Check installed tools
+        run: |
+          echo "::notice::api bin: $(ls packages/api/node_modules/.bin 2>&1 | tr '\n' ' ')"
+          echo "::notice::pnpm $(pnpm -v), node $(node -v)"
       - name: Validate Prisma schema
         working-directory: packages/api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/familyhub_test
-        run: npx prisma validate
+        run: pnpm exec prisma validate
       - name: Type-check API
         working-directory: packages/api
         # Errors are also printed as annotations so they show on the PR page.
         run: |
-          npx tsc --noEmit --pretty false > tsc.log 2>&1 || { cat tsc.log; head -30 tsc.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          pnpm exec tsc --noEmit --pretty false > tsc.log 2>&1 || { cat tsc.log; head -30 tsc.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
       - name: Fresh database from migrations + API test suite
         working-directory: packages/api
         env:
