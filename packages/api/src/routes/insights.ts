@@ -6,6 +6,8 @@ import { prisma } from '../db';
 import { levelFor } from '../services/gamification';
 import { addDays, dayName, localHour, mondayOf, startOfDay, ymd } from '../services/familyTime';
 import { familyGoalProgress } from '../services/goals';
+import { computeFairness, recommendations } from '../services/advisor';
+import { requireParent } from '../lib/guards';
 
 const router = Router();
 const memberSelect = { id: true, name: true, emoji: true, color: true, role: true, stars: true, lifetimeStars: true, streakDays: true, birthday: true } as const;
@@ -83,6 +85,22 @@ router.get('/wins', async (req: AuthRequest, res) => {
       members: per, awards, highlights,
     });
   } catch (e) { console.error('wins error', e); res.status(500).json({ error: 'Could not build Weekly Wins' }); }
+});
+
+// ── Fairness meter ───────────────────────────────────────────────────────────
+// GET /api/insights/fairness?days=14 — how evenly the kids share the work
+router.get('/fairness', async (req: AuthRequest, res) => {
+  const days = Math.min(Math.max(parseInt(String(req.query.days || '14'), 10) || 14, 1), 90);
+  try { res.json(await computeFairness(req.familyId!, days)); }
+  catch (e) { console.error('fairness error', e); res.status(500).json({ error: 'Could not work out fairness' }); }
+});
+
+// ── Recommendations ──────────────────────────────────────────────────────────
+// GET /api/insights/recommendations — the next few things a parent could do
+router.get('/recommendations', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try { res.json(await recommendations(req.familyId!)); }
+  catch (e) { console.error('recommendations error', e); res.status(500).json({ error: 'Could not build recommendations' }); }
 });
 
 // ── Morning briefing ──────────────────────────────────────────────────────────

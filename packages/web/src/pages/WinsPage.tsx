@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWins } from '../hooks/useApi';
+import Recommendations from '../components/Recommendations';
+import FairnessMeter from '../components/FairnessMeter';
 
 function shift(day: string, weeks: number) {
   const [y, m, d] = day.split('-').map(Number);
@@ -77,10 +79,12 @@ export default function WinsPage() {
         ))}
       </section>
 
+      <FairnessMeter />
       <section aria-label="Highlights" style={{ background: 'linear-gradient(135deg,rgba(74,222,128,0.08),rgba(96,165,250,0.08))', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
         <h2 style={{ fontSize: 16, margin: '0 0 8px' }}>✨ Highlights</h2>
         <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>{(data.highlights as string[]).map(h => <li key={h}>{h}</li>)}</ul>
       </section>
+      <div style={{ marginTop: 18 }}><Recommendations limit={3} title="💡 Next week, try…" /></div>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { audit } from '../services/audit';
 import { membersInFamily, requireParent } from '../lib/guards';
 import { notifyParents } from '../services/notify';
 import { checkFamilyGoal } from '../services/goals';
+import { advanceRotation, nextTurn } from '../services/rotation';
 import { Celebration, bumpStreak, checkAchievements, grantStars, levelsBefore, localDay, revokeStars } from '../services/gamification';
 
 const router = Router();
@@ -117,12 +118,16 @@ router.post('/review', async (req: AuthRequest, res) => {
 router.post('/', async (req: AuthRequest, res) => {
   if (!requireParent(req, res)) return;
   try {
-    const { title, emoji, frequency, stars, proofRequired, dueDate } = req.body || {};
+    const { title, emoji, frequency, stars, proofRequired, dueDate, rotate, priority, notes, recurring } = req.body || {};
     if (typeof title !== 'string' || !title.trim() || title.length > 200) return res.status(400).json({ error: 'title is required' });
     const starValue = stars === undefined || stars === null || stars === '' ? 5 : parseStars(stars);
     if (starValue === null) return res.status(400).json({ error: `Stars must be a whole number from 0 to ${MAX_STARS}` });
     const assigneeIds = resolveAssigneeIds(req.body);
     if (!(await membersInFamily(assigneeIds, req.familyId!))) return res.status(400).json({ error: 'Invalid assignee' });
+    // "Take turns": the chosen people rotate, one at a time, starting with the first.
+    if (rotate && assigneeIds.length < 2) return res.status(400).json({ error: 'Pick at least two people to take turns' });
+    const rotationIds = rotate ? [...assigneeIds] : [];
+    if (rotate) assigneeIds.splice(1);
 
     const chore = await prisma.chore.create({
       data: {
@@ -137,6 +142,12 @@ router.post('/', async (req: AuthRequest, res) => {
         assignees:     assigneeIds.length ? { connect: assigneeIds.map(id => ({ id })) } : undefined,
         dueDate:       dueDate ? new Date(dueDate) : null,
         status:        ChoreStatus.pending,
+        rotate:        !!rotate,
+        priority:      priority ? String(priority).slice(0, 20) : 'normal',
+        notes:         notes ? String(notes).slice(0, 1000) : null,
+        recurring:     !!recurring,
+        rotationIds,
+        rotationIndex: 0,
       },
       include: choreInclude,
     });
@@ -208,6 +219,24 @@ router.patch('/:id', async (req: AuthRequest, res) => {
       if (!(await membersInFamily(newAssigneeIds, req.familyId!))) return res.status(400).json({ error: 'Invalid assignee' });
       updateData.assignees  = { set: newAssigneeIds.map(aid => ({ id: aid })) };
       updateData.assignedTo = newAssigneeIds[0] ? { connect: { id: newAssigneeIds[0] } } : { disconnect: true };
+    }
+    // Turning "take turns" on or off (parents only). The listed people rotate;
+    // the first one is up now.
+    if (body.rotate !== undefined) {
+      if (body.rotate) {
+        const ids = newAssigneeIds ?? (existing.rotate ? existing.rotationIds : previousAssigneeIds);
+        if (ids.length < 2) return res.status(400).json({ error: 'Pick at least two people to take turns' });
+        updateData.rotate = true;
+        updateData.rotationIds = ids;
+        updateData.rotationIndex = 0;
+        newAssigneeIds = [ids[0]];
+        updateData.assignees = { set: [{ id: ids[0] }] };
+        updateData.assignedTo = { connect: { id: ids[0] } };
+      } else {
+        updateData.rotate = false;
+        updateData.rotationIds = [];
+        updateData.rotationIndex = 0;
+      }
     }
     const effectiveAssigneeIds = newAssigneeIds ?? previousAssigneeIds;
     const addedAssigneeIds = newAssigneeIds ? newAssigneeIds.filter(aid => !previousAssigneeIds.includes(aid)) : [];
@@ -306,6 +335,7 @@ async function completeChore(
   const shares = starShares(choreStars, assigneeIds, completerId);
   const wasLate = !!existing.dueDate && localDay() > existing.dueDate.toISOString().slice(0, 10);
   const earners = [...new Set([...shares.keys(), ...assigneeIds])];
+  const stillHere = new Set((await prisma.member.findMany({ where: { familyId: req.familyId }, select: { id: true } })).map(m => m.id));
   const before = await levelsBefore(earners);
 
   const result = await prisma.$transaction(async tx => {
@@ -345,13 +375,13 @@ async function completeChore(
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(23, 59, 59, 0);
-      const next = nextAssignees(existing, assigneeIds);
+      const next = nextAssignees(existing, assigneeIds, stillHere);
       newChore = await tx.chore.create({
         data: {
           familyId: existing.familyId, title: completedChore.title, emoji: completedChore.emoji,
           frequency: 'daily', stars: completedChore.stars, proofRequired: completedChore.proofRequired,
           priority: completedChore.priority, notes: completedChore.notes,
-          ...rotationCarry(existing),
+          ...rotationCarry(existing, stillHere),
           assignedToId: next[0] || null,
           assignees: next.length ? { connect: next.map(aid => ({ id: aid })) } : undefined,
           dueDate: tomorrow, status: 'pending',
@@ -381,9 +411,31 @@ async function completeChore(
   return { ...result, celebrations };
 }
 
-// Rotation hooks (filled in by the fair-rotation feature).
-function nextAssignees(_existing: ChoreWithAssignees, current: string[]) { return current; }
-function rotationCarry(_existing: ChoreWithAssignees) { return {}; }
+// Fair rotation for daily chores: tomorrow's copy goes to the next person.
+function nextAssignees(existing: ChoreWithAssignees, current: string[], stillHere: Set<string>) {
+  const turn = nextTurn(existing, stillHere);
+  return turn ? [turn.assigneeId] : current;
+}
+function rotationCarry(existing: ChoreWithAssignees, stillHere: Set<string>) {
+  const turn = nextTurn(existing, stillHere);
+  return existing.rotate && turn
+    ? { rotate: true, rotationIds: turn.rotationIds, rotationIndex: turn.rotationIndex }
+    : { rotate: existing.rotate, rotationIds: existing.rotationIds, rotationIndex: existing.rotationIndex };
+}
+
+// POST /api/chores/:id/rotate — parent skips to the next person's turn
+router.post('/:id/rotate', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const c = await prisma.chore.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!c) return res.status(404).json({ error: 'Chore not found' });
+    if (!c.rotate) return res.status(400).json({ error: 'This chore does not take turns' });
+    await advanceRotation(c.id);
+    const chore = await prisma.chore.findUnique({ where: { id: c.id }, include: choreInclude });
+    broadcast(req.familyId!, { type: 'chore:updated', chore });
+    res.json(chore);
+  } catch { res.status(500).json({ error: 'Could not move to the next turn' }); }
+});
 
 // GET /api/chores/awaiting-approval — photo-proof chores waiting for a parent
 router.get('/awaiting-approval', async (req: AuthRequest, res) => {

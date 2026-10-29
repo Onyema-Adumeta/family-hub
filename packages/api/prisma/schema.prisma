@@ -129,6 +129,10 @@ model Chore {
   dueDate       DateTime?
   completedAt   DateTime?
   // Photo-proof flow: a kid submits, a parent approves (stars land) or sends it back.
+  // Fair rotation: the chore takes turns between these members, in order.
+  rotate        Boolean     @default(false)
+  rotationIds   String[]    @default([])
+  rotationIndex Int         @default(0)
   submittedAt   DateTime?
   submittedById String?
   reviewNote    String?

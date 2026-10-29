@@ -144,7 +144,8 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
   const [dayOfWeek, setDay]         = useState(chore.dayOfWeek || 'Monday');
   const [recurring, setRecurring]   = useState(chore.recurring ?? false);
   const [dueDate, setDueDate]       = useState(chore.dueDate ? chore.dueDate.substring(0,10) : '');
-  const [assigneeIds, setAssigneeIds] = useState<string[]>(choreAssigneeIds(chore));
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(chore.rotate && chore.rotationIds?.length ? chore.rotationIds : choreAssigneeIds(chore));
+  const [rotate, setRotate]         = useState<boolean>(!!chore.rotate);
   const [proofRequired, setProof]   = useState(chore.proofRequired ?? false);
   const [priority, setPriority]     = useState(chore.priority || 'normal');
   const [notes, setNotes]           = useState(chore.notes || '');
@@ -157,7 +158,7 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      await onSave({ title: title.trim(), emoji, stars, frequency, ...(frequency === 'weekly' && { dayOfWeek, recurring }), dueDate: dueDate || null, assigneeIds, proofRequired, priority, notes: notes || null });
+      await onSave({ title: title.trim(), emoji, stars, frequency, ...(frequency === 'weekly' && { dayOfWeek, recurring }), dueDate: dueDate || null, assigneeIds, proofRequired, priority, notes: notes || null, rotate: rotate && assigneeIds.length > 1 });
     } finally { setSaving(false); }
   }
 
@@ -217,6 +218,12 @@ function InlineEditForm({ chore, members, onSave, onCancel }: {
         ))}
       </div>
       {assigneeIds.length > 1 && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: rotate ? '#60A5FA' : 'var(--text-muted)', marginBottom: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={rotate} onChange={e => setRotate(e.target.checked)} />
+          🔄 Take turns instead of splitting {rotate ? `(one at a time, starting with the first person)` : ''}
+        </label>
+      )}
+      {assigneeIds.length > 1 && !rotate && (
         <div style={{ fontSize: 11, color: '#A78BFA', marginBottom: 10, fontWeight: 600 }}>
           ⭐ {stars} stars split {assigneeIds.length} ways · ~{Math.floor(stars / assigneeIds.length)} each
         </div>
@@ -398,7 +405,7 @@ export default function ChoresPage() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const [form, setForm] = useState({
-    title: '', emoji: '🧹', assigneeIds: [] as string[],
+    title: '', emoji: '🧹', assigneeIds: [] as string[], rotate: false,
     frequency: 'daily' as typeof FREQS[number],
     dayOfWeek: 'Monday', recurring: false,
     stars: 5, proofRequired: false, dueDate: '',
@@ -503,13 +510,13 @@ export default function ChoresPage() {
         dueDate = next.toISOString().split('T')[0];
       }
       await createChore.mutateAsync({
-        title: form.title.trim(), emoji: form.emoji, assigneeIds: form.assigneeIds,
+        title: form.title.trim(), emoji: form.emoji, assigneeIds: form.assigneeIds, rotate: form.rotate && form.assigneeIds.length > 1,
         frequency: form.frequency, stars: form.stars, proofRequired: form.proofRequired,
         status: 'pending', dueDate, priority: form.priority, notes: form.notes || null,
         recurring: form.frequency === 'weekly' ? form.recurring : false,
         ...(form.frequency === 'weekly' && { dayOfWeek: form.dayOfWeek }),
       });
-      setForm({ title: '', emoji: '🧹', assigneeIds: [], frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '', priority: 'normal', notes: '' });
+      setForm({ title: '', emoji: '🧹', assigneeIds: [], rotate: false, frequency: 'daily', dayOfWeek: 'Monday', recurring: false, stars: 5, proofRequired: false, dueDate: '', priority: 'normal', notes: '' });
       setShowAdd(false);
     } catch (e) { console.error(e); }
   };
@@ -632,6 +639,14 @@ export default function ChoresPage() {
                   )}
                 </div>
 
+                {chore.rotate && chore.rotationIds?.length > 1 && (
+                  <div style={{ fontSize: 12, color: '#60A5FA', fontWeight: 700, margin: '2px 0' }}>
+                    🔄 Takes turns: {chore.rotationIds.map((id: string, i: number) => {
+                      const m = memberList.find((x: any) => x.id === id);
+                      return <span key={id} style={{ opacity: i === (chore.rotationIndex % chore.rotationIds.length) ? 1 : 0.5 }}>{i ? ' → ' : ''}{m?.name || '…'}</span>;
+                    })}
+                  </div>
+                )}
                 {status === 'review' && <div style={{ fontSize: 12, color: '#60A5FA', fontWeight: 700, margin: '2px 0' }}>📸 Photo sent — waiting for a parent to approve</div>}
                 {status !== 'review' && chore.reviewNote && <div style={{ fontSize: 12, color: '#F59E0B', fontWeight: 700, margin: '2px 0' }}>↩ Sent back: {chore.reviewNote}</div>}
                 <div className="chore-meta">
@@ -761,6 +776,12 @@ export default function ChoresPage() {
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 700 }}>👥 ASSIGN TO (one or more)</div>
                 <AssigneeChecklist members={memberList} selected={form.assigneeIds} onToggle={toggleFormAssignee} />
                 {form.assigneeIds.length > 1 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: form.rotate ? '#60A5FA' : 'var(--text-muted)', marginTop: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.rotate} onChange={e => setForm(f => ({ ...f, rotate: e.target.checked }))} />
+                    🔄 Take turns instead of splitting {form.rotate ? '(one at a time, in the order picked)' : ''}
+                  </label>
+                )}
+                {form.assigneeIds.length > 1 && !form.rotate && (
                   <div style={{ fontSize: 11, color: '#A78BFA', marginTop: 6, fontWeight: 600 }}>
                     ⭐ {form.stars} stars split {form.assigneeIds.length} ways · ~{Math.floor(form.stars / form.assigneeIds.length)} each
                   </div>

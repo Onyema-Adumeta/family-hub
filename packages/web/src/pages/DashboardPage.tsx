@@ -7,6 +7,7 @@ import RewardGoal from '../components/RewardGoal';
 import BriefingCard from '../components/BriefingCard';
 import GoalBar from '../components/GoalBar';
 import ApprovalQueue from '../components/ApprovalQueue';
+import Recommendations from '../components/Recommendations';
 function day(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
 const panel={background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:20};
 export default function DashboardPage(){
@@ -31,6 +32,7 @@ export default function DashboardPage(){
   <header style={{marginBottom:24}}><p className="calm-eyebrow">FAMILY HUB</p><h1 style={{fontSize:'clamp(24px,4vw,32px)',fontWeight:700,margin:'6px 0'}}>Welcome, {member?.name?.split(' ')[0]||'family'}</h1><p className="calm-muted">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · Your day, at a glance</p></header>
   <BriefingCard />
   <ApprovalQueue />
+  <Recommendations limit={3} />
   <GoalBar />
   <section data-family-today-v21="true" aria-label="Daily focus" style={{...panel,marginBottom:18,background:'linear-gradient(135deg,var(--bg-card),rgba(91,130,225,.07))'}}>
    <div className="calm-section-heading"><div><p className="calm-eyebrow">TODAY'S FOCUS</p><h2 style={{margin:'4px 0'}}>{parent?'Keep the family moving':'Your next three wins'}</h2></div><button className="btn btn-ghost" onClick={()=>navigate('/chores')}>{parent?'Manage chores':'See all tasks'}</button></div>

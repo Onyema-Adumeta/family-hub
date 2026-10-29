@@ -13,7 +13,7 @@ export function useRealtime() {
     if (msg.type.startsWith('event:') || msg.type.startsWith('events:')) qc.invalidateQueries({ queryKey: ['events'] });
     if (msg.type.startsWith('message:')) qc.invalidateQueries({ queryKey: ['messages'] });
     if (msg.type.startsWith('chore:') || msg.type.startsWith('goal:') || msg.type === 'celebration') {
-      ['briefing', 'goal', 'approvals', 'members'].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+      ['briefing', 'goal', 'approvals', 'members', 'fairness', 'recommendations'].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
     }
     // Celebrate on this screen when it's about me (my own device shows it from the API reply already).
     if (msg.type === 'celebration') {

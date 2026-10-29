@@ -3,6 +3,7 @@ import cron from 'node-cron';
 import { prisma } from '../db';
 import { generateTriviaSession } from '../routes/trivia';
 import { buildBriefing } from '../routes/insights';
+import { rotateFinishedWeeklyChores } from './rotation';
 
 async function generateDailyTrivia() {
   // Only families where a parent has switched AI features on.
@@ -67,6 +68,8 @@ export function setupCron() {
 
   // Weekly reset on Sunday midnight
   cron.schedule('0 0 * * 0', async () => {
+    // Rotating weekly chores pass to the next person first.
+    await rotateFinishedWeeklyChores().catch(e => console.error('[rotation] weekly rotate failed', e));
     await prisma.chore.updateMany({
       where: { frequency: 'weekly', archivedAt:null },
       data: { status: 'pending', completedAt: null, completedById: null }
