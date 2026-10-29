@@ -2,6 +2,7 @@ import ChoreReview from '../components/ChoreReview';
 import BrowserNotifications from '../components/BrowserNotifications';
 import DashboardLinks from '../components/DashboardLinks';
 import FamilySafety from '../components/FamilySafety';
+import AccountAndData from '../components/AccountAndData';
 import { useState, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useMembers } from '../hooks/useApi';
@@ -191,6 +192,7 @@ export default function SettingsPage() {
      <BrowserNotifications />
      {isParent && <ChoreReview />}
      {isParent && <FamilySafety />}
+     <AccountAndData />
 
       <div style={{ marginBottom: 16 }}>
         <StreakCard />

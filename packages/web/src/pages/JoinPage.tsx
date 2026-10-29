@@ -115,6 +115,7 @@ export default function JoinPage() {
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
           <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 800 }}>Sign in instead</Link>
+          <div style={{ marginTop: 10, fontSize: 11 }}>By joining you agree to the <Link to="/terms" style={{ color: 'var(--text-muted)' }}>Terms</Link> and <Link to="/privacy" style={{ color: 'var(--text-muted)' }}>Privacy Policy</Link> your parent accepted.</div>
         </div>
       </div>
     </div>

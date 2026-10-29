@@ -14,6 +14,11 @@ model Family {
   googleTokens  String?
   aiConsentAt      DateTime?
   aiConsentById    String?
+  // Parent's acceptance of the terms/privacy policy and consent for children's data.
+  termsAcceptedAt   DateTime?
+  termsVersion      String?
+  termsAcceptedById String?
+  childConsentAt    DateTime?
   createdAt        DateTime        @default(now())
   plan             String          @default("free")
   stripeCustomerId String?         @unique
@@ -51,6 +56,8 @@ model Member {
   password        String
   tokenVersion    Int            @default(0)
   email           String?
+  emailVerifiedAt DateTime?
+  authTokens      AuthToken[]
   rewardGoalId String?
   canOpenPersonalOS Boolean @default(false)
   canOpenPremed Boolean @default(false)
@@ -479,4 +486,20 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([familyId, createdAt])
+}
+
+// One-time links sent by email (verify address, reset password).
+// Only a SHA-256 hash of the token is stored; the link itself is never saved.
+model AuthToken {
+  id        String    @id @default(cuid())
+  memberId  String
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  purpose   String
+  tokenHash String    @unique
+  email     String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([memberId, purpose])
 }

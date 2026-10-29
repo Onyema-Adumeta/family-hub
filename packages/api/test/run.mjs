@@ -12,6 +12,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const apiDir = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,6 +40,9 @@ const env = {
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${FAKE_AI_PORT}`,
   FAKE_AI_URL: `http://127.0.0.1:${FAKE_AI_PORT}`,
   TOKEN_ENCRYPTION_KEY: 'test-only-encryption-key-0123456789',
+  // Emails are written to files here instead of being sent.
+  EMAIL_OUTBOX_DIR: join(tmpdir(), `familyhub-test-outbox-${process.pid}`),
+  APP_URL: 'http://app.test',
   CLOUDINARY_CLOUD_NAME: '', CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '',
   VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY: '',
   GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '',

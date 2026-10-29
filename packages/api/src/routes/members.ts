@@ -5,6 +5,9 @@ import { prisma } from '../db';
 import { PUBLIC_MEMBER_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
 import { PasswordSchema, hashPassword, makeToken } from './auth';
 import { audit } from '../services/audit';
+import { deleteMemberData } from '../services/familyData';
+import { sendVerificationEmail } from '../services/authTokens';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -106,6 +109,28 @@ router.put('/:id/password', async (req: AuthRequest, res) => {
   } catch { res.status(500).json({ error: 'Could not change password' }); }
 });
 
+// PUT /api/members/:id/email — add or change your own email (needs your password).
+// The new address must be confirmed from the emailed link before it can be used.
+router.put('/:id/email', async (req: AuthRequest, res) => {
+  if (req.params.id !== req.memberId) return res.status(403).json({ error: 'You can only change your own email' });
+  const email = z.string().trim().toLowerCase().pipe(z.string().email().max(200)).safeParse(req.body?.email);
+  if (!email.success) return res.status(400).json({ error: 'Enter a valid email address' });
+  try {
+    const me = await prisma.member.findUniqueOrThrow({ where: { id: req.memberId }, select: { id: true, name: true, password: true } });
+    const current = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+    if (me.password && !(await bcrypt.compare(current, me.password))) return res.status(400).json({ error: 'Current password is incorrect' });
+    const updated = await prisma.member.update({
+      where: { id: me.id },
+      data: { email: email.data, emailVerifiedAt: null },
+      select: SELF_MEMBER_SELECT,
+    });
+    await prisma.authToken.deleteMany({ where: { memberId: me.id } });
+    const emailSent = await sendVerificationEmail({ id: me.id, name: me.name, email: email.data });
+    await audit(req, 'member.email_changed', 'changed their email address', { type: 'member', id: me.id });
+    res.json({ member: updated, emailSent });
+  } catch { res.status(500).json({ error: 'Could not change email' }); }
+});
+
 // POST /api/members/:id/sign-out — a parent signs a member out on all devices
 // (e.g. a lost phone). Their next request asks them to sign in again.
 router.post('/:id/sign-out', async (req: AuthRequest, res) => {
@@ -165,11 +190,7 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   if (!target) return res.status(404).json({ error: 'Member not found' });
 
   try {
-    await prisma.$transaction([
-      prisma.chore.updateMany({ where: { assignedToId: id, familyId: req.familyId }, data: { assignedToId: null } }),
-      prisma.message.deleteMany({ where: { memberId: id } }),
-      prisma.member.delete({ where: { id } }),
-    ]);
+    await deleteMemberData(id, req.familyId!, req.memberId!);
     await audit(req, 'member.removed', `removed ${target.name} from the family`, { type: 'member', id });
     res.json({ success: true });
   } catch (e) {

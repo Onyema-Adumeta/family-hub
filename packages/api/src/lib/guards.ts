@@ -25,7 +25,7 @@ export const PUBLIC_MEMBER_SELECT = {
 } as const;
 
 // The signed-in member's own record may also show their own email.
-export const SELF_MEMBER_SELECT = { ...PUBLIC_MEMBER_SELECT, email: true } as const;
+export const SELF_MEMBER_SELECT = { ...PUBLIC_MEMBER_SELECT, email: true, emailVerifiedAt: true } as const;
 
 // Family fields safe to send to the client. Google tokens and Stripe ids stay on the server.
 export const PUBLIC_FAMILY_SELECT = {

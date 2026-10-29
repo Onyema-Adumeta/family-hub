@@ -19,6 +19,9 @@ import GamesPage from './pages/GamesPage';
 import WishlistPage from './pages/WishlistPage';
 import TripsPage from './pages/TripsPage';
 import TripDetailPage from './pages/TripDetailPage';
+import PrivacyPage from './legal/PrivacyPage';
+import TermsPage from './legal/TermsPage';
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './pages/AccountEmailPages';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token);
@@ -34,6 +37,11 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/join" element={<JoinPage />} />
         <Route path="/join/:code" element={<JoinPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<DashboardPage />} />
           <Route path="chores" element={<ChoresPage />} />

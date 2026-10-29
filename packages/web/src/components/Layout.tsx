@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import ConsentGate from './ConsentGate';
 import { useAuthStore } from '../store/auth';
 import { useNotifications, useMembers, useMarkRead, useMarkAllRead } from '../hooks/useApi';
 import { useRealtime } from '../hooks/useRealtime';
@@ -390,6 +391,7 @@ export default function Layout() {
 
         {/* ── MAIN CONTENT ── */}
         <main className="fh-main" style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+          <ConsentGate />
           <Outlet />
         </main>
 

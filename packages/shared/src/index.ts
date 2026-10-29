@@ -22,6 +22,7 @@ export interface Member {
   badges?: string[];
   totalChoresDone?: number;
   email?: string | null; // only present on your own account
+  emailVerifiedAt?: string | null;
 }
 
 export interface Chore {

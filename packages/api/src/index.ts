@@ -127,6 +127,17 @@ app.use('/api/family',        authMiddleware, familyRoutes);
 
 // â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
+// Deeper check for uptime monitors (e.g. UptimeRobot): fails if the database is unreachable.
+app.get('/health/ready', async (_req, res) => {
+  const started = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: 'ok', dbMs: Date.now() - started, uptimeSec: Math.round(process.uptime()) });
+  } catch (e) {
+    console.error('[health] database check failed', e);
+    res.status(503).json({ ok: false, db: 'unreachable' });
+  }
+});
 
 // â”€â”€ 404 handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -138,6 +149,10 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 });
 
 // â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Log crashes clearly so they show up in Railway's logs and alerts.
+process.on('unhandledRejection', (reason) => console.error('[fatal] unhandled promise rejection', reason));
+process.on('uncaughtException', (err) => { console.error('[fatal] uncaught exception', err); process.exit(1); });
+
 startStreakCron();
 setupWebSocket(wss);
 setupCron();

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Switch, Linking } from 'react-native';
 import { router, Link } from 'expo-router';
 import { api } from './lib/api';
 import { useAuthStore } from './store/auth';
 
 const EMOJIS = ['👨','👩','🧑','👦','👧','🧒','🦊','🐱','🐶','🐼'];
 const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C'];
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://family-hub-web-omega.vercel.app';
 
 export default function RegisterScreen() {
   const [familyName, setFamilyName] = useState('');
@@ -13,15 +14,20 @@ export default function RegisterScreen() {
   const [emoji, setEmoji] = useState('👨');
   const [color, setColor] = useState('#6366F1');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [childDataConsent, setChildDataConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
 
   async function handleRegister() {
-    if (!familyName || !name || !password) { Alert.alert('Missing fields'); return; }
+    if (!familyName || !name || !password || !email) { Alert.alert('Missing fields'); return; }
+    if (!acceptTerms || !childDataConsent) { Alert.alert('Please agree', 'Both agreements are needed to create a family.'); return; }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { familyName, name, emoji, color, password });
+      const { data } = await api.post('/auth/register', { familyName, name, emoji, color, password, email: email.trim(), acceptTerms, childDataConsent });
       await setAuth(data.token, data.member, data.family);
+      if (data.emailSent) Alert.alert('Check your email', `We sent a link to ${email.trim()} to confirm your email.`);
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.error || 'Registration failed');
@@ -58,6 +64,22 @@ export default function RegisterScreen() {
 
           <Text style={styles.label}>Password</Text>
           <TextInput style={styles.input} placeholder="••••••" placeholderTextColor="#666" secureTextEntry value={password} onChangeText={setPassword} />
+
+          <Text style={styles.label}>Your Email</Text>
+          <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor="#666" keyboardType="email-address" autoCapitalize="none" autoComplete="email" value={email} onChangeText={setEmail} />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 }}>
+            <Switch value={acceptTerms} onValueChange={setAcceptTerms} />
+            <Text style={{ color: 'rgba(240,240,245,0.75)', fontSize: 12, flex: 1 }}>
+              I agree to the <Text style={{ color: '#6366F1' }} onPress={() => Linking.openURL(WEB_URL + '/terms')}>Terms</Text> and <Text style={{ color: '#6366F1' }} onPress={() => Linking.openURL(WEB_URL + '/privacy')}>Privacy Policy</Text>.
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            <Switch value={childDataConsent} onValueChange={setChildDataConsent} />
+            <Text style={{ color: 'rgba(240,240,245,0.75)', fontSize: 12, flex: 1 }}>
+              I am the parent or guardian of the children who will join, and I consent to FamilyHub using their information as described in the Privacy Policy.
+            </Text>
+          </View>
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleRegister} disabled={loading}>
             <Text style={styles.btnText}>{loading ? 'Creating...' : '🏠 Create Family'}</Text>
