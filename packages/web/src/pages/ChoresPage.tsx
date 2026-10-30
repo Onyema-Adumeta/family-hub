@@ -2,6 +2,7 @@
 import { useChores, useMembers, useCreateChore, useUpdateChore, useDeleteChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
+import { mediaSrc } from '../lib/api';
 
 const CHORE_EMOJIS = ['🧹','🍽️','🛏️','🐶','🌿','🧺','🚿','🗑️','🪣','🧽','📚','🛒','🚗','🧴','💧','🪟','🧊','🏠'];
 const FREQS = ['daily', 'weekly', 'once'] as const;
@@ -731,7 +732,7 @@ export default function ChoresPage() {
             {photoUrl && (
               <div style={{ padding: '0 14px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img
-                  src={photoUrl}
+                  src={mediaSrc(photoUrl)}
                   alt="Proof"
                   style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: '2px solid rgba(74,222,128,0.4)', flexShrink: 0 }}
                 />

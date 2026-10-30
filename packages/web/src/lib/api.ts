@@ -19,6 +19,12 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+/** A link to an uploaded photo or video. Old uploads stored as "/uploads/…" live on the API server, not this website. */
+export function mediaSrc(url?: string | null): string {
+  if (!url) return '';
+  return /^(https?:|data:|blob:)/.test(url) ? url : (import.meta.env.VITE_API_URL || '') + url;
+}
+
 export async function uploadFile(file: File): Promise<{ url: string; type: 'image' | 'video' }> {
   const form = new FormData();
   form.append('file', file);

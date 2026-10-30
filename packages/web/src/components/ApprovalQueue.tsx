@@ -1,6 +1,7 @@
 import { useApprovals, useReviewChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { ask } from '../store/dialog';
+import { mediaSrc } from '../lib/api';
 
 /** Parents: chore photos waiting for a one-tap approve. */
 export default function ApprovalQueue() {
@@ -15,8 +16,8 @@ export default function ApprovalQueue() {
         const photo = c.photoUrl || c.proofUrl;
         return (
           <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-            {photo && /^https?:/.test(photo)
-              ? <a href={photo} target="_blank" rel="noreferrer"><img src={photo} alt={`Proof for ${c.title}`} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10 }} /></a>
+            {photo
+              ? <a href={mediaSrc(photo)} target="_blank" rel="noreferrer"><img src={mediaSrc(photo)} alt={`Proof for ${c.title}`} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10 }} /></a>
               : <div style={{ width: 64, height: 64, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,0.06)', fontSize: 26 }}>{c.emoji}</div>}
             <div style={{ flex: '1 1 140px', minWidth: 0 }}>
               <strong>{c.title}</strong>
