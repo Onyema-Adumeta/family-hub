@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useEvents, useCreateEvent, useDeleteEvent, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
+import { router } from 'expo-router';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -81,9 +82,14 @@ export default function ScheduleScreen() {
         <View style={s.header}>
           <Text style={s.title}>📅 Schedule</Text>
           {isParent && (
-            <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
-              <Text style={s.addBtnText}>+ Event</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity style={[s.addBtn, { backgroundColor: 'rgba(255,255,255,0.08)' }]} onPress={() => router.push('/add-events')} accessibilityLabel="Add events from a photo or email">
+                <Text style={s.addBtnText}>📸 Snap</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
+                <Text style={s.addBtnText}>+ Event</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 

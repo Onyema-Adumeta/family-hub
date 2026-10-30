@@ -1,5 +1,9 @@
-﻿import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Tabs } from 'expo-router';
+import { Text, View } from 'react-native';
+import ConsentGate from '../components/ConsentGate';
+import PromptHost from '../components/PromptHost';
+import CelebrationHost from '../components/CelebrationHost';
+import { useRealtime } from '../hooks/useRealtime';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -10,8 +14,12 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  useRealtime();
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
+      // "‹ Back" on Weekly Wins, Star bank, Settings… returns to where you came from.
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -50,11 +58,24 @@ export default function TabsLayout() {
         options={{ title: 'Lists', tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" focused={focused} /> }}
       />
 
+      <Tabs.Screen
+        name="games"
+        options={{ title: 'Games', tabBarIcon: ({ focused }) => <TabIcon emoji="🎮" focused={focused} /> }}
+      />
+
       {/* ── Hidden screens (navigable via router.push, no tab icon) ── */}
       <Tabs.Screen name="schedule" options={{ href: null }} />
       <Tabs.Screen name="quests"   options={{ href: null }} />
       <Tabs.Screen name="trivia"   options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="memory"   options={{ href: null }} />
+      <Tabs.Screen name="wins"     options={{ href: null }} />
+      <Tabs.Screen name="bank"     options={{ href: null }} />
+      <Tabs.Screen name="add-events" options={{ href: null }} />
     </Tabs>
+    <ConsentGate />
+    <CelebrationHost />
+    <PromptHost />
+    </View>
   );
 }

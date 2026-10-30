@@ -73,7 +73,7 @@ except localhost.
 
 ## 3. Out of scope this round
 
-- The mobile app (Expo) is still being updated for the new features. The web app is the reference
+- The mobile app (Expo) has just been updated for the new features. The web app is the main reference; mobile findings are welcome but secondary
 - Payments: the beta is free and there is no billing yet
 
 ## What we'd like back

@@ -74,3 +74,23 @@ jobs:
           pnpm --filter @family-hub/web typecheck > tsc.log 2>&1 || { cat tsc.log; grep "error TS" tsc.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
       - name: Build web
         run: pnpm --filter @family-hub/web build
+
+  mobile:
+    name: Mobile — type-check and bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter "@family-hub/mobile..."
+      - name: Type-check mobile
+        working-directory: packages/mobile
+        run: |
+          pnpm exec tsc --noEmit --pretty false > tsc.log 2>&1 || { cat tsc.log; grep "error TS" tsc.log | head -30 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+      - name: Bundle the app (Hermes) — catches errors a phone build would hit
+        working-directory: packages/mobile
+        run: pnpm exec expo export --platform ios --output-dir /tmp/mobile-bundle

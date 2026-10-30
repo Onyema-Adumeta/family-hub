@@ -1,9 +1,13 @@
-﻿import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';
 import { router } from 'expo-router';
 import StreakCard from '../components/StreakCard';
+import BriefingCard from '../components/BriefingCard';
+import LevelCard from '../components/LevelCard';
+import GoalBar from '../components/GoalBar';
+import ApprovalQueue from '../components/ApprovalQueue';
 
 /** Safely parse any date string to a local Date — strips timezone noise */
 function parseDate(raw: string | null | undefined): Date | null {
@@ -19,7 +23,7 @@ const TODAY_STR = new Date().toISOString().split('T')[0];
 export default function HomeScreen() {
   const { member, family } = useAuthStore();
 
-  const { data: chores = [], refetch: refetchChores, isRefetching } = useQuery({
+  const { data: chores = [], isRefetching } = useQuery({
     queryKey: ['chores'], queryFn: () => api.get('/chores').then(r => r.data)
   });
   const { data: members = [] } = useQuery({
@@ -29,8 +33,11 @@ export default function HomeScreen() {
     queryKey: ['events'], queryFn: () => api.get('/events').then(r => r.data)
   });
 
-  const pending  = (chores as any[]).filter(c => !c.done);
-  const done     = (chores as any[]).filter(c => c.done);
+  const qc = useQueryClient();
+  const me       = (members as any[]).find(m => m.id === member?.id) || member;
+  const pending  = (chores as any[]).filter(c => c.status !== 'done' && c.status !== 'review');
+  const done     = (chores as any[]).filter(c => c.status === 'done');
+  const refreshAll = () => ['chores', 'members', 'events', 'briefing', 'goal', 'approvals'].forEach(k => qc.invalidateQueries({ queryKey: [k] }));
 
   // Safe event date string — strips time/timezone
   const evDateStr = (ev: any): string => (ev.date || ev.startsAt || '').split('T')[0].split(' ')[0];
@@ -62,8 +69,38 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetchChores} tintColor="#6366F1" />}>
+      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refreshAll} tintColor="#6366F1" />}>
 
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.greeting}>Hi, {member?.name} {member?.emoji}</Text>
+          <Text style={styles.subtitle}>{family?.name}</Text>
+        </View>
+        <View style={styles.starBadge}><Text style={styles.starText}>⭐ {me?.stars ?? 0}</Text></View>
+        <TouchableOpacity style={[styles.gearBtn, { marginLeft: 8 }]} onPress={() => router.push('/settings')} accessibilityLabel="Settings">
+          <Text style={{ fontSize: 16 }}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
+
+      <BriefingCard />
+      <ApprovalQueue />
+      <LevelCard member={me} />
+      <GoalBar />
+
+      {/* Shortcuts */}
+      <View style={styles.shortcuts}>
+        {[
+          { label: 'Weekly Wins', icon: '🏆', href: '/wins' },
+          { label: 'Star bank', icon: '🏦', href: '/bank' },
+          { label: 'Calendar', icon: '📅', href: '/schedule' },
+          { label: 'Quests', icon: '⚔️', href: '/quests' },
+        ].map(s => (
+          <TouchableOpacity key={s.href} style={styles.shortcut} onPress={() => router.push(s.href as any)} accessibilityRole="button">
+            <Text style={{ fontSize: 22 }}>{s.icon}</Text>
+            <Text style={styles.shortcutText}>{s.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Streak */}
@@ -120,7 +157,7 @@ export default function HomeScreen() {
       {/* Leaderboard */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🏆 Family Leaderboard</Text>
-        {(members as any[]).sort((a, b) => b.stars - a.stars).map((m: any, i: number) => (
+        {[...(members as any[])].sort((a, b) => b.stars - a.stars).map((m: any, i: number) => (
           <View key={m.id} style={styles.memberRow}>
             <Text style={styles.rank}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</Text>
             <View style={[styles.avatar, { backgroundColor: m.color }]}><Text style={{ fontSize: 16 }}>{m.emoji}</Text></View>
@@ -178,7 +215,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#0f0f13' },
-  content:     { padding: 16, paddingBottom: 32 },
+  content:     { padding: 16, paddingTop: 56, paddingBottom: 32 },
+  shortcuts:   { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  shortcut:    { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)' },
+  shortcutText:{ color: '#f0f0f5', fontSize: 10, fontWeight: '800', marginTop: 4, textAlign: 'center' },
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   greeting:    { fontSize: 20, fontWeight: '900', color: '#f0f0f5' },
   subtitle:    { fontSize: 12, color: 'rgba(240,240,245,0.4)', fontWeight: '700', marginTop: 2 },
