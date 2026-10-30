@@ -3,6 +3,7 @@ import { useApprovals, useReviewChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { ask } from '../store/prompt';
 import { C, ui } from '../lib/theme';
+import { mediaSrc } from '../lib/api';
 
 /** Parents: chore photos waiting for a one-tap approve. */
 export default function ApprovalQueue() {
@@ -23,13 +24,13 @@ export default function ApprovalQueue() {
       <Text style={ui.cardTitle}>📸 Chores to check ({list.length})</Text>
       {list.map(c => {
         const photo = c.photoUrl || c.proofUrl;
-        const isImage = photo && /^https?:/.test(photo) && c.proofType !== 'video';
+        const isImage = !!photo && c.proofType !== 'video';
         return (
           <View key={c.id} style={{ borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 10 }}>
             <View style={ui.row}>
-              <TouchableOpacity disabled={!photo} onPress={() => photo && Linking.openURL(photo)} accessibilityLabel={`Open proof for ${c.title}`}>
+              <TouchableOpacity disabled={!photo} onPress={() => photo && Linking.openURL(mediaSrc(photo))} accessibilityLabel={`Open proof for ${c.title}`}>
                 {isImage
-                  ? <Image source={{ uri: photo }} style={{ width: 64, height: 64, borderRadius: 10 }} />
+                  ? <Image source={{ uri: mediaSrc(photo) }} style={{ width: 64, height: 64, borderRadius: 10 }} />
                   : <View style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ fontSize: 26 }}>{photo ? '🎬' : c.emoji}</Text>
                     </View>}

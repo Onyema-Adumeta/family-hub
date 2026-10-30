@@ -35,7 +35,15 @@ export function uploader(opts: { folder: string; field: string; videos: boolean;
   setup();
   const allowed = opts.videos ? [...IMAGE_TYPES, ...VIDEO_TYPES] : IMAGE_TYPES;
   const storage = cloudinaryConfigured()
-    ? new CloudinaryStorage({ cloudinary, params: { folder: `family-hub/${opts.folder}`, resource_type: 'auto' } as any })
+    ? new CloudinaryStorage({
+        cloudinary,
+        params: (async (_req: any, file: Express.Multer.File) => ({
+          folder: `family-hub/${opts.folder}`,
+          resource_type: file.mimetype.startsWith('video/') ? 'video' : 'image',
+          // iPhone photos are HEIC, which most browsers can't show; store them as JPEG.
+          ...(/hei[cf]/.test(file.mimetype) ? { format: 'jpg' } : {}),
+        })) as any,
+      })
     : multer.diskStorage({
         destination: (_req, _file, cb) => { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); cb(null, UPLOAD_DIR); },
         // Random names: local files are served without a sign-in check, so they must not be guessable.

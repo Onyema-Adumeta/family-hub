@@ -6,7 +6,7 @@ import AccountAndData from '../components/AccountAndData';
 import { useState, useRef } from 'react';
 import { useAuthStore } from '../store/auth';
 import { useMembers } from '../hooks/useApi';
-import { api } from '../lib/api';
+import { api, mediaSrc } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import StreakCard from '../components/StreakCard';
@@ -16,10 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA','#34D399'];
 const EMOJIS = ['👨','👩','🧑','👦','👧','🧒','👴','👵','🦊','🐱','🐶','🐼','🦁','🐸','🐯','🦋'];
 
-function avatarSrc(url?: string | null) {
-  if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
-}
+function avatarSrc(url?: string | null) { return url ? mediaSrc(url) : null; }
 
 const BADGE_META: Record<string, { icon: string; label: string; color: string }> = {
   first_chore: { icon: '🌟', label: 'First Chore',   color: '#FBBF24' },

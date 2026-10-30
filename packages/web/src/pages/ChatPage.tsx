@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useMessages, useSendMessage } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { useMembers } from '../hooks/useApi';
-import { uploadFile, api } from '../lib/api';
+import { uploadFile, api, mediaSrc } from '../lib/api';
 import { useSocket } from '../hooks/useSocket';
 import { familySocket } from '../lib/socket';
 import { useQueryClient } from '@tanstack/react-query';
@@ -244,7 +244,7 @@ export default function ChatPage() {
 >
                 {!isMe && (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: sender?.color || '#6366F1', border: `2px solid ${sender?.color || '#6366F1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, overflow: 'hidden' }}>
-                    {sender?.avatarUrl ? <img src={sender.avatarUrl} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
+                    {sender?.avatarUrl ? <img src={mediaSrc(sender.avatarUrl)} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
                   </div>
                 )}
                 <div className="chat-bubble" style={{minWidth:0}}>
@@ -262,12 +262,12 @@ export default function ChatPage() {
                       {msg.pollQuestion&&<div><strong>📊 {msg.pollQuestion}</strong>{(msg.pollOptions||[]).map((option:string,index:number)=>{const count=(msg.votes||[]).filter((v:any)=>v.optionIndex===index).length;const selected=(msg.votes||[]).some((v:any)=>v.memberId===member?.id&&v.optionIndex===index);return <button key={index} disabled={actionBusy===msg.id} onClick={()=>messageAction(msg.id,'vote',{optionIndex:index})} style={{display:'block',width:'100%',textAlign:'left',marginTop:6,padding:8,borderRadius:8,border:'1px solid var(--border)',background:selected?'var(--primary)':'var(--bg-secondary)',color:'var(--text-primary)'}}>{selected?'✓ ':''}{option} · {count} votes</button>})}<p style={{fontSize:11}}>One vote per person; tap another option to change your vote.</p></div>}
                       {msg.text && <span style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{msg.text}</span>}
                       {msg.mediaUrl && msg.mediaType === 'image' && (
-                        <a href={msg.mediaUrl} target="_blank" rel="noreferrer">
-                          <img src={msg.mediaUrl} alt="shared" style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0, display: 'block' }} />
+                        <a href={mediaSrc(msg.mediaUrl)} target="_blank" rel="noreferrer">
+                          <img src={mediaSrc(msg.mediaUrl)} alt="shared" style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0, display: 'block' }} />
                         </a>
                       )}
                       {msg.mediaUrl && msg.mediaType === 'video' && (
-                        <video src={msg.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0 }} />
+                        <video src={mediaSrc(msg.mediaUrl)} controls style={{ maxWidth: '100%', borderRadius: 8, marginTop: msg.text ? 6 : 0 }} />
                       )}
                     </div>
                     <details style={{position:'relative',marginTop:3,textAlign:'right'}}>

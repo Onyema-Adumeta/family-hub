@@ -7,9 +7,10 @@ import { useAuthStore } from '../store/auth';
 import { useNotifications, useMembers, useMarkRead, useMarkAllRead } from '../hooks/useApi';
 import { useRealtime } from '../hooks/useRealtime';
 import { QuickActionFAB } from './QuickActionFAB';
+import { mediaSrc } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-function avatarSrc(url?: string | null) { if (!url) return null; return url.startsWith('http') ? url : `${API_BASE}${url}`; }
+function avatarSrc(url?: string | null) { return url ? mediaSrc(url) : null; }
 // ── Relative time formatter for notification timestamps ──────────────
 function timeAgo(iso?: string | null) {
   if (!iso) return '';
