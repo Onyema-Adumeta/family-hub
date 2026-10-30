@@ -3,20 +3,25 @@
     "appVersionSource": "local"
   },
   "build": {
+    "base": {
+      "node": "20.18.0",
+      "pnpm": "9.15.4",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://family-hubapi-production.up.railway.app/api",
+        "EXPO_PUBLIC_WS_URL": "wss://family-hubapi-production.up.railway.app",
+        "EXPO_PUBLIC_WEB_URL": "https://family-hub-web-omega.vercel.app"
+      }
+    },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "node": "20.18.0",
-      "cache": {
-        "disabled": true
-      },
-      "env": {
-        "YARN_ENABLE_IMMUTABLE_INSTALLS": "false"
       }
     },
-    "production": {}
+    "production": {
+      "extends": "base"
+    }
   },
   "submit": {
     "production": {}
