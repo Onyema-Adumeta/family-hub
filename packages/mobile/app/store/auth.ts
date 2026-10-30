@@ -31,6 +31,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // Stop this phone getting the person's notifications. Loaded lazily to avoid a circular import.
+    try { await require('../lib/push').unregisterPush(); } catch { /* ignore */ }
     await SecureStore.deleteItemAsync('token');
     await SecureStore.deleteItemAsync('member');
     await SecureStore.deleteItemAsync('family');

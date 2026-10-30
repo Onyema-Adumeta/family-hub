@@ -1,4 +1,5 @@
 import { sendBrowserPush, webPushConfigured, browserPushConfiguration } from '../services/webPush';
+import { isExpoToken, pushToMember, registerPhone } from '../services/push';
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 
@@ -52,72 +53,59 @@ router.patch('/read-all', async (req: AuthRequest, res) => {
 // ─── Push token registration ──────────────────────────────────────────────────
 
 // POST /api/notifications/register-push
-// Called from the web/mobile app after the user grants notification permission.
-// Stores the Expo push token on the member row so cron jobs can reach them.
+// ─── Phones (Expo push) ──────────────────────────────────────────────────────
+// POST /api/notifications/register-push  { token, platform }
+// The phone app calls this after the person allows notifications. A phone
+// belongs to whoever signed in on it last.
 router.post('/register-push', async (req: AuthRequest, res) => {
-  const { token } = req.body as { token?: string };
-  if (!token) return res.status(400).json({ error: 'token is required' });
-
+  const { token, platform } = req.body || {};
+  if (!isExpoToken(token)) return res.status(400).json({ error: 'Not a valid push token' });
   try {
-    await prisma.member.update({
-      where: { id: req.memberId },
-      data: { pushToken: token },
-    });
-    res.json({ ok: true });
+    const device = await registerPhone(req.memberId!, token, String(platform || ''));
+    res.json({ ok: true, preferences: { tasks: device.tasks, rewards: device.rewards, chat: device.chat } });
   } catch (e) {
+    console.error('register-push failed', e);
     res.status(500).json({ error: 'Failed to save push token' });
   }
 });
 
-// DELETE /api/notifications/register-push  — unsubscribe (e.g. on sign-out)
+// DELETE /api/notifications/register-push  { token }  — on sign-out, or when switched off.
+// Without a token (older app versions) it removes all of this member's phones.
 router.delete('/register-push', async (req: AuthRequest, res) => {
   try {
-    await prisma.member.update({
-      where: { id: req.memberId },
-      data: { pushToken: null },
-    });
+    const token = req.body?.token;
+    await prisma.pushDevice.deleteMany({ where: { memberId: req.memberId, ...(isExpoToken(token) ? { token } : {}) } });
+    if (!isExpoToken(token)) await prisma.member.update({ where: { id: req.memberId }, data: { pushToken: null } });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: 'Failed to remove push token' });
   }
 });
 
+// PATCH /api/notifications/push-preferences  { token, tasks, rewards, chat } — per phone
+router.patch('/push-preferences', async (req: AuthRequest, res) => {
+  const { token, tasks, rewards, chat } = req.body || {};
+  if (!isExpoToken(token) || typeof tasks !== 'boolean' || typeof rewards !== 'boolean' || typeof chat !== 'boolean') {
+    return res.status(400).json({ error: 'Invalid preferences' });
+  }
+  try {
+    const r = await prisma.pushDevice.updateMany({ where: { memberId: req.memberId, token }, data: { tasks, rewards, chat } });
+    if (!r.count) return res.status(404).json({ error: 'This phone is not set up for notifications' });
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Could not save preferences' }); }
+});
+
+// POST /api/notifications/push-test — sends a test to all of my devices
+router.post('/push-test', async (req: AuthRequest, res) => {
+  const r = await pushToMember(req.memberId!, { title: 'Kinroost test 🔔', body: 'Notifications are working on this device.', url: '/', category: 'general' });
+  res.json({ ok: true, ...r });
+});
+
 // ─── Send a push notification ─────────────────────────────────────────────────
 
-// Shared helper — used by the route below AND importable by cron jobs / other routes
+/** Kept for older callers: pushes to every phone and browser of a member. */
 export async function sendPushToMember(memberId: string, title: string, body: string) {
-  const url = /reward/i.test(title) ? '/rewards' : /chore|task/i.test(title) ? '/chores' : '/';
-  await sendBrowserPush(memberId, title, body, url);
-  const member = await prisma.member.findUnique({ where: { id: memberId } });
-  if (!member?.pushToken) return { sent: false, reason: 'no token' };
-
-  const payload = {
-    to: member.pushToken,
-    title,
-    body,
-    sound: 'default',
-    data: { memberId },
-  };
-
-  const response = await fetch('https://exp.host/--/api/v2/push/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const result = await response.json() as { data?: { status: string; message?: string } };
-  const status = result?.data?.status;
-
-  // Expo returns 'DeviceNotRegistered' when the token is stale — clean it up
-  if (status === 'error' && result?.data?.message === 'DeviceNotRegistered') {
-    await prisma.member.update({ where: { id: memberId }, data: { pushToken: null } });
-    return { sent: false, reason: 'DeviceNotRegistered — token cleared' };
-  }
-
-  return { sent: status === 'ok', status };
+  return pushToMember(memberId, { title, body });
 }
 
 // POST /api/notifications/send
@@ -166,7 +154,7 @@ router.post('/broadcast', async (req: AuthRequest, res) => {
   try {
     const members = await prisma.member.findMany({
       where: { familyId: req.familyId },
-      select: { id: true, pushToken: true },
+      select: { id: true },
     });
 
     // Save one DB notification per member
@@ -182,7 +170,7 @@ router.post('/broadcast', async (req: AuthRequest, res) => {
 
     // Fire push notifications concurrently
     const results = await Promise.allSettled(
-      members.filter(m => m.pushToken).map(m => sendPushToMember(m.id, title, body))
+      members.map(m => pushToMember(m.id, { title, body, url: '/', category: 'general' }))
     );
 
     res.json({ ok: true, sent: results.filter(r => r.status === 'fulfilled').length });

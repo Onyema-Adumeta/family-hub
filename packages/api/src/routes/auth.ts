@@ -326,6 +326,7 @@ router.post('/reset-password', authLimiter, async (req, res) => {
       select: { id: true, familyId: true, name: true },
     });
     await prisma.authToken.deleteMany({ where: { memberId: member.id, purpose: 'reset_password', usedAt: null } });
+    await prisma.pushDevice.deleteMany({ where: { memberId: member.id } });
     await audit({ familyId: member.familyId, memberId: member.id } as any, 'member.password_reset_by_email', 'reset their password using an emailed link', { type: 'member', id: member.id });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Could not reset password' }); }
@@ -388,6 +389,7 @@ router.post('/refresh', authMiddleware, async (req: AuthRequest, res) => {
 router.post('/sign-out-everywhere', authMiddleware, async (req: AuthRequest, res) => {
   try {
     await prisma.member.update({ where: { id: req.memberId }, data: { tokenVersion: { increment: 1 } } });
+    await prisma.pushDevice.deleteMany({ where: { memberId: req.memberId } }); // no more notifications to signed-out phones
     await audit(req, 'member.signed_out_everywhere', 'signed out on all devices', { type: 'member', id: req.memberId });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Could not sign out' }); }

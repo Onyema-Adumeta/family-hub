@@ -142,6 +142,7 @@ router.post('/:id/sign-out', async (req: AuthRequest, res) => {
     const target = await prisma.member.findFirst({ where: { id: req.params.id, familyId: req.familyId }, select: { id: true, name: true } });
     if (!target) return res.status(404).json({ error: 'Member not found' });
     await prisma.member.update({ where: { id: target.id }, data: { tokenVersion: { increment: 1 } } });
+    await prisma.pushDevice.deleteMany({ where: { memberId: target.id } }); // e.g. a lost phone stops getting notifications
     await audit(req, 'member.signed_out', `signed ${target.name} out on all devices`, { type: 'member', id: target.id });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Could not sign out member' }); }
