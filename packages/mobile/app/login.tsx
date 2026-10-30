@@ -34,7 +34,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.logo}>Family Hub</Text>
+        <Text style={styles.logo}>Kinroost</Text>
         <Text style={styles.subtitle}>Welcome back! 👋</Text>
 
         <View style={styles.form}>

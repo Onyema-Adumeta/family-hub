@@ -78,7 +78,7 @@ export default function AddEventsScreen() {
           <View style={ui.card}>
             <Text style={[ui.text, { lineHeight: 20 }]}>
               {isParent
-                ? 'This uses FamilyHub’s AI features, which are off for your family. You can turn them on in Settings.'
+                ? 'This uses Kinroost’s AI features, which are off for your family. You can turn them on in Settings.'
                 : 'This uses AI features, which a parent needs to turn on first.'}
             </Text>
             {isParent && <TouchableOpacity style={[ui.btn, { marginTop: 12 }]} onPress={() => router.push('/settings')}><Text style={ui.btnText}>Open Settings</Text></TouchableOpacity>}

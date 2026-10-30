@@ -1,1 +1,0 @@
-@node "C:\Users\Devops\family-hub\packages\mobile\fakeHermesc.js" %*

@@ -6,7 +6,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
       <p>
-        FamilyHub is run by {LEGAL.operator} ({LEGAL.location}) — "we" in this policy. FamilyHub helps a family
+        Kinroost is run by {LEGAL.operator} ({LEGAL.location}) — "we" in this policy. Kinroost helps a family
         organise chores, meals, schedules, rewards and chat. This policy explains what we collect, why, who we share it
         with and the choices you have. We follow Canada's <em>Personal Information Protection and Electronic Documents
         Act</em> (PIPEDA) and British Columbia's <em>Personal Information Protection Act</em> (PIPA).
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
 
       <h2>The short version</h2>
       <ul>
-        <li>A parent creates the family account and decides who joins. Children use FamilyHub under that parent's consent and supervision.</li>
+        <li>A parent creates the family account and decides who joins. Children use Kinroost under that parent's consent and supervision.</li>
         <li>We collect only what the app needs to work. We do not sell personal information and we do not show ads.</li>
         <li>AI features are off until a parent turns them on. Even then, names are replaced with labels like "Child 1" and only broad age groups are sent — never birthdays or exact ages.</li>
         <li>A parent can download all of the family's data or delete the family at any time from Settings.</li>
@@ -22,11 +22,11 @@ export default function PrivacyPage() {
 
       <h2>Children</h2>
       <p>
-        FamilyHub is designed to be used by families that include children. A child's account can only be created by
+        Kinroost is designed to be used by families that include children. A child's account can only be created by
         joining a family whose parent has accepted this policy and given consent for their children's information to be
         collected and used as described here. Parents can see and manage their children's information, reset their
         passwords, remove them from the family, download their data and delete it. If you believe a child is using
-        FamilyHub without a parent's consent, contact us at {mail} and we will delete the account.
+        Kinroost without a parent's consent, contact us at {mail} and we will delete the account.
       </p>
 
       <h2>What we collect</h2>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
 
       <h2>Why we use it</h2>
       <ul>
-        <li>To run FamilyHub for your family: show chores, award stars, sync between devices, send reminders and notifications.</li>
+        <li>To run Kinroost for your family: show chores, award stars, sync between devices, send reminders and notifications.</li>
         <li>To keep accounts secure: passwords, sign-in limits, email verification and password reset, and the activity log.</li>
         <li>To provide optional AI features, only if a parent has turned them on.</li>
         <li>To answer support requests and fix problems.</li>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
       </p>
 
       <h2>Who we share it with</h2>
-      <p>We share information only with service providers that help us run FamilyHub, under contracts that require them to protect it and use it only for that purpose:</p>
+      <p>We share information only with service providers that help us run Kinroost, under contracts that require them to protect it and use it only for that purpose:</p>
       <ul>
         <li>Hosting and database: Railway, Neon and Vercel.</li>
         <li>Photo storage: Cloudinary (photos attached to chores).</li>
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
       <p>
         Connections are encrypted (HTTPS). Passwords are stored as one-way hashes. Each family can only ever see its own
         information. Google Calendar connections are encrypted in our database. Access to production systems is limited
-        to the people who run FamilyHub. No system is perfectly secure; if a breach creates a real risk of significant
+        to the people who run Kinroost. No system is perfectly secure; if a breach creates a real risk of significant
         harm, we will notify affected families and the Office of the Privacy Commissioner of Canada as the law requires.
       </p>
 
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
       <h2>Changes to this policy</h2>
       <p>
         If we make an important change, we will update the version and date above and ask a parent to review and accept
-        it the next time they use FamilyHub.
+        it the next time they use Kinroost.
       </p>
 
       <h2>Contact</h2>

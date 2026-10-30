@@ -1,4 +1,4 @@
-// Rules for anything that leaves FamilyHub for an outside AI provider.
+// Rules for anything that leaves Kinroost for an outside AI provider.
 //
 // 1. A parent must switch AI features on for the family (Family.aiConsentAt).
 //    Until then, no family data is sent anywhere.

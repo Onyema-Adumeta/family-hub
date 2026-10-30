@@ -96,8 +96,8 @@ export default function SettingsPage() {
 
   async function shareLink() {
     const shareData = {
-      title: `Join ${family?.name || 'our family'} on Family Hub`,
-      text:  `Use invite code ${inviteCode} to join our family on Family Hub!`,
+      title: `Join ${family?.name || 'our family'} on Kinroost`,
+      text:  `Use invite code ${inviteCode} to join our family on Kinroost!`,
       url:   inviteUrl,
     };
     if (navigator.share) {

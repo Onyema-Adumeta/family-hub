@@ -1,5 +1,5 @@
 // Stars to real value: a screen-time bank and an allowance bank.
-// This is a record-keeping ledger only. FamilyHub never holds or moves money;
+// This is a record-keeping ledger only. Kinroost never holds or moves money;
 // the parent gives the real money or screen time and records it here.
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';

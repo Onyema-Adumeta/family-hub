@@ -302,7 +302,7 @@ export default function Layout() {
         }}>
           <div style={{ padding: '16px 14px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Family Hub</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
               <div style={{ fontWeight: 900, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{family?.name || 'My Family'}</div>
             </div>
             <NotificationBell />
@@ -362,7 +362,7 @@ export default function Layout() {
           background: 'linear-gradient(135deg, #0f1729 0%, #131c35 100%)', flexShrink: 0, zIndex: 10,
         }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Family Hub</div>
+            <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
             <div style={{ fontWeight: 900, fontSize: 14 }}>{family?.name || 'My Family'}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

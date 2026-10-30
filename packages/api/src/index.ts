@@ -170,4 +170,4 @@ setupCron();
 startWeeklyRulesCron();
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => console.log('Family Hub API running on port ' + PORT));
+server.listen(PORT, () => console.log('Kinroost API running on port ' + PORT));

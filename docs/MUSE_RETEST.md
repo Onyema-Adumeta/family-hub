@@ -1,6 +1,6 @@
-# Muse retest brief — FamilyHub, October 2026
+# Muse retest brief — Kinroost, October 2026
 
-Please run a second functional and security test of FamilyHub. The first test
+Please run a second functional and security test of Kinroost. The first test
 (branch `muse-functional-testing`, v2.1) found broken migrations, accounts with
 no passwords, data leaking between families, kids able to do parent-only
 actions, and private fields returned by the API. All of those were fixed and

@@ -46,7 +46,7 @@ export default function AccountAndData() {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `familyhub-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `kinroost-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e: any) { alert(e.response?.data?.error || 'Could not download data'); }
@@ -96,7 +96,7 @@ export default function AccountAndData() {
         <div style={heading}>🎟️ PLAN & HELP</div>
         <div style={{ fontSize: 13, marginBottom: 6 }}><strong>Free beta</strong> — every feature included, no payment details needed.</div>
         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          Questions or problems? Email <a href={`mailto:${LEGAL.supportEmail}?subject=FamilyHub%20help`} style={{ color: 'var(--primary)' }}>{LEGAL.supportEmail}</a>
+          Questions or problems? Email <a href={`mailto:${LEGAL.supportEmail}?subject=Kinroost%20help`} style={{ color: 'var(--primary)' }}>{LEGAL.supportEmail}</a>
         </div>
         <div style={{ fontSize: 12, marginTop: 8 }}>
           <Link to="/privacy" style={{ color: 'var(--text-muted)' }}>Privacy Policy</Link> · <Link to="/terms" style={{ color: 'var(--text-muted)' }}>Terms of Service</Link>
@@ -107,7 +107,7 @@ export default function AccountAndData() {
         <div style={card}>
           <div style={heading}>📦 YOUR FAMILY'S DATA</div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
-            Download a copy of everything FamilyHub holds about your family, or delete your family completely.
+            Download a copy of everything Kinroost holds about your family, or delete your family completely.
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button style={small} onClick={downloadData} disabled={!!busy}>{busy === 'export' ? 'Preparing…' : '⬇️ Download all data'}</button>

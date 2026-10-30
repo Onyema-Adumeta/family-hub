@@ -86,7 +86,7 @@ router.post('/export', async (req: AuthRequest, res) => {
   try {
     const data = await exportFamilyData(req.familyId!);
     await audit(req, 'family.exported', 'downloaded a copy of the family data', { type: 'family', id: req.familyId });
-    res.setHeader('Content-Disposition', `attachment; filename="familyhub-export-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="kinroost-export-${new Date().toISOString().slice(0, 10)}.json"`);
     res.json(data);
   } catch (e) { console.error('export failed', e); res.status(500).json({ error: 'Could not export data' }); }
 });

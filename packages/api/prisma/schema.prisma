@@ -559,7 +559,7 @@ model FamilyGoal {
   @@index([familyId, archivedAt])
 }
 
-// Screen-time and allowance bank: a ledger, not real money. FamilyHub never
+// Screen-time and allowance bank: a ledger, not real money. Kinroost never
 // holds or moves money; a parent hands over the real thing and records it here.
 // amount: minutes (kind "screen") or cents (kind "money"); + in, - out.
 model BankEntry {

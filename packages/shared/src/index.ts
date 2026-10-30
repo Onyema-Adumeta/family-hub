@@ -1,4 +1,4 @@
-// ─── Shared Types for Family Hub ───────────────────────────────
+// ─── Shared Types for Kinroost ───────────────────────────────
 
 export interface Family {
   id: string;

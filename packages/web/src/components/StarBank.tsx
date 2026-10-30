@@ -75,7 +75,7 @@ export default function StarBank() {
     return isParent ? (
       <section style={card} aria-label="Star bank">
         <h2 style={{ margin: '0 0 6px', fontSize: 16 }}>🏦 Star bank</h2>
-        <p className="calm-muted" style={{ margin: '0 0 10px', fontSize: 13 }}>Let kids turn stars into screen time or allowance. You set the rates, and you hand over the real thing — FamilyHub just keeps track.</p>
+        <p className="calm-muted" style={{ margin: '0 0 10px', fontSize: 13 }}>Let kids turn stars into screen time or allowance. You set the rates, and you hand over the real thing — Kinroost just keeps track.</p>
         <button className="btn btn-primary" onClick={editRates} disabled={busy}>Set up the bank</button>
       </section>
     ) : null;
@@ -120,7 +120,7 @@ export default function StarBank() {
           {s.moneyEnabled && <button className="btn btn-ghost" style={{ fontSize: 11, marginTop: 6 }} disabled={busy} onClick={() => move(k)}>Move between jars</button>}
         </div>
       ))}
-      <p className="calm-muted" style={{ fontSize: 11, margin: '12px 0 0' }}>FamilyHub keeps the record; a parent gives the real screen time or money.</p>
+      <p className="calm-muted" style={{ fontSize: 11, margin: '12px 0 0' }}>Kinroost keeps the record; a parent gives the real screen time or money.</p>
     </section>
   );
 }

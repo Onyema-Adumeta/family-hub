@@ -41,7 +41,7 @@ router.post('/', async (req: AuthRequest, res) => {
   // Generic lock-screen body: names identify the sender without exposing message content.
   prisma.member.findMany({where:{familyId:req.familyId,id:{not:req.memberId}},select:{id:true}}).then(recipients=>Promise.allSettled(recipients.map(async recipient=>{
    const title=`Family chat · ${message.member.name}`;
-   const body=pollQuestion?'Posted a family poll. Open FamilyHub to vote.':mediaUrl?'Shared a photo or video. Open FamilyHub to view it.':'Sent a message. Open FamilyHub to read it.';
+   const body=pollQuestion?'Posted a family poll. Open Kinroost to vote.':mediaUrl?'Shared a photo or video. Open Kinroost to view it.':'Sent a message. Open Kinroost to read it.';
    await prisma.notification.create({data:{familyId:req.familyId!,memberId:recipient.id,title,body}});
    await sendBrowserPush(recipient.id,title,body,'/chat');
   }))).catch(e=>console.error('Chat notification failed',e));

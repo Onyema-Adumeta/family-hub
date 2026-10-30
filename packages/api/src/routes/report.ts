@@ -92,7 +92,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res) => {
         // we swap the real names back into its reply here.
         const labeller = makeLabeller(memberStats);
         const labelOf = (m: typeof memberStats[number] | undefined) => (m ? labeller.label(m) : 'N/A');
-        const prompt = `You are a warm, encouraging family coach. Based on this week's Family Hub data, give 3 short actionable parenting tips and a brief family summary.
+        const prompt = `You are a warm, encouraging family coach. Based on this week's Kinroost data, give 3 short actionable parenting tips and a brief family summary.
 
 Family stats this week:
 - Overall chore completion: ${familyPct}%

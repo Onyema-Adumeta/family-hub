@@ -90,7 +90,7 @@ export default function BankScreen() {
         <View style={ui.card}>
           <Text style={[ui.text, { lineHeight: 20 }]}>
             {isParent
-              ? 'Let kids turn stars into screen time or allowance. You set the rates and hand over the real thing — FamilyHub just keeps track.'
+              ? 'Let kids turn stars into screen time or allowance. You set the rates and hand over the real thing — Kinroost just keeps track.'
               : "The star bank isn't switched on yet. Ask a parent to set it up!"}
           </Text>
           {isParent && <TouchableOpacity style={[ui.btn, { marginTop: 12 }]} onPress={editRates} disabled={busy}><Text style={ui.btnText}>Set up the bank</Text></TouchableOpacity>}
@@ -136,7 +136,7 @@ export default function BankScreen() {
               )}
             </View>
           ))}
-          <Text style={[ui.muted, { fontSize: 11 }]}>FamilyHub keeps the record; a parent gives the real screen time or money.</Text>
+          <Text style={[ui.muted, { fontSize: 11 }]}>Kinroost keeps the record; a parent gives the real screen time or money.</Text>
         </>
       )}
     </ScrollView>

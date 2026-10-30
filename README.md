@@ -1,4 +1,4 @@
-# 🏠 Family Hub
+# 🏠 Kinroost
 
 A full-stack family management app with chores, meals, schedules, rewards, real-time chat, and AI-powered weekly reports.
 
@@ -111,4 +111,4 @@ CLIENT_URL="https://your-app.vercel.app"
 
 ---
 
-Built with ❤️ · Family Hub v2.0 · MIT License
+Built with ❤️ · Kinroost v2.0 · MIT License

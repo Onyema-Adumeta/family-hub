@@ -1,6 +1,6 @@
-# FamilyHub operations runbook
+# Kinroost operations runbook
 
-How FamilyHub is run day to day, and what to do when something goes wrong.
+How Kinroost is run day to day, and what to do when something goes wrong.
 Keep this up to date when hosting or contacts change.
 
 ## 1. What runs where
@@ -28,10 +28,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 Keep a copy of `TOKEN_ENCRYPTION_KEY` in a password manager. If it is lost, families must reconnect Google Calendar.
 
 ### Gmail for sending email (free, about 500 emails a day)
-1. Use a Gmail account for FamilyHub (a dedicated one is best).
+1. Use a Gmail account for Kinroost (a dedicated one is best).
 2. Turn on 2-Step Verification for that account.
-3. Google Account → Security → App passwords → create one named "FamilyHub".
-4. In Railway set: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER=<the gmail address>`, `SMTP_PASS=<the 16-character app password>`, `EMAIL_FROM=FamilyHub <the gmail address>`, `APP_URL=<the Vercel web address>`.
+3. Google Account → Security → App passwords → create one named "Kinroost".
+4. In Railway set: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER=<the gmail address>`, `SMTP_PASS=<the 16-character app password>`, `EMAIL_FROM=Kinroost <the gmail address>`, `APP_URL=<the Vercel web address>`.
 
 To move to Resend, Brevo or Google Workspace later, change only these variables.
 

@@ -253,7 +253,7 @@ export default function SettingsPage() {
           <Text style={styles.cardTitle}>🏠 Family</Text>
           <Text style={styles.cardSub}>Family code: <Text style={{ color: '#F0F0F5', fontWeight: '900', letterSpacing: 1 }}>{family?.inviteCode}</Text> — kids use it with their name and PIN to sign in.</Text>
           <View style={styles.actions}>
-            <Action label="Share code" onPress={() => Share.share({ message: `Join our family on FamilyHub with code ${family?.inviteCode}` })} />
+            <Action label="Share code" onPress={() => Share.share({ message: `Join our family on Kinroost with code ${family?.inviteCode}` })} />
             <Action label="Make a new code" onPress={rotateCode} />
           </View>
 

@@ -1,4 +1,4 @@
-// Who runs FamilyHub, as shown in the Privacy Policy and Terms.
+// Who runs Kinroost, as shown in the Privacy Policy and Terms.
 // ⚠ Check these details, and have a lawyer review both documents before
 // inviting families outside your own (children's data under PIPEDA and BC PIPA).
 export const LEGAL = {

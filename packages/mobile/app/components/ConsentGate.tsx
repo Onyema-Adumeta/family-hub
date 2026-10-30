@@ -38,7 +38,7 @@ export default function ConsentGate() {
   if (member?.role !== 'parent') {
     return (
       <View style={{ position: 'absolute', bottom: insets.bottom + 62, left: 12, right: 12, zIndex: 10, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#3b2a08', borderWidth: 1, borderColor: 'rgba(245,158,11,0.5)' }} accessibilityRole="alert">
-        <Text style={[ui.text, { fontSize: 12 }]}>A parent needs to review FamilyHub's updated privacy policy. Ask them to open FamilyHub.</Text>
+        <Text style={[ui.text, { fontSize: 12 }]}>A parent needs to review Kinroost's updated privacy policy. Ask them to open Kinroost.</Text>
       </View>
     );
   }
@@ -58,7 +58,7 @@ export default function ConsentGate() {
         <ScrollView style={{ maxHeight: '90%' }} contentContainerStyle={{ backgroundColor: C.sheet, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 }}>
           <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>Please review our privacy policy</Text>
           <Text style={[ui.muted, { fontSize: 13, marginTop: 8, lineHeight: 19 }]}>
-            FamilyHub now has a Privacy Policy and Terms of Service. Because your family includes children, we need a parent's agreement before continuing. New members can't join until a parent accepts.
+            Kinroost now has a Privacy Policy and Terms of Service. Because your family includes children, we need a parent's agreement before continuing. New members can't join until a parent accepts.
           </Text>
           <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
             <TouchableOpacity onPress={() => openWeb('/privacy')}><Text style={{ color: C.primary, fontWeight: '800' }}>Read the Privacy Policy ↗</Text></TouchableOpacity>
@@ -66,7 +66,7 @@ export default function ConsentGate() {
           </View>
           <Tick on={terms} onPress={() => setTerms(v => !v)} label="I agree to the Terms of Service and Privacy Policy." />
           <Tick on={kids} onPress={() => setKids(v => !v)}
-            label="I am the parent or legal guardian of the children in this family, and I consent to FamilyHub collecting and using their information as described in the Privacy Policy." />
+            label="I am the parent or legal guardian of the children in this family, and I consent to Kinroost collecting and using their information as described in the Privacy Policy." />
           {error ? <Text style={{ color: C.danger, marginTop: 10 }}>{error}</Text> : null}
           <TouchableOpacity style={[ui.btn, { marginTop: 18, opacity: !terms || !kids || saving ? 0.5 : 1 }]} disabled={!terms || !kids || saving} onPress={accept}>
             <Text style={ui.btnText}>{saving ? 'Saving…' : 'Agree and continue'}</Text>

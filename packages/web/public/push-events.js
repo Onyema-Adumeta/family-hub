@@ -1,5 +1,5 @@
 self.addEventListener('push', function(event) {
- let message={title:'FamilyHub',body:'You have a family update.',url:'/'};
+ let message={title:'Kinroost',body:'You have a family update.',url:'/'};
  try {if(event.data) message=Object.assign(message,event.data.json());} catch(_) {}
  let target=new URL(message.url || '/',self.location.origin);
  if(target.origin!==self.location.origin) target=new URL('/',self.location.origin);
