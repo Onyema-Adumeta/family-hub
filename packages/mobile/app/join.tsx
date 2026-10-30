@@ -36,7 +36,7 @@ export default function JoinScreen() {
 
         <View style={styles.form}>
           <Text style={styles.label}>Family Invite Code</Text>
-          <TextInput style={styles.input} placeholder="FAM-XXXX" placeholderTextColor="#666" value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" />
+          <TextInput style={styles.input} placeholder="FAM-XXXXXX" placeholderTextColor="#666" value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" />
 
           <Text style={styles.label}>Your Name</Text>
           <TextInput style={styles.input} placeholder="Jamie" placeholderTextColor="#666" value={name} onChangeText={setName} />

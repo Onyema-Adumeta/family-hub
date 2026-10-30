@@ -10,6 +10,7 @@ import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import StreakCard from '../components/StreakCard';
+import { form } from '../store/dialog';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const COLORS = ['#6366F1','#F472B6','#4ADE80','#F59E0B','#38BDF8','#FB923C','#A78BFA','#34D399'];
@@ -124,10 +125,20 @@ export default function SettingsPage() {
 
   async function setPasswordFor(m: any) {
     const isSelf = m.id === member?.id;
-    const currentPassword = isSelf ? prompt('Your current password or PIN') : undefined;
-    if (isSelf && currentPassword === null) return;
-    const password = prompt(isSelf ? 'New password or PIN (4+ characters)' : `New password or PIN for ${m.name} (4+ characters)`);
-    if (!password) return;
+    const forParent = m.role === 'parent';
+    const r = await form({
+      title: isSelf ? (forParent ? 'Change your password' : 'Change your PIN') : `New ${forParent ? 'password' : 'PIN'} for ${m.name}`,
+      message: isSelf ? 'Your other devices will be signed out.' : `${m.name} will be signed out on their devices. Tell them the new one.`,
+      fields: [
+        ...(isSelf ? [{ name: 'currentPassword', label: forParent ? 'Current password' : 'Current PIN', type: 'password' as const }] : []),
+        { name: 'newPassword', label: forParent ? 'New password' : 'New PIN', type: 'password' as const,
+          hint: forParent ? 'At least 8 characters.' : 'At least 4 characters — a 4-digit PIN is fine.' },
+      ],
+      okLabel: 'Save',
+    });
+    if (!r) return;
+    const currentPassword = isSelf ? r.currentPassword : undefined;
+    const password = r.newPassword;
     try {
       const { data } = await api.put(`/members/${m.id}/password`, { password, currentPassword });
       // Changing a password signs that person out everywhere else; keep this device signed in.

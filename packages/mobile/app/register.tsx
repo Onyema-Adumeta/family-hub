@@ -62,7 +62,7 @@ export default function RegisterScreen() {
             ))}
           </View>
 
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>Password (8+ characters)</Text>
           <TextInput style={styles.input} placeholder="••••••" placeholderTextColor="#666" secureTextEntry value={password} onChangeText={setPassword} />
 
           <Text style={styles.label}>Your Email</Text>

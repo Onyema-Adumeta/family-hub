@@ -1,5 +1,6 @@
 import { useApprovals, useReviewChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
+import { ask } from '../store/dialog';
 
 /** Parents: chore photos waiting for a one-tap approve. */
 export default function ApprovalQueue() {
@@ -23,10 +24,10 @@ export default function ApprovalQueue() {
             </div>
             <div style={{ display: 'flex', gap: 8, flex: '1 1 100%', justifyContent: 'flex-end' }}>
             <button className="btn btn-primary" disabled={review.isPending} onClick={() => review.mutate({ id: c.id, approve: true })} aria-label={`Approve ${c.title}`}>✓ Approve</button>
-            <button className="btn btn-ghost" disabled={review.isPending} onClick={() => {
-              const note = prompt('What needs fixing? (optional)') ?? undefined;
-              if (note === undefined) return;
-              review.mutate({ id: c.id, approve: false, note });
+            <button className="btn btn-ghost" disabled={review.isPending} onClick={async () => {
+              const note = await ask(`Send back “${c.title}”?`, { label: 'What needs fixing? (optional)', required: false, placeholder: 'Please make the bed too' }, { okLabel: 'Send back' });
+              if (note === null) return;
+              review.mutate({ id: c.id, approve: false, note: note || undefined });
             }}>Not yet</button>
             </div>
           </div>

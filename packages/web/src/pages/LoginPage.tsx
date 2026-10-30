@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';
+import { choose } from '../store/dialog';
 
 export default function LoginPage() {
   const [familyCode, setFamilyCode] = useState('');
@@ -23,6 +24,13 @@ export default function LoginPage() {
         : { familyCode: familyCode.trim().toUpperCase(), name: name.trim(), password });
       if (data.passwordCreated) alert('Your password is now set. Use it every time you sign in.');
       setAuth(data.token, data.member, data.family);
+      // Parents with a password shorter than 8 characters are asked to pick a longer one.
+      if (data.passwordTooShort) {
+        const now = await choose('Please choose a longer password', [
+          { label: 'Change it now', value: 'now' }, { label: 'Remind me next time', value: 'later' },
+        ], 'Parent accounts can see and delete the whole family’s data, so they now need at least 8 characters. Your current password still works.');
+        if (now === 'now') { navigate('/settings'); return; }
+      }
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed');
@@ -46,7 +54,7 @@ export default function LoginPage() {
 
         {/* Info banner */}
         <div style={{ padding: '12px 16px', background: 'rgba(99,102,241,0.1)', border: '1.5px solid rgba(99,102,241,0.25)', borderRadius: 12, marginBottom: 20, fontSize: 13, color: '#A78BFA', fontWeight: 600, textAlign: 'center' }}>
-          Family code, your name and your password or PIN 🔒<br/><span style={{ fontWeight: 500 }}>First time since passwords were added? Type the password you want to use — it will be saved.</span>
+          Family code, your name and your password or PIN 🔒<br/><span style={{ fontWeight: 500 }}>Forgot it? Parents can reset by email; kids, ask a parent for a new PIN.</span>
         </div>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -64,7 +72,7 @@ export default function LoginPage() {
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Family Code</label>
             <input
               className="input"
-              placeholder="FAM-XXXX"
+              placeholder="FAM-XXXXXX"
               value={familyCode}
               onChange={e => setFamilyCode(e.target.value)}
               style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 16 }}

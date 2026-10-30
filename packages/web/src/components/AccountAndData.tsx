@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { LEGAL } from '../legal/config';
+import { ask, form } from '../store/dialog';
 
 const card: React.CSSProperties = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 };
 const heading: React.CSSProperties = { fontWeight: 800, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.08em' };
@@ -17,10 +18,17 @@ export default function AccountAndData() {
   const m: any = member;
 
   async function changeEmail() {
-    const email = prompt(m?.email ? 'New email address' : 'Your email address');
-    if (!email) return;
-    const currentPassword = prompt('Your current password (to confirm it is you)');
-    if (currentPassword === null) return;
+    const r = await form({
+      title: m?.email ? 'Change your email' : 'Add your email',
+      message: 'We will send a link to confirm it. You can then sign in with it and reset your password if you forget it.',
+      fields: [
+        { name: 'email', label: 'Email address', type: 'email', defaultValue: m?.email || '' },
+        { name: 'currentPassword', label: 'Your current password', type: 'password', hint: 'To confirm it is you.' },
+      ],
+      okLabel: 'Save email',
+    });
+    if (!r) return;
+    const { email, currentPassword } = r;
     setBusy('email');
     try {
       const { data } = await api.put(`/members/${member!.id}/email`, { email, currentPassword });
@@ -38,7 +46,9 @@ export default function AccountAndData() {
   }
 
   async function downloadData() {
-    const password = prompt('Enter your password to download all of your family\'s data');
+    const password = await ask('Download your family’s data', { label: 'Your password', type: 'password' }, {
+      message: 'You will get a file with everything Kinroost holds about your family.', okLabel: 'Download',
+    });
     if (!password) return;
     setBusy('export');
     try {
@@ -56,10 +66,18 @@ export default function AccountAndData() {
   async function deleteFamily() {
     const name = family?.name || '';
     if (!confirm(`Permanently delete "${name}" and ALL of its data — every member, chore, message, photo link and reward? This cannot be undone.\n\nTip: download your data first.`)) return;
-    const confirmName = prompt(`Type the family name to confirm: ${name}`);
-    if (confirmName === null) return;
-    const password = prompt('Enter your password');
-    if (!password) return;
+    const r = await form({
+      title: 'Delete the family for good',
+      message: `Type the family name and your password to confirm.`,
+      fields: [
+        { name: 'confirmName', label: `Family name: ${name}`, mustEqual: name, placeholder: name },
+        { name: 'password', label: 'Your password', type: 'password' },
+      ],
+      okLabel: 'Delete everything',
+      danger: true,
+    });
+    if (!r) return;
+    const { confirmName, password } = r;
     setBusy('delete');
     try {
       await api.post('/family/delete', { password, confirmName });

@@ -21,7 +21,7 @@ cp packages/api/.env.example packages/api/.env
 
 ### 3. Set up the database
 ```bash
-pnpm db:migrate
+pnpm --filter @family-hub/api db:migrate
 ```
 
 ### 4. Run everything

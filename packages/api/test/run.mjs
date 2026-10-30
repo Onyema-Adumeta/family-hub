@@ -28,6 +28,7 @@ if (!['localhost', '127.0.0.1', '::1'].includes(host) && process.env.ALLOW_REMOT
 }
 
 const PORT = '3999';
+const STRICT_PORT = '3997'; // a second API with the real production rate limits
 const FAKE_AI_PORT = '3998';
 const env = {
   ...process.env,
@@ -47,6 +48,8 @@ const env = {
   VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY: '',
   GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '',
   TEST_API_URL: `http://127.0.0.1:${PORT}`,
+  STRICT_API_URL: `http://127.0.0.1:${STRICT_PORT}`,
+  UPLOAD_DIR: join(tmpdir(), `familyhub-test-uploads-${process.pid}`),
 };
 
 console.log('▶ Rebuilding the test database from migrations…');
@@ -57,11 +60,13 @@ if (reset.status !== 0) { console.error('✖ Migrations failed on a fresh databa
 
 // Make sure nothing else is already answering on the test port — otherwise the
 // tests would silently run against that server instead of this code.
-try {
-  await fetch(env.TEST_API_URL + '/health');
-  console.error(`✖ Something is already running on port ${PORT}. Stop it and try again.`);
-  process.exit(1);
-} catch { /* port is free, good */ }
+for (const [u, p] of [[env.TEST_API_URL, PORT], [env.STRICT_API_URL, STRICT_PORT]]) {
+  try {
+    await fetch(u + '/health');
+    console.error(`✖ Something is already running on port ${p}. Stop it and try again.`);
+    process.exit(1);
+  } catch { /* port is free, good */ }
+}
 
 // ── Fake AI provider: records every request so tests can inspect it ─────────
 const captured = [];
@@ -98,26 +103,38 @@ await new Promise(r => fakeAi.listen(Number(FAKE_AI_PORT), '127.0.0.1', r));
 
 console.log('▶ Starting the API…');
 // Run node directly (no npx/shell wrapper) so stopping it really stops the server.
-const api = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], { cwd: apiDir, env, stdio: ['ignore', 'pipe', 'pipe'] });
-let exited = false;
-api.on('exit', () => { exited = true; });
+const procs = [];
 let apiLog = '';
-api.stdout.on('data', d => { apiLog += d; });
-api.stderr.on('data', d => { apiLog += d; });
+function startApi(port, extra = {}) {
+  const p = spawn(process.execPath, ['--import', 'tsx', 'src/index.ts'], { cwd: apiDir, env: { ...env, PORT: port, ...extra }, stdio: ['ignore', 'pipe', 'pipe'] });
+  p.exited = false;
+  p.on('exit', () => { p.exited = true; });
+  p.stdout.on('data', d => { apiLog += d; });
+  p.stderr.on('data', d => { apiLog += d; });
+  procs.push(p);
+  return p;
+}
+const api = startApi(PORT);
+// Same code with production limits (no multiplier), for the rate-limit tests.
+const strict = startApi(STRICT_PORT, { RATE_LIMIT_MULTIPLIER: '' });
 
-const stop = () => { if (!exited) { try { api.kill(); } catch { /* already stopped */ } } try { fakeAi.close(); } catch { /* closed */ } };
+const stop = () => {
+  for (const p of procs) if (!p.exited) { try { p.kill(); } catch { /* already stopped */ } }
+  try { fakeAi.close(); } catch { /* closed */ }
+};
 process.on('exit', stop);
 
-async function waitForApi() {
+async function waitFor(url, proc) {
   for (let i = 0; i < 60; i++) {
-    if (exited) break;
-    try { if ((await fetch(env.TEST_API_URL + '/health')).ok) return; } catch { /* not up yet */ }
+    if (proc.exited) break;
+    try { if ((await fetch(url + '/health')).ok) return; } catch { /* not up yet */ }
     await new Promise(r => setTimeout(r, 500));
   }
   console.error('✖ API did not start:\n' + apiLog);
   process.exit(1);
 }
-await waitForApi();
+await waitFor(env.TEST_API_URL, api);
+await waitFor(env.STRICT_API_URL, strict);
 
 const files = readdirSync(join(apiDir, 'test')).filter(f => f.endsWith('.test.ts')).map(f => join('test', f));
 console.log('▶ Running tests…');

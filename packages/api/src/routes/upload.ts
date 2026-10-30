@@ -1,36 +1,22 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { AuthRequest } from '../middleware/auth';
+import { uploader, uploadedUrl } from '../services/media';
 
 const router = Router();
 
-const uploadDir = process.env.UPLOAD_DIR || './uploads';
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// POST /api/upload — a photo or short video for chat or chore proof (any signed-in member)
+const upload = uploader({ folder: 'uploads', field: 'file', videos: true, maxMb: 25 });
 
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'];
-    cb(null, allowed.includes(file.mimetype));
-  }
-});
-
-router.post('/', upload.single('file'), async (req: AuthRequest, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+router.post('/', (req, res, next) => {
+  upload(req, res, (err: any) => {
+    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'That file is too big (25 MB at most).' });
+    if (err) { console.error('upload failed', err); return res.status(500).json({ error: 'Could not upload the file. Please try again.' }); }
+    next();
+  });
+}, async (req: AuthRequest, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Choose a photo or video (JPEG, PNG, WebP, GIF, HEIC, MP4, MOV or WebM).' });
   const isVideo = req.file.mimetype.startsWith('video/');
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url, type: isVideo ? 'video' : 'image', filename: req.file.filename });
+  res.json({ url: uploadedUrl(req.file), type: isVideo ? 'video' : 'image' });
 });
 
 export default router;
