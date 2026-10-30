@@ -12,12 +12,12 @@ Keep this up to date when hosting or contacts change.
 | Database | Neon (PostgreSQL) | Schema changes only via Prisma migrations |
 | Email | Gmail SMTP | Confirmation and password-reset emails |
 | AI | Anthropic | Only for families whose parent turned AI on |
-| Photos | Cloudinary | Chore photos |
+| Photos and videos | Cloudinary | Chore proof, chat photos and videos, profile photos. **Required in production:** without it uploads go to the server's disk, which Railway wipes on every deploy |
 
 ## 2. Railway environment variables (API)
 
 Required: `DATABASE_URL`, `JWT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `CLIENT_URL`, `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `SUPPORT_EMAIL`.
-Optional: `ANTHROPIC_API_KEY`, `GOOGLE_*`, `CLOUDINARY_*`, `VAPID_*`. See `packages/api/.env.example`.
+Needed for photos: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (free plan is fine). Optional: `ANTHROPIC_API_KEY`, `GOOGLE_*`, `VAPID_*`. See `packages/api/.env.example`.
 
 **Never set** `TEST_DATABASE_URL`, `RATE_LIMIT_MULTIPLIER`, `EMAIL_OUTBOX_DIR` or `ANTHROPIC_BASE_URL` in production — they are for the test suite.
 

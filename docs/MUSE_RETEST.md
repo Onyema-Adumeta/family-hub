@@ -15,8 +15,8 @@ copy instead:
 pnpm install
 cp packages/api/.env.example packages/api/.env   # set DATABASE_URL to your own empty Postgres, and JWT_SECRET
 cd packages/api && pnpm exec prisma migrate deploy && cd ../..
-pnpm dev:api    # http://localhost:3001
-pnpm dev:web    # http://localhost:5173
+pnpm dev:api    # http://localhost:3001  (or: cd packages/api && pnpm dev)
+pnpm dev:web    # http://localhost:5173  (or: cd packages/web && pnpm dev)
 ```
 
 Leave the SMTP settings empty and set `EMAIL_OUTBOX_DIR=/tmp/outbox`. Emails
@@ -67,7 +67,7 @@ except localhost.
 - Levels and badges from lifetime stars; streaks count once per day
 - Photo-proof chores go to "waiting for approval"; parents approve or reject with a note
 - Family goal bar, Weekly Wins page, morning briefing, house view
-- Take-turns chores rotate between kids weekly; the fairness meter and recommendations are parents only
+- Take-turns chores rotate between kids weekly; the fairness meter is visible to the whole family (a deliberate choice); recommendations are parents only
 - Star bank: convert stars to screen time or allowance, use or move, with no double spending
 - Add events from a flyer photo or pasted email (AI), with a review step before anything is added
 

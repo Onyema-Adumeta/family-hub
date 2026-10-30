@@ -63,7 +63,7 @@ export default function RegisterPage() {
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>For signing in and resetting your password. We'll send a link to confirm it.</div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Password (4+ characters)</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Password (8+ characters)</label>
             <input
               className="input"
               type="password"
@@ -71,7 +71,7 @@ export default function RegisterPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete="new-password"
-              minLength={4}
+              minLength={8}
               required
             />
           </div>

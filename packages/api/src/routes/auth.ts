@@ -8,16 +8,29 @@ import { prisma } from '../db';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { PUBLIC_FAMILY_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
 import { audit } from '../services/audit';
-import { consumeToken, sendResetEmail, sendVerificationEmail } from '../services/authTokens';
+import { consumeToken, peekToken, sendResetEmail, sendVerificationEmail } from '../services/authTokens';
 import { TERMS_VERSION } from '../lib/legal';
 
 const router = Router();
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
+// Tells people how long to wait, and whether it was this network or this account.
+const minutesLeft = (req: any) => {
+  const reset: Date | undefined = req.rateLimit?.resetTime;
+  return reset ? Math.max(1, Math.ceil((reset.getTime() - Date.now()) / 60000)) : 15;
+};
+
+// Per network: only FAILED attempts count (wrong password, bad link, bad code),
+// so a household signing everyone in on one home Wi-Fi never hits it. It
+// stops one network from guessing across many accounts.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
-  message: { error: 'Too many attempts, please try again in 15 minutes.' },
+  max: 30 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
+  skipSuccessfulRequests: true,
+  handler: (req, res) => {
+    const m = minutesLeft(req);
+    res.status(429).json({ error: `Too many failed attempts from this network. Please wait ${m} minute${m > 1 ? 's' : ''} and try again.`, retryAfterMinutes: m });
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -35,7 +48,10 @@ const accountLimiter = rateLimit({
     const name = String(req.body?.name || '').trim().toLowerCase();
     return `acct:${code}:${name}`;
   },
-  message: { error: 'Too many wrong attempts for this account. Try again in 15 minutes, or ask a parent to reset your password.' },
+  handler: (req, res) => {
+    const m = minutesLeft(req);
+    res.status(429).json({ error: `Too many wrong passwords for this account. Please wait ${m} minute${m > 1 ? 's' : ''}, or ask a parent to set a new password.`, retryAfterMinutes: m });
+  },
   standardHeaders: true,
   legacyHeaders: false,
   validate: { keyGeneratorIpFallback: false },
@@ -65,10 +81,22 @@ export const PasswordSchema = z.string()
   .min(4, 'Password or PIN must be at least 4 characters')
   .max(72, 'Password is too long');
 
+// Parents can see and delete the whole family's data, so they need more than a PIN.
+// Existing shorter parent passwords keep working; the app asks them to change it.
+export const PARENT_PASSWORD_MIN = 8;
+export const ParentPasswordSchema = z.string()
+  .min(PARENT_PASSWORD_MIN, `Parent passwords need at least ${PARENT_PASSWORD_MIN} characters`)
+  .max(72, 'Password is too long');
+/** Checks a new password for someone with this role. Returns an error message, or null if fine. */
+export function newPasswordProblem(password: unknown, role: string): string | null {
+  const r = (role === 'parent' ? ParentPasswordSchema : PasswordSchema).safeParse(password);
+  return r.success ? null : r.error.errors[0].message;
+}
+
 const RegisterSchema = z.object({
   familyName: z.string().min(1).max(50).trim(),
   name:       z.string().min(1).max(50).trim(),
-  password:   PasswordSchema,
+  password:   ParentPasswordSchema,
   emoji:      z.string().max(10).optional(),
   color:      z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   // The parent's email: used to sign in and to reset a forgotten password.
@@ -178,7 +206,7 @@ router.post('/login', authLimiter, accountLimiter, async (req, res) => {
     const found = family
       ? await prisma.member.findFirst({
           where: { familyId: family.id, name: { equals: name, mode: 'insensitive' } },
-          select: { id: true, password: true, tokenVersion: true },
+          select: { id: true, password: true, tokenVersion: true, role: true },
         })
       : null;
 
@@ -189,6 +217,8 @@ router.post('/login', authLimiter, accountLimiter, async (req, res) => {
     }
 
     if (!found.password) {
+      const problem = newPasswordProblem(password, found.role);
+      if (problem) return res.status(400).json({ error: problem });
       // Accounts created before passwords existed have an empty password.
       // The first successful sign-in sets it; after that it is required.
       // updateMany with password:'' makes this a one-time claim even under races.
@@ -203,7 +233,7 @@ router.post('/login', authLimiter, accountLimiter, async (req, res) => {
     }
 
     const member = await prisma.member.findUniqueOrThrow({ where: { id: found.id }, select: SELF_MEMBER_SELECT });
-    res.json({ token: makeToken(member.id, family.id, member.role, found.tokenVersion), member, family, passwordCreated });
+    res.json({ token: makeToken(member.id, family.id, member.role, found.tokenVersion), member, family, passwordCreated, ...weakFlag(member.role, password) });
   } catch (e) {
     console.error('login error', e);
     res.status(500).json({ error: 'Could not sign in' });
@@ -227,8 +257,12 @@ async function emailLogin(req: any, res: any) {
   const found = matches[0];
   const member = await prisma.member.findUniqueOrThrow({ where: { id: found.id }, select: SELF_MEMBER_SELECT });
   const family = await prisma.family.findUniqueOrThrow({ where: { id: found.familyId }, select: PUBLIC_FAMILY_SELECT });
-  res.json({ token: makeToken(member.id, family.id, member.role, found.tokenVersion), member, family, passwordCreated: false });
+  res.json({ token: makeToken(member.id, family.id, member.role, found.tokenVersion), member, family, passwordCreated: false, ...weakFlag(member.role, password) });
 }
+
+/** Parents with a password shorter than the current minimum are asked to change it. */
+const weakFlag = (role: string, password: string) =>
+  role === 'parent' && password.length < PARENT_PASSWORD_MIN ? { passwordTooShort: true } : {};
 
 // ── Email verification ────────────────────────────────────────────────────────
 router.post('/verify-email', authLimiter, async (req, res) => {
@@ -277,6 +311,12 @@ router.post('/reset-password', authLimiter, async (req, res) => {
   const pw = PasswordSchema.safeParse(req.body?.password);
   if (!pw.success) return res.status(400).json({ error: pw.error.errors[0].message });
   try {
+    // Check the new password against the account's rules before using up the link.
+    const peek = await peekToken(req.body?.token, 'reset_password');
+    if (!peek) return res.status(400).json({ error: 'This reset link is invalid, expired or already used. Ask for a new one.' });
+    const who = await prisma.member.findUnique({ where: { id: peek.memberId }, select: { role: true } });
+    const problem = newPasswordProblem(pw.data, who?.role || 'child');
+    if (problem) return res.status(400).json({ error: problem });
     const row = await consumeToken(req.body?.token, 'reset_password');
     if (!row) return res.status(400).json({ error: 'This reset link is invalid, expired or already used. Ask for a new one.' });
     const member = await prisma.member.update({

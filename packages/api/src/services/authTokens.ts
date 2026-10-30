@@ -22,6 +22,14 @@ export async function issueToken(memberId: string, purpose: Purpose, email: stri
   return token;
 }
 
+/** Returns a valid, unused, unexpired token without using it up; null otherwise. */
+export async function peekToken(raw: unknown, purpose: Purpose) {
+  if (typeof raw !== 'string' || raw.length < 20 || raw.length > 200) return null;
+  const row = await prisma.authToken.findUnique({ where: { tokenHash: hash(raw) } });
+  if (!row || row.purpose !== purpose || row.usedAt || row.expiresAt < new Date()) return null;
+  return row;
+}
+
 /** Marks a valid, unused, unexpired token as used and returns it; null otherwise. */
 export async function consumeToken(raw: unknown, purpose: Purpose) {
   if (typeof raw !== 'string' || raw.length < 20 || raw.length > 200) return null;

@@ -65,7 +65,7 @@ export default function SettingsPage() {
     const word = isParent ? 'password' : 'PIN';
     const currentPassword = await ask({ title: `Current ${word}`, secure: true, okLabel: 'Next' });
     if (currentPassword === null) return;
-    const password = await ask({ title: `New ${word}`, message: isParent ? 'At least 4 characters — longer is safer.' : 'At least 4 numbers.', secure: true, numeric: !isParent, okLabel: 'Save' });
+    const password = await ask({ title: `New ${word}`, message: isParent ? 'At least 8 characters.' : 'At least 4 numbers.', secure: true, numeric: !isParent, okLabel: 'Save' });
     if (!password) return;
     try {
       const { data } = await api.put(`/members/${member!.id}/password`, { currentPassword, password });
@@ -76,7 +76,7 @@ export default function SettingsPage() {
   }
 
   async function resetPin(m: any) {
-    const password = await ask({ title: `New PIN for ${m.name}`, message: 'At least 4 characters. They will be signed out on their devices.', numeric: m.role !== 'parent', secure: true, okLabel: 'Save' });
+    const password = await ask({ title: `New ${m.role === 'parent' ? 'password' : 'PIN'} for ${m.name}`, message: `${m.role === 'parent' ? 'At least 8 characters' : 'At least 4 numbers'}. They will be signed out on their devices.`, numeric: m.role !== 'parent', secure: true, okLabel: 'Save' });
     if (!password) return;
     try { await api.put(`/members/${m.id}/password`, { password }); Alert.alert('Saved', `${m.name} can sign in with the new PIN.`); }
     catch (e) { fail(e, 'Could not change PIN'); }

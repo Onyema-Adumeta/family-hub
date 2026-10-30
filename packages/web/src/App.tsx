@@ -23,6 +23,7 @@ import PrivacyPage from './legal/PrivacyPage';
 import WinsPage from './pages/WinsPage';
 import HouseViewPage from './pages/HouseViewPage';
 import TermsPage from './legal/TermsPage';
+import DialogHost from './components/DialogHost';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './pages/AccountEmailPages';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
+      <DialogHost />
     </BrowserRouter>
   );
 }

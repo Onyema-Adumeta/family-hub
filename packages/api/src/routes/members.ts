@@ -3,9 +3,10 @@ import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../db';
 import { PUBLIC_MEMBER_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
-import { PasswordSchema, hashPassword, makeToken } from './auth';
+import { PasswordSchema, hashPassword, makeToken, newPasswordProblem } from './auth';
 import { audit } from '../services/audit';
 import { deleteMemberData } from '../services/familyData';
+import { uploader, uploadedUrl } from '../services/media';
 import { sendVerificationEmail } from '../services/authTokens';
 import { z } from 'zod';
 
@@ -91,6 +92,8 @@ router.put('/:id/password', async (req: AuthRequest, res) => {
   try {
     const target = await prisma.member.findFirst({ where: { id, familyId: req.familyId }, select: { id: true, name: true, password: true, role: true, familyId: true } });
     if (!target) return res.status(404).json({ error: 'Member not found' });
+    const problem = newPasswordProblem(parsed.data, target.role);
+    if (problem) return res.status(400).json({ error: problem });
     // Changing your own (existing) password requires the current one.
     // A parent resetting a child's or partner's password does not.
     if (isSelf && target.password) {
@@ -142,6 +145,32 @@ router.post('/:id/sign-out', async (req: AuthRequest, res) => {
     await audit(req, 'member.signed_out', `signed ${target.name} out on all devices`, { type: 'member', id: target.id });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Could not sign out member' }); }
+});
+
+// POST /api/members/:id/avatar — a profile photo (yourself, or a parent for anyone in the family)
+const avatarUpload = uploader({ folder: 'avatars', field: 'avatar', videos: false, maxMb: 5 });
+router.post('/:id/avatar', async (req: AuthRequest, res, next) => {
+  // Check access before accepting the file.
+  const isSelf = req.params.id === req.memberId;
+  if (!isSelf && req.role !== 'parent') return res.status(403).json({ error: 'You can only change your own photo' });
+  const target = await prisma.member.findFirst({ where: { id: req.params.id, familyId: req.familyId }, select: { id: true } });
+  if (!target) return res.status(404).json({ error: 'Member not found' });
+  avatarUpload(req, res, (err: any) => {
+    if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'That photo is too big (5 MB at most).' });
+    if (err) { console.error('avatar upload failed', err); return res.status(500).json({ error: 'Could not upload the photo. Please try again.' }); }
+    next();
+  });
+}, async (req: AuthRequest, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Choose a photo (JPEG, PNG, WebP, GIF or HEIC).' });
+  try {
+    const isSelf = req.params.id === req.memberId;
+    const member = await prisma.member.update({
+      where: { id: req.params.id },
+      data: { avatarUrl: uploadedUrl(req.file) },
+      select: isSelf ? SELF_MEMBER_SELECT : PUBLIC_MEMBER_SELECT,
+    });
+    res.json(member);
+  } catch { res.status(500).json({ error: 'Could not save the photo' }); }
 });
 
 // PATCH /api/members/:id — update profile (name, emoji, color, avatar, birthday)

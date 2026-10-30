@@ -24,6 +24,7 @@ export default function LoginScreen() {
         : { familyCode: familyCode.toUpperCase(), name, password };
       const { data } = await api.post('/auth/login', body);
       if (data.passwordCreated) Alert.alert('Password saved', 'Your password is now set. Use it every time you sign in.');
+      if (data.passwordTooShort) Alert.alert('Please choose a longer password', 'Parent accounts now need at least 8 characters. Your current password still works — change it in Settings.');
       await setAuth(data.token, data.member, data.family);
       router.replace('/(tabs)');
     } catch (err: any) {
@@ -49,7 +50,7 @@ export default function LoginScreen() {
           {mode === 'code' ? (
             <>
               <Text style={styles.label}>Family Code</Text>
-              <TextInput style={styles.input} placeholder="FAM-XXXX" placeholderTextColor="#666" value={familyCode} onChangeText={setFamilyCode} autoCapitalize="characters" />
+              <TextInput style={styles.input} placeholder="FAM-XXXXXX" placeholderTextColor="#666" value={familyCode} onChangeText={setFamilyCode} autoCapitalize="characters" />
 
               <Text style={styles.label}>Your Name</Text>
               <TextInput style={styles.input} placeholder="Alex" placeholderTextColor="#666" value={name} onChangeText={setName} />

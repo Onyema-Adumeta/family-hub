@@ -53,7 +53,7 @@ export default function JoinPage() {
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-secondary)', marginBottom: 6 }}>Family Invite Code</label>
             <input
               className="input"
-              placeholder="FAM-XXXX"
+              placeholder="FAM-XXXXXX"
               value={inviteCode}
               onChange={e => setInviteCode(e.target.value)}
               style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 16 }}

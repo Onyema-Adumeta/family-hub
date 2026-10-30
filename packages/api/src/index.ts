@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { authMiddleware } from './middleware/auth';
 import gamesRouter from './routes/games';
 import authRoutes from './routes/auth';
@@ -18,6 +18,7 @@ import aiRoutes from './routes/ai';
 import membersRoutes from './routes/members';
 import questsRoutes from './routes/quests';
 import uploadRoutes from './routes/upload';
+import { cloudinaryConfigured, UPLOAD_DIR } from './services/media';
 import groceryRoutes from './routes/grocery';
 import { startStreakCron } from './services/streaks';
 import { setupWebSocket } from './services/websocket';
@@ -62,11 +63,23 @@ app.use((_req, res, next) => {
   next();
 });
 
-// â”€â”€ Global rate limit: 500 req / 15 min per IP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Global rate limit ─────────────────────────────────────────────────────────
+function memberKey(req: express.Request): string | null {
+  const h = req.headers.authorization;
+  if (!h?.startsWith('Bearer ')) return null;
+  try {
+    const p: any = jwt.verify(h.slice(7), process.env.JWT_SECRET!, { algorithms: ['HS256'] });
+    return typeof p?.memberId === 'string' ? `m:${p.memberId}` : null;
+  } catch { return null; }
+}
+// Counted per signed-in person when there is a valid sign-in, otherwise per IP.
+// A whole household shares one home IP, so counting by IP alone would let a
+// few busy phones and tablets lock everyone out.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   // RATE_LIMIT_MULTIPLIER is only for the automated test suite; leave unset in production.
-  max: 500 * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
+  max: (req) => (memberKey(req) ? 1500 : 500) * Number(process.env.RATE_LIMIT_MULTIPLIER || 1),
+  keyGenerator: (req) => memberKey(req) || `ip:${ipKeyGenerator(req.ip || '')}`,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please slow down.' },
@@ -125,6 +138,12 @@ app.use('/api/ai',            authMiddleware, aiRoutes);
 app.use('/api/members',       authMiddleware, membersRoutes);
 app.use('/api/quests',        authMiddleware, questsRoutes);
 app.use('/api/upload',        authMiddleware, uploadRoutes);
+// Local development only: without Cloudinary, uploads are saved to disk and
+// served here (file names are random, so links can't be guessed).
+if (!cloudinaryConfigured()) {
+  console.warn('[uploads] Cloudinary is not configured; saving uploads to local disk. Set CLOUDINARY_* in production.');
+  app.use('/uploads', express.static(UPLOAD_DIR, { fallthrough: false, maxAge: '7d', index: false }));
+}
 app.use('/api/grocery',       authMiddleware, groceryRoutes);
 app.use('/api/rules',         authMiddleware, rulesRoutes);
 app.use('/api/trivia',        authMiddleware, triviaRoutes);

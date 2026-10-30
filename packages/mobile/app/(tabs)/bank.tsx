@@ -52,7 +52,7 @@ export default function BankScreen() {
   }
 
   async function convert(kind: 'screen' | 'money', kid: any) {
-    const n = await ask({ title: kind === 'screen' ? 'Stars to screen time' : 'Stars to allowance', message: `How many stars? ${kid.name} has ${kid.stars}⭐.`, numeric: true, okLabel: 'Convert' });
+    const n = await ask({ title: kind === 'screen' ? 'Stars to screen time' : 'Stars to allowance', message: `How many stars? ${kid.name} has ${kid.stars}⭐. ${kind === 'screen' ? `1⭐ = ${s.screenMinutesPerStar} min` : `1⭐ = ${money(s.centsPerStar, s.currency)}`}. Your level does not go down.`, numeric: true, okLabel: 'Convert' });
     if (!n) return;
     let bucket: string | undefined;
     if (kind === 'money') {
@@ -113,7 +113,7 @@ export default function BankScreen() {
                     <Text style={ui.muted}>📺 Screen time</Text>
                     <Text style={{ color: C.text, fontSize: 20, fontWeight: '900' }}>{mins(k.screenMinutes)}</Text>
                     <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => convert('screen', k)}><Text style={[ui.ghostText, { fontSize: 11 }]}>+ Add stars</Text></TouchableOpacity>
+                      <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => convert('screen', k)}><Text style={[ui.ghostText, { fontSize: 11 }]}>⭐ Turn into screen time</Text></TouchableOpacity>
                       {isParent && k.screenMinutes > 0 && <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => use('screen', k)}><Text style={[ui.ghostText, { fontSize: 11 }]}>Used</Text></TouchableOpacity>}
                     </View>
                   </View>
@@ -123,7 +123,7 @@ export default function BankScreen() {
                     <Text style={ui.muted}>{j.icon} {j.label}</Text>
                     <Text style={{ color: C.text, fontSize: 20, fontWeight: '900' }}>{money(k.money?.[j.key] || 0, s.currency)}</Text>
                     <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      {j.key === 'spend' && <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => convert('money', k)}><Text style={[ui.ghostText, { fontSize: 11 }]}>+ Add stars</Text></TouchableOpacity>}
+                      {j.key === 'spend' && <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => convert('money', k)}><Text style={[ui.ghostText, { fontSize: 11 }]}>⭐ Turn into allowance</Text></TouchableOpacity>}
                       {isParent && (k.money?.[j.key] || 0) > 0 && <TouchableOpacity style={ui.ghost} disabled={busy} onPress={() => use('money', k, j.key)}><Text style={[ui.ghostText, { fontSize: 11 }]}>Paid out</Text></TouchableOpacity>}
                     </View>
                   </View>
