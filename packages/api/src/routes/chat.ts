@@ -1,4 +1,4 @@
-import { sendBrowserPush } from '../services/webPush';
+import { pushToMember } from '../services/push';
 import { Router } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { broadcast } from '../services/websocket';
@@ -43,7 +43,7 @@ router.post('/', async (req: AuthRequest, res) => {
    const title=`Family chat · ${message.member.name}`;
    const body=pollQuestion?'Posted a family poll. Open Kinroost to vote.':mediaUrl?'Shared a photo or video. Open Kinroost to view it.':'Sent a message. Open Kinroost to read it.';
    await prisma.notification.create({data:{familyId:req.familyId!,memberId:recipient.id,title,body}});
-   await sendBrowserPush(recipient.id,title,body,'/chat');
+   await pushToMember(recipient.id,{title,body,url:'/chat',category:'chat'});
   }))).catch(e=>console.error('Chat notification failed',e));
  }catch{res.status(500).json({error:'Could not send message. Your draft can be retried.'});}
 });

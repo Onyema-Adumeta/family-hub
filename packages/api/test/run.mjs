@@ -40,6 +40,8 @@ const env = {
   ANTHROPIC_API_KEY: 'test-key',
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${FAKE_AI_PORT}`,
   FAKE_AI_URL: `http://127.0.0.1:${FAKE_AI_PORT}`,
+  // Push notifications go to the same fake server (see /push below).
+  EXPO_PUSH_URL: `http://127.0.0.1:${FAKE_AI_PORT}/push`,
   TOKEN_ENCRYPTION_KEY: 'test-only-encryption-key-0123456789',
   // Emails are written to files here instead of being sent.
   EMAIL_OUTBOX_DIR: join(tmpdir(), `familyhub-test-outbox-${process.pid}`),
@@ -70,12 +72,23 @@ for (const [u, p] of [[env.TEST_API_URL, PORT], [env.STRICT_API_URL, STRICT_PORT
 
 // ── Fake AI provider: records every request so tests can inspect it ─────────
 const captured = [];
+const pushes = [];
 const fakeAi = http.createServer((req, res) => {
   let body = '';
   req.on('data', c => { body += c; });
   req.on('end', () => {
     if (req.url === '/__captured') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(captured)); }
     if (req.url === '/__reset') { captured.length = 0; return res.end('{}'); }
+    if (req.url === '/__pushes') { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify(pushes)); }
+    if (req.url === '/push') {
+      // Fake Expo push service: tokens containing "Gone" are reported as uninstalled.
+      let list = [];
+      try { list = JSON.parse(body); } catch { /* ignore */ }
+      if (!Array.isArray(list)) list = [list];
+      pushes.push(...list);
+      res.setHeader('content-type', 'application/json');
+      return res.end(JSON.stringify({ data: list.map(m => /Gone/.test(m.to) ? { status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' } } : { status: 'ok', id: 'tk' }) }));
+    }
     let parsed = {};
     try { parsed = JSON.parse(body); } catch { /* ignore */ }
     captured.push(parsed);

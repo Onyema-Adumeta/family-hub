@@ -72,7 +72,9 @@ model Member {
   rewardGoalId String?
   canOpenPersonalOS Boolean @default(false)
   canOpenPremed Boolean @default(false)
+  // Old single phone token, kept only so older app versions don't break. New code uses pushDevices.
   pushToken       String?
+  pushDevices     PushDevice[]
   webPushSubscriptions WebPushSubscription[]
   messageAcknowledgements MessageAcknowledgement[]
   messagePollVotes MessagePollVote[]
@@ -451,6 +453,23 @@ model WebPushSubscription {
   rewards Boolean @default(true)
   chat Boolean @default(true)
   createdAt DateTime @default(now())
+}
+
+// A phone (Expo push token) that receives notifications for one member.
+// A device belongs to whoever signed in on it last; signing out removes it.
+model PushDevice {
+  id         String   @id @default(cuid())
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String   @default("unknown")
+  tasks      Boolean  @default(true)
+  rewards    Boolean  @default(true)
+  chat       Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([memberId])
 }
 
 model MessageAcknowledgement {

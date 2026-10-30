@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Platform, Switch, Share,
@@ -13,6 +13,8 @@ import LevelCard from '../components/LevelCard';
 import { useFamilySettings } from '../hooks/useApi';
 import { ask } from '../store/prompt';
 import { openWeb } from '../lib/theme';
+import { registerForPush, savePushPreferences, PushState } from '../lib/push';
+import { Linking } from 'react-native';
 
 function Action({ label, onPress }: { label: string; onPress: () => void }) {
   return (
@@ -39,6 +41,27 @@ export default function SettingsPage() {
   const isParent = member?.role === 'parent';
 
   const { data: settings } = useFamilySettings();
+  const [push, setPush] = useState<{ state: PushState | 'checking'; prefs: { tasks: boolean; rewards: boolean; chat: boolean } }>({ state: 'checking', prefs: { tasks: true, rewards: true, chat: true } });
+  useEffect(() => {
+    registerForPush(false).then(r => setPush(p => ({ state: r.state, prefs: r.preferences || p.prefs })));
+  }, []);
+  async function turnOnPush() {
+    const r = await registerForPush(true);
+    setPush(p => ({ state: r.state, prefs: r.preferences || p.prefs }));
+    if (r.state === 'blocked') Alert.alert('Notifications are blocked', 'Turn them on for Kinroost in your phone settings.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Open settings', onPress: () => Linking.openSettings() }]);
+    if (r.state === 'unavailable') Alert.alert('Not available yet', 'Notifications could not be set up on this phone. Check your connection and try again.');
+  }
+  async function togglePush(key: 'tasks' | 'rewards' | 'chat', on: boolean) {
+    const prefs = { ...push.prefs, [key]: on };
+    setPush(p => ({ ...p, prefs }));
+    try { await savePushPreferences(prefs); } catch (e: any) { fail(e, 'Could not save'); setPush(p => ({ ...p, prefs: { ...prefs, [key]: !on } })); }
+  }
+  async function testPush() {
+    try {
+      const { data } = await api.post('/notifications/push-test');
+      Alert.alert(data.phones ? 'Sent' : 'Not delivered', data.phones ? 'A test notification is on its way to this phone.' : 'The server could not reach this phone. Try turning notifications off and on.');
+    } catch (e) { fail(e, 'Could not send a test'); }
+  }
   const { family, token, setAuth } = useAuthStore();
   const fail = (e: any, fallback: string) => Alert.alert('Something went wrong', e?.response?.data?.error || fallback);
 
@@ -245,6 +268,39 @@ export default function SettingsPage() {
           {isParent && member?.email && !member?.emailVerifiedAt && <Action label="Resend confirmation" onPress={resendConfirm} />}
           <Action label={isParent ? 'Change password' : 'Change PIN'} onPress={changeMyPassword} />
         </View>
+      </View>
+
+      {/* ── Notifications on this phone ── */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🔔 Notifications on this phone</Text>
+        {push.state === 'on' ? (
+          <>
+            <Text style={styles.cardSub}>The morning briefing and anything that needs you always come through. Choose the rest:</Text>
+            {([
+              ['tasks', '✅ Chores and reminders'],
+              ['rewards', '⭐ Rewards and star bank'],
+              ['chat', '💬 Family chat'],
+            ] as const).map(([key, label]) => (
+              <View key={key} style={styles.memberRow}>
+                <Text style={[styles.memberName, { flex: 1 }]}>{label}</Text>
+                <Switch value={push.prefs[key]} onValueChange={v => togglePush(key, v)} accessibilityLabel={label} />
+              </View>
+            ))}
+            <View style={styles.actions}><Action label="Send a test" onPress={testPush} /></View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.cardSub}>
+              {push.state === 'checking' ? 'Checking…'
+                : push.state === 'blocked' ? 'Notifications are blocked for Kinroost in your phone settings.'
+                : push.state === 'unavailable' ? 'Notifications are not available on this phone right now.'
+                : 'Get chore reminders, approvals and your morning briefing.'}
+            </Text>
+            {push.state !== 'checking' && (
+              <View style={styles.actions}><Action label={push.state === 'blocked' ? 'Open phone settings' : 'Turn on notifications'} onPress={push.state === 'blocked' ? () => Linking.openSettings() : turnOnPush} /></View>
+            )}
+          </>
+        )}
       </View>
 
       {/* ── Family (parents) ── */}

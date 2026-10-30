@@ -1,5 +1,5 @@
 import { prisma } from '../db';
-import { sendPushToMember } from '../routes/notifications';
+import { pushToMember, PushCategory } from './push';
 
 /**
  * Create an in-app notification row AND attempt a push (no-op if no token).
@@ -14,6 +14,7 @@ export async function notifyMember(
   memberId: string,
   title: string,
   body: string,
+  opts: { url?: string; category?: PushCategory } = {},
 ) {
   try {
     await prisma.notification.create({
@@ -24,7 +25,7 @@ export async function notifyMember(
     return; // if the DB row failed, don't bother pushing
   }
   try {
-    await sendPushToMember(memberId, title, body);
+    await pushToMember(memberId, { title, body, ...opts });
   } catch (e) {
     // Push is best-effort; never surface this to the caller
     console.error('notifyMember: push failed (non-fatal)', e);
@@ -37,6 +38,7 @@ export async function notifyParents(
   title: string,
   body: string,
   exceptMemberId?: string,
+  opts: { url?: string; category?: PushCategory } = {},
 ) {
   try {
     const parents = await prisma.member.findMany({
@@ -46,7 +48,7 @@ export async function notifyParents(
     await Promise.all(
       parents
         .filter(p => p.id !== exceptMemberId)
-        .map(p => notifyMember(familyId, p.id, title, body)),
+        .map(p => notifyMember(familyId, p.id, title, body, opts)),
     );
   } catch (e) {
     console.error('notifyParents: failed', e);

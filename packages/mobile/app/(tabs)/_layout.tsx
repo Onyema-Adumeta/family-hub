@@ -4,6 +4,10 @@ import ConsentGate from '../components/ConsentGate';
 import PromptHost from '../components/PromptHost';
 import CelebrationHost from '../components/CelebrationHost';
 import { useRealtime } from '../hooks/useRealtime';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { registerForPush, screenFor } from '../lib/push';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -15,6 +19,16 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 
 export default function TabsLayout() {
   useRealtime();
+
+  // Signed in: register this phone for notifications (asks permission the first time).
+  useEffect(() => { registerForPush(true); }, []);
+
+  // Tapping a notification opens the screen it is about.
+  const lastResponse = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    const url = lastResponse?.notification.request.content.data?.url;
+    if (lastResponse && lastResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) router.push(screenFor(url) as any);
+  }, [lastResponse]);
   return (
     <View style={{ flex: 1 }}>
     <Tabs

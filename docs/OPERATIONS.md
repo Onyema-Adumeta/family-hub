@@ -17,7 +17,7 @@ Keep this up to date when hosting or contacts change.
 ## 2. Railway environment variables (API)
 
 Required: `DATABASE_URL`, `JWT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `CLIENT_URL`, `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `SUPPORT_EMAIL`.
-Needed for photos: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (free plan is fine). Optional: `ANTHROPIC_API_KEY`, `GOOGLE_*`, `VAPID_*`. See `packages/api/.env.example`.
+Needed for photos: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (free plan is fine). Optional: `ANTHROPIC_API_KEY`, `GOOGLE_*`, `VAPID_*` (browser notifications, see 3a), `EXPO_ACCESS_TOKEN` (only if you turn on Expo's enhanced push security). See `packages/api/.env.example`.
 
 **Never set** `TEST_DATABASE_URL`, `RATE_LIMIT_MULTIPLIER`, `EMAIL_OUTBOX_DIR` or `ANTHROPIC_BASE_URL` in production — they are for the test suite.
 
@@ -50,6 +50,34 @@ To move to Resend, Brevo or Google Workspace later, change only these variables.
    Never use `prisma db push` or `migrate reset` against production.
 4. Merge the pull request. Railway redeploys the API; Vercel redeploys the web app.
 5. Check `https://<api>/health/ready` returns `{"ok":true,"db":"ok"}` and sign in once.
+
+## 3a. Push notifications (phones and browsers)
+
+Kinroost pushes: chores assigned, a photo to check (parents), approved or sent back (kids),
+reward requests and decisions, star bank, family chat, the 7:30 morning briefing and the
+4 pm "tasks due" reminder. Each person chooses chores / rewards / chat per device in Settings.
+
+### Android phones (one-time Firebase setup, free)
+1. Go to https://console.firebase.google.com → **Add project** → name it `Kinroost` (Google Analytics: off).
+2. **Add app → Android**. Package name: `com.familyhub.app` → **Register app** → **Download google-services.json**.
+3. Put that file in `packages/mobile/` and commit it (it is not a secret — it only identifies the app).
+4. In Firebase: ⚙ **Project settings → Service accounts → Generate new private key**. This JSON **is a secret**.
+5. In PowerShell, in `packages/mobile`: `eas credentials` → Android → `preview` → **Google Service Account** →
+   **Manage your Google Service Account Key for Push Notifications (FCM V1)** → upload the file from step 4.
+   Then delete that file from your computer.
+6. Build again: `eas build -p android --profile preview`, and install the new APK.
+
+Without this, the Android app still works, but Settings → Notifications says "not available".
+
+### Browsers (website)
+1. On your laptop: `npx web-push generate-vapid-keys`
+2. In Railway (API → Variables) set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and
+   `VAPID_SUBJECT=mailto:davidson@credenceconsulting.io`. Keep the private key secret.
+3. On the website: Settings → Notifications on this device → Enable.
+
+### Checking
+Phone: Settings → Notifications on this phone → **Send a test**. Website: Settings → **Server delivery test**.
+If a phone stops getting pushes after the app is uninstalled, the server forgets it automatically.
 
 ## 4. Backups and restore
 

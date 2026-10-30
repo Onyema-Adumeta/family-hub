@@ -1,4 +1,4 @@
-import { sendBrowserPush } from './webPush';
+import { pushToMember } from './push';
 import cron from 'node-cron';
 import { prisma } from '../db';
 import { generateTriviaSession } from '../routes/trivia';
@@ -47,7 +47,7 @@ export function setupCron() {
         try {
           const b = await buildBriefing(m.familyId, m.id, m.role === 'parent');
           await prisma.notification.create({ data: { familyId: m.familyId, memberId: m.id, title: '☀️ Your day', body: b.summary } });
-          await sendBrowserPush(m.id, '☀️ Your day', b.summary, '/');
+          await pushToMember(m.id, { title: '☀️ Your day', body: b.summary, url: '/', category: 'tasks' });
         } catch (e) { console.error('[briefing] failed for member', m.id, e); }
       }
     } catch (e) { console.error('[briefing] job failed', e); }
@@ -61,7 +61,7 @@ export function setupCron() {
     for(const member of members){
      const chores=await prisma.chore.findMany({where:{familyId:member.familyId,archivedAt:null,status:{not:'done'},OR:[{assignedToId:member.id},{assignees:{some:{id:member.id}}}]}});
      const due=chores.filter(c=>c.dueDate?c.dueDate.toISOString().slice(0,10)<=today:c.frequency==='daily');
-     if(due.length) await sendBrowserPush(member.id,'Tasks need your attention',`${due.length} assigned task${due.length===1?'':'s'} due or overdue.`, '/chores');
+     if(due.length) await pushToMember(member.id,{title:'Tasks need your attention',body:`${due.length} assigned task${due.length===1?'':'s'} due or overdue.`,url:'/chores',category:'tasks'});
     }
    }catch(e){console.error('Browser reminder job failed',e);}
   }, {timezone:'America/Vancouver'});
