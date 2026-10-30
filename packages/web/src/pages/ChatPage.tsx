@@ -244,7 +244,7 @@ export default function ChatPage() {
 >
                 {!isMe && (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: sender?.color || '#6366F1', border: `2px solid ${sender?.color || '#6366F1'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, overflow: 'hidden' }}>
-                    {sender?.avatarUrl ? <img src={sender.avatarUrl} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
+                    {sender?.avatarUrl ? <img src={mediaSrc(sender.avatarUrl)} alt={sender.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sender?.emoji}
                   </div>
                 )}
                 <div className="chat-bubble" style={{minWidth:0}}>

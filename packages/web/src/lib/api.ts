@@ -22,6 +22,8 @@ api.interceptors.response.use(
 /** A link to an uploaded photo or video. Old uploads stored as "/uploads/…" live on the API server, not this website. */
 export function mediaSrc(url?: string | null): string {
   if (!url) return '';
+  // iPhone HEIC photos: most browsers can't show them, so ask Cloudinary for a JPEG copy.
+  if (/^https:\/\/res\.cloudinary\.com\/.+\.hei[cf]$/i.test(url)) return url.replace(/\.hei[cf]$/i, '.jpg');
   return /^(https?:|data:|blob:)/.test(url) ? url : (import.meta.env.VITE_API_URL || '') + url;
 }
 

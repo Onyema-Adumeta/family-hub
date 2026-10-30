@@ -2,16 +2,13 @@ import { useState } from 'react';
 import { useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, mediaSrc } from '../lib/api';
 import Recommendations from '../components/Recommendations';
 import FairnessMeter from '../components/FairnessMeter';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-function avatarSrc(url?: string | null) {
-  if (!url) return null;
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
-}
+function avatarSrc(url?: string | null) { return url ? mediaSrc(url) : null; }
 
 function useReport() {
   return useQuery({

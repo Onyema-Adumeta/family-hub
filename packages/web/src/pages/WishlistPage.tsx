@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
-import { api } from '../lib/api';
+import { api, mediaSrc } from '../lib/api';
 
-function avatarSrc(url?: string | null) {
-  if (!url) return null;
-  if (url.startsWith('http')) return url;
-  return (import.meta.env.VITE_API_URL || '') + url;
-}
+function avatarSrc(url?: string | null) { return url ? mediaSrc(url) : null; }
 
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
   approved: { label: 'Approved', color: '#10B981', icon: '✅' },

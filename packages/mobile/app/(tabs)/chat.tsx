@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { api } from '../lib/api';
+import { api, mediaSrc } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { useSocket } from '../hooks/useSocket';
 import { familySocket } from '../lib/socket';
@@ -213,7 +213,7 @@ export default function ChatScreen() {
                     {msg.pinned && <Text style={{ fontSize: 10, marginBottom: 2 }}>📌</Text>}
                     {msg.text && <Text style={[s.msgText, isMe && { color: '#fff' }]}>{msg.text}</Text>}
                     {msg.mediaUrl && msg.mediaType === 'image' && (
-                      <Image source={{ uri: msg.mediaUrl }} style={{ width: 200, height: 150, borderRadius: 8, marginTop: msg.text ? 6 : 0 }} resizeMode="cover" />
+                      <Image source={{ uri: mediaSrc(msg.mediaUrl) }} style={{ width: 200, height: 150, borderRadius: 8, marginTop: msg.text ? 6 : 0 }} resizeMode="cover" />
                     )}
                     {msg.mediaUrl && msg.mediaType === 'video' && (
                       <Text style={[s.msgText, isMe && { color: '#fff' }]}>🎥 Video</Text>
