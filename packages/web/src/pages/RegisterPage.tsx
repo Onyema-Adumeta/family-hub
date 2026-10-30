@@ -99,7 +99,7 @@ export default function RegisterPage() {
           </label>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
             <input type="checkbox" checked={childDataConsent} onChange={e => setChildDataConsent(e.target.checked)} required style={{ marginTop: 3 }} />
-            <span>I am the parent or legal guardian of the children who will join this family, and I consent to FamilyHub collecting and using their information as described in the Privacy Policy.</span>
+            <span>I am the parent or legal guardian of the children who will join this family, and I consent to Kinroost collecting and using their information as described in the Privacy Policy.</span>
           </label>
 
           {error && (

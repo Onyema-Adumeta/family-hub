@@ -84,7 +84,7 @@ test('Reset link sets a new password, signs out every device, and works only onc
   assert.equal((await post('/api/auth/forgot-password', undefined, { email: fam.email })).status, 200);
   const token = linkToken(fam.email, 'reset-password');
   assert.ok(token, 'reset email sent');
-  assert.match(mailsTo(fam.email).at(-1)!.subject, /Reset your FamilyHub password/);
+  assert.match(mailsTo(fam.email).at(-1)!.subject, /Reset your Kinroost password/);
 
   assert.equal((await post('/api/auth/reset-password', undefined, { token, password: 'ab' })).status, 400, 'too short');
   const ok = await post('/api/auth/reset-password', undefined, { token, password: 'brand-new-pw' });

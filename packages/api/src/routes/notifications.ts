@@ -226,7 +226,7 @@ router.patch('/web-push/preferences',async(req:AuthRequest,res)=>{
 router.post('/web-push/test' , async (req:AuthRequest,res) => {
  const endpoint=req.body?.endpoint;
  if(typeof endpoint!=='string'||!endpoint)return res.status(400).json({error:'Enable notifications on this device first'});
- try {const results=await sendBrowserPush(req.memberId!,'FamilyHub notification test','This is a server test for this device.','/',endpoint);res.json({accepted:results.some(r=>r.sent),results});}
+ try {const results=await sendBrowserPush(req.memberId!,'Kinroost notification test','This is a server test for this device.','/',endpoint);res.json({accepted:results.some(r=>r.sent),results});}
  catch {res.status(500).json({error:'Test could not be sent'});}
 });
 export default router;

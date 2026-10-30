@@ -1,6 +1,6 @@
 {
-  "name": "Family Hub",
-  "short_name": "FamilyHub",
+  "name": "Kinroost",
+  "short_name": "Kinroost",
   "description": "Your family command center",
   "start_url": "/",
   "display": "standalone",

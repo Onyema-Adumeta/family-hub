@@ -301,7 +301,7 @@ router.post('/join', authLimiter, async (req, res) => {
     if (!family) return res.status(400).json({ error: 'Invalid invite code' });
     const consent = await prisma.family.findUnique({ where: { id: family.id }, select: { childConsentAt: true } });
     if (!consent?.childConsentAt) {
-      return res.status(403).json({ error: 'A parent needs to accept the updated privacy policy in FamilyHub before anyone new can join.' });
+      return res.status(403).json({ error: 'A parent needs to accept the updated privacy policy in Kinroost before anyone new can join.' });
     }
 
     const existing = await prisma.member.findFirst({

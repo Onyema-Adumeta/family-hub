@@ -186,7 +186,7 @@ export default function LandingPage() {
 
       {/* Nav */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 3 }}>
-        <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: 0.5 }}>👨‍👩‍👧 FamilyHub</div>
+        <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: 0.5 }}>👨‍👩‍👧 Kinroost</div>
         <Link to="/login" style={{ color: '#A78BFA', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Family Log In →</Link>
       </header>
 
@@ -217,7 +217,7 @@ export default function LandingPage() {
               ))}
             </h1>
             <p className="fh-rise" style={{ fontSize: 18, lineHeight: 1.6, color: 'rgba(240,240,245,0.72)', margin: '0 0 30px', animationDelay: '.85s' }}>
-              FamilyHub replaces scattered apps, group chats, and sticky notes with one intelligent hub — chores, meals, schedules, rewards, chat, and more. Built for real families.
+              Kinroost replaces scattered apps, group chats, and sticky notes with one intelligent hub — chores, meals, schedules, rewards, chat, and more. Built for real families.
             </p>
             <div className="fh-rise" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', animationDelay: '1s' }}>
               <a className="fh-cta" href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
@@ -266,9 +266,9 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section style={{ textAlign: 'center', padding: '64px 24px' }}>
-        <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 16 }}>Want FamilyHub for your family?</h2>
+        <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 16 }}>Want Kinroost for your family?</h2>
         <p style={{ color: 'rgba(240,240,245,0.65)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6 }}>
-          FamilyHub is invite-only for now. Tell me a little about your family and I'll set you up.
+          Kinroost is invite-only for now. Tell me a little about your family and I'll set you up.
         </p>
         <a className="fh-cta" href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
           style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 17, padding: '16px 40px', borderRadius: 14, boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
@@ -277,7 +277,7 @@ export default function LandingPage() {
       </section>
 
       <footer style={{ textAlign: 'center', padding: '32px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', color: 'rgba(240,240,245,0.4)', fontSize: 13 }}>
-        FamilyHub — Built with love, for families.
+        Kinroost — Built with love, for families.
       </footer>
     </div>
   );

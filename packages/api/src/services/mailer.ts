@@ -2,7 +2,7 @@
 //
 //   SMTP_HOST=smtp.gmail.com  SMTP_PORT=465  SMTP_SECURE=true
 //   SMTP_USER=yourname@gmail.com  SMTP_PASS=<16-character Gmail app password>
-//   EMAIL_FROM="FamilyHub <yourname@gmail.com>"
+//   EMAIL_FROM="Kinroost <yourname@gmail.com>"
 //   APP_URL=https://family-hub-web-omega.vercel.app   (where links in emails point)
 //
 // Switching to Resend, Brevo, Google Workspace etc. later is just these settings.

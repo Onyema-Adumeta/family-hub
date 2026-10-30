@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -20,10 +21,15 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const { token, loadFromStorage } = useAuthStore();
+  // Don't show any screen until the saved sign-in has been read. Otherwise the
+  // home screen loads first, its requests go out signed-out, and the 401s sign
+  // the person out on every cold start.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     // Restore the saved sign-in, then renew it (sign-ins last 14 days).
     loadFromStorage().then(async () => {
+      setReady(true);
       const { token: saved, family, setAuth } = useAuthStore.getState();
       if (!saved || !family) return;
       try {
@@ -34,12 +40,21 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     if (token === null) {
       router.replace('/login');
     } else if (token) {
       router.replace('/(tabs)');
     }
-  }, [token]);
+  }, [token, ready]);
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0f0f13', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#6366F1" />
+      </View>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

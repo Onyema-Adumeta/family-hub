@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: { importScripts: ['/push-events.js'], globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'] },
       manifest: {
-        name: 'Family Hub',
-        short_name: 'FamilyHub',
+        name: 'Kinroost',
+        short_name: 'Kinroost',
         description: 'Chores, meals & schedules for the whole family',
         theme_color: '#6366F1',
         background_color: '#0f0f13',

@@ -5,7 +5,7 @@ export function LegalPage({ title, children }: { title: string; children: React.
   return (
     <div style={{ minHeight: '100vh', padding: '32px 16px 64px' }}>
       <article style={{ maxWidth: 720, margin: '0 auto', lineHeight: 1.65, fontSize: 15 }}>
-        <Link to="/" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>← FamilyHub</Link>
+        <Link to="/" style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 13 }}>← Kinroost</Link>
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: '16px 0 4px' }}>{title}</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 0 }}>Last updated {LEGAL.lastUpdated} · Version {LEGAL.version}</p>
         <div className="legal-body">{children}</div>

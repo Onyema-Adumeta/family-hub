@@ -3,19 +3,26 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvo
 import { router, Link } from 'expo-router';
 import { api } from './lib/api';
 import { useAuthStore } from './store/auth';
+import { openWeb } from './lib/theme';
 
 export default function LoginScreen() {
   const [familyCode, setFamilyCode] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<'code' | 'email'>('code');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
 
   async function handleLogin() {
-    if (!familyCode || !name || !password) { Alert.alert('Missing fields', 'Please fill all fields'); return; }
+    const ready = mode === 'email' ? email.trim() && password : familyCode && name && password;
+    if (!ready) { Alert.alert('Missing fields', 'Please fill all fields'); return; }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { familyCode: familyCode.toUpperCase(), name, password });
+      const body = mode === 'email'
+        ? { email: email.trim(), password }
+        : { familyCode: familyCode.toUpperCase(), name, password };
+      const { data } = await api.post('/auth/login', body);
       if (data.passwordCreated) Alert.alert('Password saved', 'Your password is now set. Use it every time you sign in.');
       await setAuth(data.token, data.member, data.family);
       router.replace('/(tabs)');
@@ -27,22 +34,43 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={styles.logo}>Family Hub</Text>
+        <Text style={styles.logo}>Kinroost</Text>
         <Text style={styles.subtitle}>Welcome back! 👋</Text>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Family Code</Text>
-          <TextInput style={styles.input} placeholder="FAM-XXXX" placeholderTextColor="#666" value={familyCode} onChangeText={setFamilyCode} autoCapitalize="characters" />
+          <View style={styles.tabs}>
+            {(['code', 'email'] as const).map(m => (
+              <TouchableOpacity key={m} style={[styles.tab, mode === m && styles.tabActive]} onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }}>
+                <Text style={[styles.tabText, mode === m && { color: '#fff' }]}>{m === 'code' ? 'Family code + name' : 'Email (parents)'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-          <Text style={styles.label}>Your Name</Text>
-          <TextInput style={styles.input} placeholder="Alex" placeholderTextColor="#666" value={name} onChangeText={setName} />
+          {mode === 'code' ? (
+            <>
+              <Text style={styles.label}>Family Code</Text>
+              <TextInput style={styles.input} placeholder="FAM-XXXX" placeholderTextColor="#666" value={familyCode} onChangeText={setFamilyCode} autoCapitalize="characters" />
 
-          <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>Your Name</Text>
+              <TextInput style={styles.input} placeholder="Alex" placeholderTextColor="#666" value={name} onChangeText={setName} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Email</Text>
+              <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor="#666" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
+            </>
+          )}
+
+          <Text style={styles.label}>{mode === 'code' ? 'Password or PIN' : 'Password'}</Text>
           <TextInput style={styles.input} placeholder="••••••" placeholderTextColor="#666" secureTextEntry value={password} onChangeText={setPassword} />
 
           <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
             <Text style={styles.btnText}>{loading ? 'Signing in...' : 'Sign in →'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={() => openWeb('/forgot-password')} style={{ alignItems: 'center', padding: 8 }}>
+            <Text style={{ color: 'rgba(240,240,245,0.6)', fontWeight: '700', fontSize: 13 }}>Forgot password? (parents)</Text>
+          </TouchableOpacity>
+          <Text style={{ color: 'rgba(240,240,245,0.4)', fontSize: 11, textAlign: 'center' }}>Kids: ask a parent to set a new PIN.</Text>
         </View>
 
         <View style={styles.links}>
@@ -61,6 +89,10 @@ const styles = StyleSheet.create({
   logo: { fontSize: 36, fontWeight: '900', color: '#A78BFA', textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: 14, color: 'rgba(240,240,245,0.5)', textAlign: 'center', fontWeight: '700', marginBottom: 32 },
   form: { gap: 8 },
+  tabs: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 6 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  tabActive: { backgroundColor: '#6366F1' },
+  tabText: { fontSize: 12, fontWeight: '800', color: 'rgba(240,240,245,0.5)' },
   label: { fontSize: 12, fontWeight: '800', color: 'rgba(240,240,245,0.6)', marginBottom: 4, marginTop: 4 },
   input: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: 12, color: '#f0f0f5', fontSize: 14, fontWeight: '600' },
   btn: { backgroundColor: '#6366F1', borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 8 },

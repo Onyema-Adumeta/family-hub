@@ -77,7 +77,7 @@ export default function RegisterScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
             <Switch value={childDataConsent} onValueChange={setChildDataConsent} />
             <Text style={{ color: 'rgba(240,240,245,0.75)', fontSize: 12, flex: 1 }}>
-              I am the parent or guardian of the children who will join, and I consent to FamilyHub using their information as described in the Privacy Policy.
+              I am the parent or guardian of the children who will join, and I consent to Kinroost using their information as described in the Privacy Policy.
             </Text>
           </View>
 

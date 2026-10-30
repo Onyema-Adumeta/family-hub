@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import { api } from '../../lib/api';
+import { api } from '../lib/api';
 
 const EMOJIS = ['🍕','🎈','🚀','🐶','🌵','⚽','🎧','🍩'];
 

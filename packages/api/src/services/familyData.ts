@@ -3,7 +3,7 @@ import { prisma } from '../db';
 import { PUBLIC_FAMILY_SELECT, PUBLIC_MEMBER_SELECT } from '../lib/guards';
 
 /**
- * Everything FamilyHub holds about a family, as plain JSON.
+ * Everything Kinroost holds about a family, as plain JSON.
  * Left out on purpose: password hashes, sign-in versions, push tokens and
  * browser push endpoints, Google tokens, billing ids, and one-time email links.
  */
@@ -44,7 +44,7 @@ export async function exportFamilyData(familyId: string) {
   ]);
   return {
     exportedAt: new Date().toISOString(),
-    format: 'FamilyHub export v1',
+    format: 'Kinroost export v1',
     family: { ...familyOut, googleCalendarConnected: !!googleTokens },
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,

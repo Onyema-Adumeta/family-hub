@@ -42,7 +42,7 @@ export function ForgotPasswordPage() {
     <Shell icon="🔑" title="Forgot your password?">
       {sent ? (
         <div style={note(true)}>
-          If that email belongs to a FamilyHub account with a confirmed email, we've sent a link to reset the password. It works for 1 hour.
+          If that email belongs to a Kinroost account with a confirmed email, we've sent a link to reset the password. It works for 1 hour.
           Check your spam folder too.
         </div>
       ) : (
@@ -129,7 +129,7 @@ export function VerifyEmailPage() {
       {state === 'ok' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={note(true)}>Thanks! You can now sign in with your email and reset your password if you ever forget it.</div>
-          <button className="btn btn-primary" onClick={() => navigate('/')} style={{ padding: 14, fontWeight: 800 }}>Open FamilyHub</button>
+          <button className="btn btn-primary" onClick={() => navigate('/')} style={{ padding: 14, fontWeight: 800 }}>Open Kinroost</button>
         </div>
       )}
       {state === 'error' && <div style={note(false)}>{error}</div>}

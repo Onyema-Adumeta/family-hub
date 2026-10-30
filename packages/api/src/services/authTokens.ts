@@ -36,13 +36,13 @@ export async function sendVerificationEmail(member: { id: string; name: string; 
   const token = await issueToken(member.id, 'verify_email', member.email);
   const url = appUrl(`/verify-email?token=${encodeURIComponent(token)}`);
   const body = buttonEmail({
-    heading: 'Confirm your email for FamilyHub',
+    heading: 'Confirm your email for Kinroost',
     lines: [`Hi ${member.name},`, 'Please confirm this is your email address. You will use it to sign in and to reset your password if you forget it.'],
     button: 'Confirm my email',
     url,
-    footer: 'This link works for 24 hours. If you did not create a FamilyHub account, you can ignore this email.',
+    footer: 'This link works for 24 hours. If you did not create a Kinroost account, you can ignore this email.',
   });
-  return sendMail({ to: member.email, subject: 'Confirm your email for FamilyHub', ...body });
+  return sendMail({ to: member.email, subject: 'Confirm your email for Kinroost', ...body });
 }
 
 export async function sendResetEmail(email: string, accounts: { id: string; name: string; familyName: string }[]) {
@@ -53,14 +53,14 @@ export async function sendResetEmail(email: string, accounts: { id: string; name
   }
   const first = links[0].split(': ').slice(1).join(': ');
   const body = buttonEmail({
-    heading: 'Reset your FamilyHub password',
+    heading: 'Reset your Kinroost password',
     lines: [
-      'Someone asked to reset the password for the FamilyHub account linked to this email.',
+      'Someone asked to reset the password for the Kinroost account linked to this email.',
       ...(accounts.length > 1 ? ['This email is used by more than one account:', ...links] : []),
     ],
     button: 'Choose a new password',
     url: first,
     footer: 'This link works for 1 hour and can be used once. If you did not ask for this, you can ignore this email — your password has not changed.',
   });
-  return sendMail({ to: email, subject: 'Reset your FamilyHub password', ...body });
+  return sendMail({ to: email, subject: 'Reset your Kinroost password', ...body });
 }

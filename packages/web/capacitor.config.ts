@@ -1,7 +1,7 @@
 ﻿import { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.familyhub.app",
-  appName: "Family Hub",
+  appName: "Kinroost",
   webDir: "dist",
   server: { url: "https://family-hub-web-omega.vercel.app", cleartext: true },
   android: { allowMixedContent: true }

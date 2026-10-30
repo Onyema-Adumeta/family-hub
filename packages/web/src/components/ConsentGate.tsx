@@ -23,7 +23,7 @@ export default function ConsentGate() {
   if (member?.role !== 'parent') {
     return (
       <div style={{ margin: '8px 16px', padding: '10px 14px', borderRadius: 10, fontSize: 13, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)' }}>
-        A parent needs to review FamilyHub's updated privacy policy. Ask them to open FamilyHub.
+        A parent needs to review Kinroost's updated privacy policy. Ask them to open Kinroost.
       </div>
     );
   }
@@ -42,7 +42,7 @@ export default function ConsentGate() {
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, boxShadow: '0 12px 40px rgba(0,0,0,0.5)', maxWidth: 440, width: '100%' }}>
         <h2 id="consent-title" style={{ margin: '0 0 8px', fontSize: 18 }}>Please review our privacy policy</h2>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 0 }}>
-          FamilyHub now has a <Link to="/privacy" target="_blank" style={{ color: 'var(--primary)' }}>Privacy Policy</Link> and{' '}
+          Kinroost now has a <Link to="/privacy" target="_blank" style={{ color: 'var(--primary)' }}>Privacy Policy</Link> and{' '}
           <Link to="/terms" target="_blank" style={{ color: 'var(--primary)' }}>Terms of Service</Link>. Because your family includes children,
           we need a parent's agreement before continuing. New members can't join until a parent accepts.
         </p>
@@ -52,7 +52,7 @@ export default function ConsentGate() {
         </label>
         <label style={{ display: 'flex', gap: 10, fontSize: 13, margin: '12px 0', cursor: 'pointer' }}>
           <input type="checkbox" checked={kids} onChange={e => setKids(e.target.checked)} style={{ marginTop: 3 }} />
-          <span>I am the parent or legal guardian of the children in this family, and I consent to FamilyHub collecting and using their information as described in the Privacy Policy.</span>
+          <span>I am the parent or legal guardian of the children in this family, and I consent to Kinroost collecting and using their information as described in the Privacy Policy.</span>
         </label>
         {error && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{error}</div>}
         <button className="btn btn-primary" disabled={!terms || !kids || saving} onClick={accept} style={{ width: '100%', padding: 12, fontWeight: 800 }}>

@@ -39,7 +39,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>🏠</div>
           <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Family Hub
+            Kinroost
           </div>
           <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: 14, fontWeight: 600 }}>Welcome back! 👋</p>
         </div>
