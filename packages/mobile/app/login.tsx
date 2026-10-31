@@ -71,7 +71,7 @@ export default function LoginScreen() {
           <TouchableOpacity onPress={() => openWeb('/forgot-password')} style={{ alignItems: 'center', padding: 8 }}>
             <Text style={{ color: 'rgba(240,240,245,0.6)', fontWeight: '700', fontSize: 13 }}>Forgot password? (parents)</Text>
           </TouchableOpacity>
-          <Text style={{ color: 'rgba(240,240,245,0.4)', fontSize: 11, textAlign: 'center' }}>Kids: ask a parent to set a new PIN.</Text>
+          <Text style={{ color: 'rgba(240,240,245,0.4)', fontSize: 11, textAlign: 'center' }}>Kids: first time, type the PIN you want. Forgot it? Ask a parent to tap “Let them choose a new PIN”.</Text>
         </View>
 
         <View style={styles.links}>

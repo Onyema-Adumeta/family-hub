@@ -1,9 +1,10 @@
+import crypto from 'crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/auth';
 import { prisma } from '../db';
 import { PUBLIC_MEMBER_SELECT, SELF_MEMBER_SELECT, requireParent } from '../lib/guards';
-import { PasswordSchema, hashPassword, makeToken, newPasswordProblem } from './auth';
+import { PasswordSchema, accountKey, accountLimiter, hashPassword, makeToken, newPasswordProblem } from './auth';
 import { audit } from '../services/audit';
 import { deleteMemberData } from '../services/familyData';
 import { uploader, uploadedUrl } from '../services/media';
@@ -146,6 +147,30 @@ router.post('/:id/sign-out', async (req: AuthRequest, res) => {
     await audit(req, 'member.signed_out', `signed ${target.name} out on all devices`, { type: 'member', id: target.id });
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'Could not sign out member' }); }
+});
+
+// POST /api/members/:id/choose-pin — a parent lets a kid pick their own new PIN.
+// The kid's old PIN stops working and they are signed out. For the next 24 hours,
+// whatever PIN the kid types at their next sign-in becomes their PIN.
+export const CHOOSE_PIN_HOURS = 24;
+router.post('/:id/choose-pin', async (req: AuthRequest, res) => {
+  if (!requireParent(req, res)) return;
+  try {
+    const kid = await prisma.member.findFirst({ where: { id: req.params.id, familyId: req.familyId }, select: { id: true, name: true, role: true, family: { select: { inviteCode: true } } } });
+    if (!kid) return res.status(404).json({ error: 'Member not found' });
+    if (kid.role !== 'child') return res.status(400).json({ error: 'Only kids can choose their own PIN this way. Parents can reset by email.' });
+    const expiresAt = new Date(Date.now() + CHOOSE_PIN_HOURS * 60 * 60 * 1000);
+    await prisma.$transaction([
+      prisma.member.update({ where: { id: kid.id }, data: { password: '', tokenVersion: { increment: 1 } } }),
+      prisma.pushDevice.deleteMany({ where: { memberId: kid.id } }),
+      prisma.authToken.deleteMany({ where: { memberId: kid.id, purpose: 'choose_pin' } }),
+      prisma.authToken.create({ data: { memberId: kid.id, purpose: 'choose_pin', tokenHash: 'choose_pin:' + crypto.randomBytes(24).toString('hex'), expiresAt } }),
+    ]);
+    // Clear any "too many wrong PINs" lock, so the kid can sign in straight away.
+    try { await accountLimiter.resetKey(accountKey(kid.family.inviteCode, kid.name)); } catch { /* not locked */ }
+    await audit(req, 'member.choose_pin', `let ${kid.name} choose a new PIN`, { type: 'member', id: kid.id });
+    res.json({ ok: true, expiresAt });
+  } catch (e) { console.error('choose-pin failed', e); res.status(500).json({ error: 'Could not reset the PIN' }); }
 });
 
 // POST /api/members/:id/avatar — a profile photo (yourself, or a parent for anyone in the family)
