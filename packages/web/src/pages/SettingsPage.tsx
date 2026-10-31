@@ -144,6 +144,14 @@ export default function SettingsPage() {
     } catch (e: any) { alert(e.response?.data?.error || 'Could not change password'); }
   }
 
+  async function letChoosePin(m: any) {
+    if (!confirm(`Let ${m.name} choose a new PIN?\n\nTheir old PIN stops working and they are signed out. For the next 24 hours, the PIN they type the next time they sign in becomes their PIN.`)) return;
+    try {
+      await api.post(`/members/${m.id}/choose-pin`);
+      alert(`Done. ${m.name} can now sign in with the family code, their name and any new PIN they like (within 24 hours).`);
+    } catch (e: any) { alert(e.response?.data?.error || 'Could not reset the PIN'); }
+  }
+
   async function signOutMember(m: any) {
     const isSelf = m.id === member?.id;
     if (!confirm(isSelf ? 'Sign out on all your devices, including this one?' : `Sign ${m.name} out on all their devices? They will need their password to get back in.`)) return;
@@ -510,6 +518,12 @@ export default function SettingsPage() {
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                     background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer',
                   }}>🔑 {isMe ? 'Change my password' : 'Reset password'}</button>
+                  {isParent && !isMe && m.role === 'child' && (
+                    <button onClick={() => letChoosePin(m)} style={{
+                      padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer',
+                    }}>✨ Let them choose a new PIN</button>
+                  )}
                   {(isMe || isParent) && (
                     <button onClick={() => signOutMember(m)} style={{
                       padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,

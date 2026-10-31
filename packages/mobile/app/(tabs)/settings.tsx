@@ -105,6 +105,16 @@ export default function SettingsPage() {
     catch (e) { fail(e, 'Could not change PIN'); }
   }
 
+  function letChoosePin(m: any) {
+    Alert.alert(`Let ${m.name} choose a new PIN?`, 'Their old PIN stops working and they are signed out. For the next 24 hours, the PIN they type at their next sign-in becomes their PIN.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Let them choose', onPress: async () => {
+        try { await api.post(`/members/${m.id}/choose-pin`); Alert.alert('Done', `${m.name} can sign in with the family code, their name and any new PIN they like.`); }
+        catch (e) { fail(e, 'Could not reset the PIN'); }
+      } },
+    ]);
+  }
+
   function signOutMember(m: any) {
     Alert.alert(`Sign ${m.name} out?`, 'They will be signed out on every device and need to sign in again.', [
       { text: 'Cancel', style: 'cancel' },
@@ -329,12 +339,14 @@ export default function SettingsPage() {
       {isParent && (members as any[]).some((m: any) => m.id !== member?.id) && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>🔑 PINs and devices</Text>
-          <Text style={styles.cardSub}>Set a new PIN if someone forgets theirs, or sign them out everywhere if a phone is lost.</Text>
+          <Text style={styles.cardSub}>If a kid forgets their PIN, let them choose a new one. Sign someone out everywhere if a phone is lost.</Text>
           {(members as any[]).filter((m: any) => m.id !== member?.id).map((m: any) => (
             <View key={m.id} style={styles.memberRow}>
               <Text style={styles.memberEmoji}>{m.emoji || '👤'}</Text>
               <Text style={[styles.memberName, { flex: 1 }]}>{m.name}</Text>
-              <TouchableOpacity style={styles.editBtn} onPress={() => resetPin(m)}><Text style={styles.editBtnText}>New PIN</Text></TouchableOpacity>
+              {m.role === 'child'
+                ? <TouchableOpacity style={styles.editBtn} onPress={() => letChoosePin(m)}><Text style={styles.editBtnText}>Let choose PIN</Text></TouchableOpacity>
+                : <TouchableOpacity style={styles.editBtn} onPress={() => resetPin(m)}><Text style={styles.editBtnText}>New password</Text></TouchableOpacity>}
               <TouchableOpacity style={styles.editBtn} onPress={() => signOutMember(m)}><Text style={styles.editBtnText}>Sign out</Text></TouchableOpacity>
             </View>
           ))}

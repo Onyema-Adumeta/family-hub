@@ -38,19 +38,21 @@ const authLimiter = rateLimit({
 // Per-account limit: 10 failed sign-ins for the same family code + name in
 // 15 minutes, no matter which network they come from. Successful sign-ins
 // don't count. (The per-IP limit above still applies too.)
-const accountLimiter = rateLimit({
+/** The key the per-account sign-in limit is counted under. */
+export const accountKey = (familyCode: unknown, name: unknown) =>
+  `acct:${String(familyCode || '').trim().toUpperCase().replace(/\s+/g, '')}:${String(name || '').trim().toLowerCase()}`;
+
+export const accountLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   skipSuccessfulRequests: true,
   keyGenerator: (req) => {
     if (req.body?.email) return `email:${String(req.body.email).trim().toLowerCase()}`;
-    const code = String(req.body?.familyCode || '').trim().toUpperCase().replace(/\s+/g, '');
-    const name = String(req.body?.name || '').trim().toLowerCase();
-    return `acct:${code}:${name}`;
+    return accountKey(req.body?.familyCode, req.body?.name);
   },
   handler: (req, res) => {
     const m = minutesLeft(req);
-    res.status(429).json({ error: `Too many wrong passwords for this account. Please wait ${m} minute${m > 1 ? 's' : ''}, or ask a parent to set a new password.`, retryAfterMinutes: m });
+    res.status(429).json({ error: `Too many wrong passwords for this account. Please wait ${m} minute${m > 1 ? 's' : ''}, or ask a parent to let you choose a new PIN.`, retryAfterMinutes: m });
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -217,6 +219,12 @@ router.post('/login', authLimiter, accountLimiter, async (req, res) => {
     }
 
     if (!found.password) {
+      // A parent tapped "Let them choose a new PIN": allowed only within the time window.
+      // Accounts from before passwords existed have no window and stay claimable.
+      const windows = await prisma.authToken.findMany({ where: { memberId: found.id, purpose: 'choose_pin' }, select: { expiresAt: true } });
+      if (windows.length && !windows.some(w => w.expiresAt > new Date())) {
+        return res.status(403).json({ error: 'The time to choose a new PIN has run out. Ask a parent to tap “Let them choose a new PIN” again.' });
+      }
       const problem = newPasswordProblem(password, found.role);
       if (problem) return res.status(400).json({ error: problem });
       // Accounts created before passwords existed have an empty password.
@@ -227,6 +235,7 @@ router.post('/login', authLimiter, accountLimiter, async (req, res) => {
         data: { password: await hashPassword(password) },
       });
       if (claimed.count !== 1) return res.status(401).json({ error: LOGIN_FAILED });
+      await prisma.authToken.deleteMany({ where: { memberId: found.id, purpose: 'choose_pin' } });
       passwordCreated = true;
     } else if (!(await bcrypt.compare(password, found.password))) {
       return res.status(401).json({ error: LOGIN_FAILED });

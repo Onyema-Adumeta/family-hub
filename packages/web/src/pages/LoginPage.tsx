@@ -54,7 +54,7 @@ export default function LoginPage() {
 
         {/* Info banner */}
         <div style={{ padding: '12px 16px', background: 'rgba(99,102,241,0.1)', border: '1.5px solid rgba(99,102,241,0.25)', borderRadius: 12, marginBottom: 20, fontSize: 13, color: '#A78BFA', fontWeight: 600, textAlign: 'center' }}>
-          Family code, your name and your password or PIN 🔒<br/><span style={{ fontWeight: 500 }}>Forgot it? Parents can reset by email; kids, ask a parent for a new PIN.</span>
+          Family code, your name and your password or PIN 🔒<br/><span style={{ fontWeight: 500 }}>First time? Type the PIN you want. Forgot it? Parents reset by email; kids, ask a parent to tap “Let them choose a new PIN”.</span>
         </div>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
