@@ -1,4 +1,5 @@
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../lib/typography';
 import { levelFor, BADGE_META } from '../lib/levels';
 import { C, ui } from '../lib/theme';
 

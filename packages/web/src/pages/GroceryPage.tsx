@@ -165,7 +165,7 @@ export default function GroceryPage() {
   return (
     <div style={{ padding: '16px 16px 80px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Family Lists</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>Family Lists</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           {listType === 'grocery' && (
             <button onClick={fetchSuggestions} disabled={suggesting} style={{

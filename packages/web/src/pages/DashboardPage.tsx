@@ -8,6 +8,7 @@ import BriefingCard from '../components/BriefingCard';
 import GoalBar from '../components/GoalBar';
 import ApprovalQueue from '../components/ApprovalQueue';
 import Recommendations from '../components/Recommendations';
+import SetupChecklist from '../components/SetupChecklist';
 function day(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Vancouver',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
 const panel={background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:20};
 export default function DashboardPage(){
@@ -29,7 +30,8 @@ export default function DashboardPage(){
  const dinner=(meals as any[]).find(m=>m.day===weekday&&m.slot==='dinner');
  const recent=[...(messages as any[])].reverse().slice(0,3);
  return <div className="calm-dashboard" style={{maxWidth:1040,margin:'0 auto',paddingBottom:32}}>
-  <header style={{marginBottom:24}}><p className="calm-eyebrow">KINROOST</p><h1 style={{fontSize:'clamp(24px,4vw,32px)',fontWeight:700,margin:'6px 0'}}>Welcome, {member?.name?.split(' ')[0]||'family'}</h1><p className="calm-muted">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · Your day, at a glance</p></header>
+  <header style={{marginBottom:24}}><p className="calm-eyebrow">KINROOST</p><h1 style={{fontSize:'clamp(24px,4vw,32px)',fontWeight:800,margin:'6px 0'}}>Welcome, {member?.name?.split(' ')[0]||'family'}</h1><p className="calm-muted">{new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · Your day, at a glance</p></header>
+  <SetupChecklist week={day(monday)} />
   <BriefingCard />
   <ApprovalQueue />
   <Recommendations limit={3} />

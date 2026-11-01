@@ -534,7 +534,7 @@ export default function ChoresPage() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🧹 Chores</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🧹 Chores</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {counts.done} / {counts.all} done
             {overdueCount > 0 && <span style={{ color: '#F87171', marginLeft: 8 }}>· {overdueCount} overdue</span>}

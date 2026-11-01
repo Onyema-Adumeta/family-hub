@@ -111,7 +111,7 @@ function Arena({ sport, level, player, onFinish }: { sport: Sport; level: Level;
         ctx.strokeRect(70,30,340,510); ctx.beginPath(); ctx.moveTo(25,285); ctx.lineTo(455,285); ctx.moveTo(240,150); ctx.lineTo(240,420); ctx.stroke();
         ctx.fillStyle = '#f9ba5d'; ctx.fillRect(ai-40,60,80,12); ctx.fillStyle = '#e4f4ff'; ctx.fillRect(input.x-cfg.paddle/2,500,cfg.paddle,13); circle(bx,by,8,'#e4f76f');
       }
-      ctx.fillStyle = 'white'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center'; ctx.fillText(sport === 'soccer' ? `${shots}/5 shots · ${goals} goals · ${score} pts` : `${Math.max(0,60-Math.floor(elapsed))}s · ${score} pts · ${3-misses} lives`,240,565);
+      ctx.fillStyle = 'white'; ctx.font = '800 16px Nunito, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(sport === 'soccer' ? `${shots}/5 shots · ${goals} goals · ${score} pts` : `${Math.max(0,60-Math.floor(elapsed))}s · ${score} pts · ${3-misses} lives`,240,565);
       setHud(sport === 'soccer' && flight === 0 && wait <= 0 ? `Shot ${shots+1} of 5 · Hold, then release Shoot` : message);
       raf = requestAnimationFrame(frame);
     }

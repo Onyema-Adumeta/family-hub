@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿import { sendFeedback } from '../lib/feedback';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import ConsentGate from './ConsentGate';
 import CelebrationOverlay from './CelebrationOverlay';
@@ -179,7 +180,7 @@ function NavSection({ label, items, highlight, onNav }: { label: string; items: 
   return (
     <div style={{ marginBottom: 4 }}>
       <div style={{
-        fontSize: 9, fontWeight: 900, color: 'var(--text-muted)',
+        fontSize: 10, fontWeight: 900, color: 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: 1.2,
         padding: '10px 10px 4px',
       }}>{label}</div>
@@ -348,6 +349,11 @@ export default function Layout() {
             <NavSection label="More"   items={NAV_ADVANCED}  />
           </nav>
           <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+            <button onClick={() => { sendFeedback(); }} style={{
+              width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer', marginBottom: 8,
+              background: 'transparent', border: '1.5px solid var(--border)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 800,
+            }}>💬 Send feedback</button>
             <button onClick={() => { logout(); navigate('/login'); }} style={{
               width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer',
               background: 'transparent', border: '1.5px solid rgba(248,113,113,0.25)',
@@ -363,7 +369,7 @@ export default function Layout() {
           background: 'linear-gradient(135deg, #0f1729 0%, #131c35 100%)', flexShrink: 0, zIndex: 10,
         }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
             <div style={{ fontWeight: 900, fontSize: 14 }}>{family?.name || 'My Family'}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -430,7 +436,7 @@ export default function Layout() {
             padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
           }}>
             <div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Menu</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Menu</div>
               <div style={{ fontWeight: 900, fontSize: 14 }}>{member?.name || 'You'}</div>
             </div>
             <button onClick={() => setSidebarOpen(false)} style={{
@@ -468,6 +474,11 @@ export default function Layout() {
             <NavSection label="More"   items={NAV_ADVANCED}  onNav={() => setSidebarOpen(false)} />
           </div>
           <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+            <button onClick={() => { setSidebarOpen(false); sendFeedback(); }} style={{
+              width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer', marginBottom: 8,
+              background: 'transparent', border: '1.5px solid var(--border)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 800,
+            }}>💬 Send feedback</button>
             <button onClick={() => { logout(); navigate('/login'); }} style={{
               width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer',
               background: 'transparent', border: '1.5px solid rgba(248,113,113,0.25)',

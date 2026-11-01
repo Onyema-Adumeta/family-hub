@@ -133,7 +133,7 @@ export default function MealsPage() {
     <div style={{ width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>🍽️ Meals</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800 }}>🍽️ Meals</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={getAiSuggestions} disabled={aiLoading} className="btn" style={{ fontSize: 12 }}>
             {aiLoading ? '✨ Generating...' : '✨ AI Suggest'}

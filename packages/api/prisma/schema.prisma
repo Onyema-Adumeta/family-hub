@@ -8,105 +8,106 @@ datasource db {
 }
 
 model Family {
-  id               String          @id @default(cuid())
-  name             String
-  inviteCode       String          @unique
-  googleTokens  String?
-  aiConsentAt      DateTime?
-  aiConsentById    String?
+  id                   String            @id @default(cuid())
+  name                 String
+  inviteCode           String            @unique
+  googleTokens         String?
+  aiConsentAt          DateTime?
+  aiConsentById        String?
   // Parent's acceptance of the terms/privacy policy and consent for children's data.
-  termsAcceptedAt   DateTime?
-  termsVersion      String?
-  termsAcceptedById String?
-  childConsentAt    DateTime?
-  createdAt        DateTime        @default(now())
-  plan             String          @default("free")
-  stripeCustomerId String?         @unique
-  stripeSubId      String?         @unique
-  planExpiresAt    DateTime?
-  members          Member[]
-  chores           Chore[]
-  meals            Meal[]
-  events           Event[]
-  rewards          Reward[]
-  messages         Message[]
-  quests           Quest[]
-  notifications    Notification[]
-  automations      Automation[]
-  memories         Memory[]
-  groceryItems     GroceryItem[]
-  weeklyRules      WeeklyRule[]
-  triviaSessions   TriviaSession[]
-  gameScores       GameScore[]
-  trips            Trip[]
-  choreCompletions ChoreCompletion[]
-  auditLogs        AuditLog[]
-  achievements     Achievement[]
-  goals            FamilyGoal[]
-  bankEntries      BankEntry[]
+  termsAcceptedAt      DateTime?
+  termsVersion         String?
+  termsAcceptedById    String?
+  childConsentAt       DateTime?
+  createdAt            DateTime          @default(now())
+  plan                 String            @default("free")
+  stripeCustomerId     String?           @unique
+  stripeSubId          String?           @unique
+  planExpiresAt        DateTime?
+  members              Member[]
+  chores               Chore[]
+  meals                Meal[]
+  events               Event[]
+  rewards              Reward[]
+  messages             Message[]
+  quests               Quest[]
+  notifications        Notification[]
+  automations          Automation[]
+  memories             Memory[]
+  groceryItems         GroceryItem[]
+  weeklyRules          WeeklyRule[]
+  triviaSessions       TriviaSession[]
+  gameScores           GameScore[]
+  trips                Trip[]
+  choreCompletions     ChoreCompletion[]
+  auditLogs            AuditLog[]
+  achievements         Achievement[]
+  goals                FamilyGoal[]
+  bankEntries          BankEntry[]
+  feedback             Feedback[]
   // Stars-to-value rates set by a parent. null = that bank is switched off.
   screenMinutesPerStar Int?
   centsPerStar         Int?
-  currency             String  @default("CAD")
+  currency             String            @default("CAD")
 }
 
 model Member {
-  id              String         @id @default(cuid())
-  familyId        String
-  family          Family         @relation(fields: [familyId], references: [id])
-  name            String
-  emoji           String         @default("🙂")
-  color           String         @default("#6366F1")
-  avatarUrl       String?
-  role            String         @default("child")
-  stars           Int            @default(0)
+  id                      String                   @id @default(cuid())
+  familyId                String
+  family                  Family                   @relation(fields: [familyId], references: [id])
+  name                    String
+  emoji                   String                   @default("🙂")
+  color                   String                   @default("#6366F1")
+  avatarUrl               String?
+  role                    String                   @default("child")
+  stars                   Int                      @default(0)
   // Every star ever earned (never goes down when stars are spent). Drives levels.
-  lifetimeStars   Int            @default(0)
-  achievements    Achievement[]
-  bankEntries     BankEntry[]
-  password        String
-  tokenVersion    Int            @default(0)
-  email           String?
-  emailVerifiedAt DateTime?
-  authTokens      AuthToken[]
-  rewardGoalId String?
-  canOpenPersonalOS Boolean @default(false)
-  canOpenPremed Boolean @default(false)
+  lifetimeStars           Int                      @default(0)
+  achievements            Achievement[]
+  bankEntries             BankEntry[]
+  password                String
+  tokenVersion            Int                      @default(0)
+  email                   String?
+  emailVerifiedAt         DateTime?
+  authTokens              AuthToken[]
+  rewardGoalId            String?
+  canOpenPersonalOS       Boolean                  @default(false)
+  canOpenPremed           Boolean                  @default(false)
   // Old single phone token, kept only so older app versions don't break. New code uses pushDevices.
-  pushToken       String?
-  pushDevices     PushDevice[]
-  webPushSubscriptions WebPushSubscription[]
+  pushToken               String?
+  pushDevices             PushDevice[]
+  webPushSubscriptions    WebPushSubscription[]
   messageAcknowledgements MessageAcknowledgement[]
-  messagePollVotes MessagePollVote[]
-  createdAt       DateTime       @default(now())
-  birthday        DateTime?
-  wishlist        WishlistItem[]
-  streakDays      Int            @default(0)
-  streakUpdatedAt DateTime?
-  totalChoresDone Int            @default(0)
-  badges          String[]       @default([])
-  lastLat         Float?
-  lastLng         Float?
-  lastSeenAt      DateTime?
-  chores          Chore[]        @relation("AssignedChores")
-  completedChores Chore[]        @relation("CompletedChores")
-  choreAssignments Chore[]       @relation("ChoreAssignees")
-  mealAssignments Meal[]         @relation("MealAssignees")
-  meals           Meal[]
-  events          Event[]
-  messages        Message[]
-  redemptions     Redemption[]
-  quests          Quest[]
-  groceryAdded    GroceryItem[]  @relation("GroceryAdded")
-  rulesAsTarget   WeeklyRule[]   @relation("RuleTarget")
-  rulesCreated    WeeklyRule[]   @relation("RuleCreator")
-  ruleOutcomes    RuleOutcome[]
-  triviaAnswers   TriviaAnswer[]
-  gameScores      GameScore[]
-  tripsCreated    Trip[]               @relation("TripCreator")
-  packingItems    PackingItem[]        @relation("PackingItems")
-  activityAssignments  ItineraryActivity[]  @relation("ActivityAssignees")
-  choreCompletions     ChoreCompletion[]
+  messagePollVotes        MessagePollVote[]
+  createdAt               DateTime                 @default(now())
+  birthday                DateTime?
+  wishlist                WishlistItem[]
+  streakDays              Int                      @default(0)
+  streakUpdatedAt         DateTime?
+  totalChoresDone         Int                      @default(0)
+  badges                  String[]                 @default([])
+  lastLat                 Float?
+  lastLng                 Float?
+  lastSeenAt              DateTime?
+  chores                  Chore[]                  @relation("AssignedChores")
+  completedChores         Chore[]                  @relation("CompletedChores")
+  choreAssignments        Chore[]                  @relation("ChoreAssignees")
+  mealAssignments         Meal[]                   @relation("MealAssignees")
+  meals                   Meal[]
+  events                  Event[]
+  messages                Message[]
+  redemptions             Redemption[]
+  quests                  Quest[]
+  groceryAdded            GroceryItem[]            @relation("GroceryAdded")
+  rulesAsTarget           WeeklyRule[]             @relation("RuleTarget")
+  rulesCreated            WeeklyRule[]             @relation("RuleCreator")
+  ruleOutcomes            RuleOutcome[]
+  triviaAnswers           TriviaAnswer[]
+  gameScores              GameScore[]
+  tripsCreated            Trip[]                   @relation("TripCreator")
+  packingItems            PackingItem[]            @relation("PackingItems")
+  activityAssignments     ItineraryActivity[]      @relation("ActivityAssignees")
+  choreCompletions        ChoreCompletion[]
 }
 
 enum ChoreStatus {
@@ -117,7 +118,7 @@ enum ChoreStatus {
 }
 
 model Chore {
-  archivedAt DateTime?
+  archivedAt    DateTime?
   id            String      @id @default(cuid())
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id])
@@ -168,21 +169,22 @@ model Meal {
   week         String
   createdAt    DateTime @default(now())
 }
+
 model Event {
-  id           String   @id @default(cuid())
-  familyId     String
-  family       Family   @relation(fields: [familyId], references: [id])
-  title        String
-  emoji        String   @default("📅")
-  date         DateTime
-  time         String?
-  color        String?
-  notes        String?
-  assignedToId String?
-  assignedTo   Member?  @relation(fields: [assignedToId], references: [id])
+  id            String   @id @default(cuid())
+  familyId      String
+  family        Family   @relation(fields: [familyId], references: [id])
+  title         String
+  emoji         String   @default("📅")
+  date          DateTime
+  time          String?
+  color         String?
+  notes         String?
+  assignedToId  String?
+  assignedTo    Member?  @relation(fields: [assignedToId], references: [id])
   googleEventId String?
   source        String?  @default("app")
-  createdAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 model Reward {
@@ -211,21 +213,21 @@ model Redemption {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  familyId  String
-  family    Family   @relation(fields: [familyId], references: [id])
-  memberId  String
-  member    Member   @relation(fields: [memberId], references: [id])
-  text      String?
-  mediaUrl  String?
-  mediaType String?
-  replyToId String?
-  pollQuestion String?
-  pollOptions String[] @default([])
+  id               String                   @id @default(cuid())
+  familyId         String
+  family           Family                   @relation(fields: [familyId], references: [id])
+  memberId         String
+  member           Member                   @relation(fields: [memberId], references: [id])
+  text             String?
+  mediaUrl         String?
+  mediaType        String?
+  replyToId        String?
+  pollQuestion     String?
+  pollOptions      String[]                 @default([])
   acknowledgements MessageAcknowledgement[]
-  votes MessagePollVote[]
-  pinned    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  votes            MessagePollVote[]
+  pinned           Boolean                  @default(false)
+  createdAt        DateTime                 @default(now())
 }
 
 model Quest {
@@ -304,9 +306,9 @@ model WeeklyRule {
   familyId        String
   family          Family        @relation(fields: [familyId], references: [id])
   assignedToId    String
-  assignedTo      Member        @relation("RuleTarget",  fields: [assignedToId], references: [id])
+  assignedTo      Member        @relation("RuleTarget", fields: [assignedToId], references: [id])
   createdById     String
-  createdBy       Member        @relation("RuleCreator", fields: [createdById],  references: [id])
+  createdBy       Member        @relation("RuleCreator", fields: [createdById], references: [id])
   label           String
   minStars        Int
   consequence     String        @default("reduce_screen_time")
@@ -364,32 +366,33 @@ model TriviaAnswer {
 }
 
 model GameScore {
-  id        String   @id @default(cuid())
-  familyId  String
-  family    Family   @relation(fields: [familyId], references: [id])
-  memberId  String
-  member    Member   @relation(fields: [memberId], references: [id])
-  gameType  String
-  score     Int
-  playedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  familyId String
+  family   Family   @relation(fields: [familyId], references: [id])
+  memberId String
+  member   Member   @relation(fields: [memberId], references: [id])
+  gameType String
+  score    Int
+  playedAt DateTime @default(now())
 
   @@index([familyId, gameType])
 }
+
 model WishlistItem {
-  id         String   @id @default(cuid())
-  memberId   String
-  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  title      String
-  url        String?
-  price      Float?
-  claimed    Boolean  @default(false)
-  claimedBy  String?
-  status      String   @default("open")
+  id            String    @id @default(cuid())
+  memberId      String
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  title         String
+  url           String?
+  price         Float?
+  claimed       Boolean   @default(false)
+  claimedBy     String?
+  status        String    @default("open")
   declineReason String?
-  deferUntil  DateTime?
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  createdAt  DateTime @default(now())
+  deferUntil    DateTime?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 model Trip {
@@ -442,16 +445,17 @@ model ItineraryActivity {
   assignees Member[]     @relation("ActivityAssignees")
   createdAt DateTime     @default(now())
 }
+
 model WebPushSubscription {
-  id String @id @default(cuid())
-  memberId String
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  endpoint String @unique
-  p256dh String
-  auth String
-  tasks Boolean @default(true)
-  rewards Boolean @default(true)
-  chat Boolean @default(true)
+  id        String   @id @default(cuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  tasks     Boolean  @default(true)
+  rewards   Boolean  @default(true)
+  chat      Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 
@@ -473,22 +477,25 @@ model PushDevice {
 }
 
 model MessageAcknowledgement {
- id String @id @default(cuid())
- messageId String
- message Message @relation(fields:[messageId], references:[id], onDelete:Cascade)
- memberId String
- member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
- kind String
- @@unique([messageId, memberId])
+  id        String  @id @default(cuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  kind      String
+
+  @@unique([messageId, memberId])
 }
+
 model MessagePollVote {
- id String @id @default(cuid())
- messageId String
- message Message @relation(fields:[messageId], references:[id], onDelete:Cascade)
- memberId String
- member Member @relation(fields:[memberId], references:[id], onDelete:Cascade)
- optionIndex Int
- @@unique([messageId, memberId])
+  id          String  @id @default(cuid())
+  messageId   String
+  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  optionIndex Int
+
+  @@unique([messageId, memberId])
 }
 
 // One row per member per chore completion: the stars that member actually received.
@@ -550,13 +557,13 @@ model Achievement {
   family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
   memberId  String
   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  kind      String   // "badge" | "level"
-  code      String   // badge code, or the level number
+  kind      String // "badge" | "level"
+  code      String // badge code, or the level number
   label     String
   createdAt DateTime @default(now())
 
-  @@index([familyId, createdAt])
   @@unique([memberId, kind, code])
+  @@index([familyId, createdAt])
 }
 
 // A shared target the whole family works toward ("500 stars = pizza and movie night").
@@ -587,13 +594,47 @@ model BankEntry {
   family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
   memberId    String
   member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  kind        String   // "screen" | "money"
-  bucket      String?  // money only: "spend" | "save" | "give"
+  kind        String // "screen" | "money"
+  bucket      String? // money only: "spend" | "save" | "give"
   amount      Int
-  stars       Int?     // stars converted, for deposits
+  stars       Int? // stars converted, for deposits
   note        String?
   createdById String?
   createdAt   DateTime @default(now())
 
   @@index([familyId, memberId, kind])
+}
+
+// "Send feedback" from inside the app. Deleted with the family.
+model Feedback {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  memberId  String?
+  role      String // "parent" or "child" at the time it was sent
+  kind      String // "bug" | "idea" | "other"
+  message   String
+  page      String? // the screen it was sent from
+  device    String? // "web" | "ios" | "android" + app version
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Applications to join the free beta, from the landing page (no account yet).
+model BetaApplication {
+  id         String   @id @default(cuid())
+  parentName String
+  email      String
+  region     String // province or state
+  country    String
+  kids       String // e.g. "8, 11"
+  devices    String // e.g. "Android, web"
+  why        String?
+  heardFrom  String?
+  status     String   @default("new") // "new" | "invited" | "declined"
+  createdAt  DateTime @default(now())
+
+  @@index([email])
+  @@index([status, createdAt])
 }

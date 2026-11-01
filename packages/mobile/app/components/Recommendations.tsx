@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { Text } from '../lib/typography';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';

@@ -34,9 +34,15 @@ export default function PrivacyPage() {
         <li><strong>Account details:</strong> family name; each member's name, role (parent or kid), chosen emoji and colour, and an optional birthday. A parent's email address. Passwords are stored only as one-way hashes.</li>
         <li><strong>What your family puts in the app:</strong> chores, stars, rewards and requests, screen-time and allowance bank records (a record only — we never hold or move money), meals, grocery lists, calendar events, trips, wishlists, quests, game scores and trivia answers, and family chat messages, photos and polls.</li>
         <li><strong>Activity records:</strong> a family activity log (for example "Parent changed a chore to 8 stars") so parents can see who did what. It never contains passwords or message text.</li>
+        <li><strong>Feedback:</strong> anything you send with "Send feedback", along with your name, role, family name and which screen you were on, so we can follow up and fix problems.</li>
         <li><strong>Technical information:</strong> sign-in records needed to keep accounts secure, push-notification addresses for devices you enable notifications on, and server logs (IP address, time, and errors) kept for security and troubleshooting.</li>
       </ul>
       <p>We do not collect precise location, contacts, or advertising identifiers.</p>
+      <p>
+        <strong>Beta applications.</strong> If you apply for the beta on our website, we keep your name, email address,
+        country and province or state, your children's ages, the devices you use and anything else you tell us. We use it
+        only to decide on and send invitations, and we delete it on request or when the beta ends.
+      </p>
 
       <h2>Why we use it</h2>
       <ul>
@@ -62,7 +68,7 @@ export default function PrivacyPage() {
       <p>We share information only with service providers that help us run Kinroost, under contracts that require them to protect it and use it only for that purpose:</p>
       <ul>
         <li>Hosting and database: Railway, Neon and Vercel.</li>
-        <li>Photo storage: Cloudinary (photos attached to chores).</li>
+        <li>Photo and video storage: Cloudinary (chore photos and videos, chat photos and profile pictures).</li>
         <li>Email: Google (Gmail), to send email confirmations and password resets.</li>
         <li>AI: Anthropic, only if a parent has turned AI features on (see above).</li>
         <li>Google Calendar: only if a parent connects it, to sync the family calendar. The connection is stored encrypted.</li>

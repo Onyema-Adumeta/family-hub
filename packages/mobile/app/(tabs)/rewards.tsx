@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { Text } from '../lib/typography';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';

@@ -1,4 +1,5 @@
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../lib/typography';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { C, ui } from '../lib/theme';

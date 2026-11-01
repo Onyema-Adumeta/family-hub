@@ -168,7 +168,7 @@ export default function WishlistPage() {
 
   return (
     <div style={{ padding: '16px 16px 80px', maxWidth: 600, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Wishlists</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>Wishlists</h1>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
         See what everyone wants &mdash; claim gifts secretly!
       </p>

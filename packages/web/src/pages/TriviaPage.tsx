@@ -178,7 +178,7 @@ export default function TriviaPage() {
     <div style={{ padding: '24px 16px 80px' }}>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{ fontSize: 64, marginBottom: 12 }}>🎮</div>
-        <h1 style={{ fontSize: 26, fontWeight: 900, margin: '0 0 8px' }}>Family Trivia Night</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px' }}>Family Trivia Night</h1>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>10 AI-generated questions · Live leaderboard · Winner gets ⭐ bonus stars</p>
       </div>
       <div style={{ maxWidth: 400, margin: '0 auto' }}>
@@ -218,7 +218,7 @@ export default function TriviaPage() {
     <div style={{ padding: '24px 16px 80px' }}>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ fontSize: 56, marginBottom: 8 }}>{session.status === 'finished' ? '🏆' : '📊'}</div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 4px' }}>{session.status === 'finished' ? 'Final Results!' : 'Live Leaderboard'}</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{session.status === 'finished' ? 'Final Results!' : 'Live Leaderboard'}</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
           {session.status === 'finished' ? 'Winner gets 3 bonus ⭐ stars!' : `${myAnswers.length} / ${questions.length} answered`}
         </p>
@@ -265,7 +265,7 @@ export default function TriviaPage() {
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 900, margin: 0 }}>🎮 Trivia Night</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🎮 Trivia Night</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>Question {currentQ + 1} of {questions.length}</p>
         </div>
         <button onClick={() => setView('leaderboard')} style={{ padding: '8px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-muted)', cursor: 'pointer' }}>📊 Scores</button>

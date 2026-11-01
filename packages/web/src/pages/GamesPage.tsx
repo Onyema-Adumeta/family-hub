@@ -31,7 +31,7 @@ export default function GamesPage() {
     <div style={{ padding: '24px 16px 80px' }}>
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ fontSize: 56, marginBottom: 8 }}>🕹️</div>
-        <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 4px' }}>Family Games</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>Family Games</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Pick a challenge to play together</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 480, margin: '0 auto' }}>

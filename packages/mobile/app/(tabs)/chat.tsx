@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
-  FlatList, Alert, KeyboardAvoidingView, Platform, Image
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { api, mediaSrc } from '../lib/api';

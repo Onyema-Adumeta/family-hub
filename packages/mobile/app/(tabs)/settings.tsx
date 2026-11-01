@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, ScrollView, TextInput, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator, Platform, Switch, Share,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform, Switch, Share } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -13,6 +11,7 @@ import LevelCard from '../components/LevelCard';
 import { useFamilySettings } from '../hooks/useApi';
 import { ask } from '../store/prompt';
 import { openWeb } from '../lib/theme';
+import { sendFeedback } from '../lib/feedback';
 import { registerForPush, savePushPreferences, PushState } from '../lib/push';
 import { Linking } from 'react-native';
 
@@ -352,6 +351,15 @@ export default function SettingsPage() {
           ))}
         </View>
       )}
+
+      {/* ── Feedback ── */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>💬 Feedback</Text>
+        <Text style={styles.cardSub}>Found a bug or have an idea? Tell the people building Kinroost.</Text>
+        <View style={styles.actions}>
+          <Action label="Send feedback" onPress={() => sendFeedback('/settings')} />
+        </View>
+      </View>
 
       {/* ── Privacy and data ── */}
       <View style={styles.card}>

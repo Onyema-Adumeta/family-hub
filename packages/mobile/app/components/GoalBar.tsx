@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
+import { Text } from '../lib/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFamilyGoal } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';

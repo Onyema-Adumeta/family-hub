@@ -1,5 +1,6 @@
 // Mobile Meals Screen
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../lib/api';

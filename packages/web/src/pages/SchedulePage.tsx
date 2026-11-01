@@ -295,7 +295,7 @@ export default function SchedulePage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>📅 Schedule</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>📅 Schedule</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '3px 0 0' }}>
             {upcomingEvents.length} upcoming event{upcomingEvents.length !== 1 ? 's' : ''}
           </p>
@@ -394,7 +394,7 @@ export default function SchedulePage() {
                       </div>
                     ))}
                     {dayEvents.length > (isMobile ? 2 : 3) && (
-                      <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-muted)', paddingLeft: 4 }}>+{dayEvents.length - (isMobile ? 2 : 3)} more</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', paddingLeft: 4 }}>+{dayEvents.length - (isMobile ? 2 : 3)} more</div>
                     )}
                   </div>
                 </div>

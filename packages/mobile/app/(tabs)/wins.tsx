@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Animated, RefreshControl } from 'react-native';
+import { ScrollView, View, TouchableOpacity, ActivityIndicator, Animated, RefreshControl } from 'react-native';
+import { Text } from '../lib/typography';
 import { router } from 'expo-router';
 import { useWins } from '../hooks/useApi';
 import FairnessMeter from '../components/FairnessMeter';

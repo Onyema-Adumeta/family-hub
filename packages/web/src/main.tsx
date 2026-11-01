@@ -2,6 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
+// Fonts are served with the app (no Google Fonts request, works offline in the installed app).
+import '@fontsource/nunito/latin-400.css';
+import '@fontsource/nunito/latin-600.css';
+import '@fontsource/nunito/latin-700.css';
+import '@fontsource/nunito/latin-800.css';
+import '@fontsource/nunito/latin-900.css';
+import '@fontsource/fredoka-one/latin-400.css';
 import './index.css';
 import { familySocket } from './lib/socket';
 import { useAuthStore } from './store/auth';

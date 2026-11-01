@@ -126,7 +126,7 @@ export default function ReportPage() {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: -0.5 }}>📊 Weekly Report</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5 }}>📊 Weekly Report</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 3 }}>{weekLabel}</p>
           </div>
           <button

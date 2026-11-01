@@ -10,6 +10,7 @@ function problemWith(f: Field, value: string): string | null {
     if (!f.decimals && !Number.isInteger(n)) return 'Enter a whole number';
     if (f.min !== undefined && n < f.min) return `Enter ${f.min} or more`;
   }
+  if (f.maxLength && v.length > f.maxLength) return `Please keep it under ${f.maxLength} characters`;
   if (f.type === 'email' && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address';
   if (f.mustEqual !== undefined && v !== f.mustEqual.trim()) return `Type it exactly: ${f.mustEqual}`;
   return null;
@@ -21,7 +22,7 @@ export default function DialogHost() {
   const close = useDialog(s => s.close);
   const [values, setValues] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState(false);
-  const first = useRef<HTMLInputElement>(null);
+  const first = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Fresh values each time; typed passwords are cleared when the dialog closes.
@@ -69,18 +70,31 @@ export default function DialogHost() {
             {fields.map((f, i) => (
               <label key={f.name} style={{ display: 'block', marginTop: i ? 12 : 4 }}>
                 {f.label && <span style={{ display: 'block', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{f.label}</span>}
-                <input
-                  ref={i === 0 ? first : undefined}
-                  className="input"
-                  style={{ width: '100%' }}
-                  type={f.type === 'number' ? 'text' : f.type || 'text'}
-                  inputMode={f.type === 'number' ? (f.decimals ? 'decimal' : 'numeric') : undefined}
-                  autoComplete={f.type === 'password' ? (f.name === 'newPassword' ? 'new-password' : 'current-password') : f.type === 'email' ? 'email' : 'off'}
-                  placeholder={f.placeholder}
-                  value={values[f.name] ?? ''}
-                  onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
-                  aria-invalid={touched && !!problems[i]}
-                />
+                {f.type === 'textarea' ? (
+                  <textarea
+                    ref={i === 0 ? first : undefined}
+                    className="input"
+                    style={{ width: '100%', minHeight: 110, resize: 'vertical' }}
+                    placeholder={f.placeholder}
+                    maxLength={f.maxLength}
+                    value={values[f.name] ?? ''}
+                    onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
+                    aria-invalid={touched && !!problems[i]}
+                  />
+                ) : (
+                  <input
+                    ref={i === 0 ? first : undefined}
+                    className="input"
+                    style={{ width: '100%' }}
+                    type={f.type === 'number' ? 'text' : f.type || 'text'}
+                    inputMode={f.type === 'number' ? (f.decimals ? 'decimal' : 'numeric') : undefined}
+                    autoComplete={f.type === 'password' ? (f.name === 'newPassword' ? 'new-password' : 'current-password') : f.type === 'email' ? 'email' : 'off'}
+                    placeholder={f.placeholder}
+                    value={values[f.name] ?? ''}
+                    onChange={e => setValues(v => ({ ...v, [f.name]: e.target.value }))}
+                    aria-invalid={touched && !!problems[i]}
+                  />
+                )}
                 {f.hint && <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{f.hint}</span>}
                 {touched && problems[i] && <span role="alert" style={{ display: 'block', fontSize: 12, color: 'var(--danger, #F87171)', marginTop: 4 }}>{problems[i]}</span>}
               </label>

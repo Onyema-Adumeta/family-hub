@@ -130,6 +130,13 @@ If unsure, ask, or do a new build: a build always works; an update for the wrong
   - *Copy of data / delete everything*: the parent does it from Settings → Your family's data. Do not delete data by hand in the database.
 - Never ask a family for their password.
 
+### Feedback and beta applications
+
+- **In-app feedback** ("Send feedback" in the website menu and in phone Settings) is saved in the `Feedback` table and emailed to `SUPPORT_EMAIL`.
+- **Beta applications** from the landing page (`/welcome#apply`) are saved in the `BetaApplication` table. You get an email at `SUPPORT_EMAIL`, and the applicant gets a "thanks, we'll be in touch" email.
+- To see them: Neon console → Tables → `Feedback` or `BetaApplication`. When you invite a family, change their `status` from `new` to `invited` (or `declined`).
+- Applications are only for the beta. Delete them when someone asks, and when the beta ends (the Privacy Policy promises this).
+
 ## 7. Incident plan
 
 ### A. The app is down

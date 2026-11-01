@@ -18,7 +18,7 @@ export async function exportFamilyData(familyId: string) {
   const [
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
-    achievements, goals, bankEntries,
+    achievements, goals, bankEntries, feedback,
   ] = await Promise.all([
     prisma.member.findMany({ where: { familyId }, select: { ...PUBLIC_MEMBER_SELECT, email: true, emailVerifiedAt: true } }),
     prisma.chore.findMany({ ...byFamily, include: { assignees: { select: { id: true, name: true } } } }),
@@ -41,6 +41,7 @@ export async function exportFamilyData(familyId: string) {
     prisma.achievement.findMany(byFamily),
     prisma.familyGoal.findMany(byFamily),
     prisma.bankEntry.findMany(byFamily),
+    prisma.feedback.findMany(byFamily),
   ]);
   return {
     exportedAt: new Date().toISOString(),
@@ -48,7 +49,7 @@ export async function exportFamilyData(familyId: string) {
     family: { ...familyOut, googleCalendarConnected: !!googleTokens },
     members, chores, choreCompletions, meals, events, rewards, redemptions, messages, quests,
     notifications, groceryItems, weeklyRules, triviaSessions, gameScores, wishlist, trips, memories, auditLog,
-    achievements, goals, bankEntries,
+    achievements, goals, bankEntries, feedback,
   };
 }
 
@@ -87,6 +88,7 @@ export async function deleteFamilyData(familyId: string) {
 export async function deleteMemberData(memberId: string, familyId: string, handOverToId: string) {
   const rulesForMember = { assignedToId: memberId, familyId };
   await prisma.$transaction([
+    prisma.feedback.updateMany({ where: { memberId, familyId }, data: { memberId: null } }),
     prisma.message.deleteMany({ where: { memberId, familyId } }),
     prisma.triviaAnswer.deleteMany({ where: { memberId } }),
     prisma.ruleOutcome.deleteMany({ where: { OR: [{ memberId }, { rule: rulesForMember }] } }),

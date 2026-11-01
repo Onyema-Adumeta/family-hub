@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { ScrollView, View, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { Text } from '../lib/typography';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';

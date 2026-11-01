@@ -11,6 +11,9 @@ export type AskOptions = {
   placeholder?: string;
   numeric?: boolean;
   secure?: boolean;
+  /** A bigger, multi-line box (for feedback and notes). */
+  multiline?: boolean;
+  maxLength?: number;
   okLabel?: string;
   /** If given, shows these as buttons instead of a text box. */
   choices?: { label: string; value: string }[];
