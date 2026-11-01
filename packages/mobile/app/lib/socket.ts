@@ -2,7 +2,7 @@ import { useAuthStore } from '../store/auth';
 
 type MessageHandler = (msg: any) => void;
 
-const WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:3001';
+const WS_URL = process.env.EXPO_PUBLIC_WS_URL || 'wss://family-hubapi-production.up.railway.app';
 
 class FamilySocket {
   private ws: WebSocket | null = null;

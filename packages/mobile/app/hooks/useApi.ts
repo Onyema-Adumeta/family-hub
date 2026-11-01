@@ -19,6 +19,18 @@ export function useCreateEvent() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
   });
 }
+export function useUpdateEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/events/${id}`, data).then(r => r.data),
+    onSuccess: (ev: any) => {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['briefing'] });
+      if (ev?.googleUpdated === false) Alert.alert('Saved', 'Saved here, but Google Calendar could not be updated.');
+    },
+    onError: (e: any) => Alert.alert('Could not save', e?.response?.data?.error || 'Please try again'),
+  });
+}
 export function useDeleteEvent() {
   const qc = useQueryClient();
   return useMutation({

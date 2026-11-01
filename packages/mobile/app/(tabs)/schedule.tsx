@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Modal,
-  TextInput, StyleSheet, SafeAreaView,
+  TextInput, StyleSheet, SafeAreaView, Alert,
 } from 'react-native';
-import { useEvents, useCreateEvent, useDeleteEvent, useMembers } from '../hooks/useApi';
+import { useEvents, useCreateEvent, useDeleteEvent, useUpdateEvent, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { router } from 'expo-router';
 
@@ -42,6 +42,8 @@ export default function ScheduleScreen() {
   const { data: members = [] } = useMembers();
   const createEvent = useCreateEvent();
   const deleteEvent = useDeleteEvent();
+  const updateEvent = useUpdateEvent();
+  const [edit, setEdit] = useState<{ id: string; title: string; date: string; time: string; notes: string; color: string } | null>(null);
 
   const isParent = member?.role === 'parent';
   const year = currentDate.getFullYear();
@@ -62,6 +64,21 @@ export default function ScheduleScreen() {
     createEvent.mutate({ ...newEvent, date: dateStr });
     setShowAdd(false);
     setNewEvent({ title: '', date: '', color: EVENT_COLORS[0] });
+  };
+
+  const startEdit = (ev: any) => {
+    setEdit({ id: ev.id, title: ev.title || '', date: String(ev.date || '').slice(0, 10), time: ev.time || '', notes: ev.notes || '', color: ev.color || EVENT_COLORS[0] });
+    setDetailEvent(null);
+  };
+
+  const saveEdit = () => {
+    if (!edit || !edit.title.trim()) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(edit.date)) { Alert.alert('Check the date', 'Use the form 2026-11-05.'); return; }
+    if (edit.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(edit.time)) { Alert.alert('Check the time', 'Use the form 16:30, or leave it empty.'); return; }
+    updateEvent.mutate(
+      { id: edit.id, data: { title: edit.title.trim(), date: edit.date, time: edit.time || null, notes: edit.notes || null, color: edit.color } },
+      { onSuccess: () => setEdit(null) },
+    );
   };
 
   const handleDelete = (id: string) => {
@@ -204,6 +221,11 @@ export default function ScheduleScreen() {
                       <Text style={s.modalBtnGhostText}>Close</Text>
                     </TouchableOpacity>
                     {isParent && (
+                      <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary]} onPress={() => startEdit(ev)} accessibilityLabel={`Edit ${ev.title}`}>
+                        <Text style={s.modalBtnPrimaryText}>Edit</Text>
+                      </TouchableOpacity>
+                    )}
+                    {isParent && (
                       <TouchableOpacity style={[s.modalBtn, s.deleteBtnFull]} onPress={() => handleDelete(ev.id)}>
                         <Text style={s.deleteBtnFullText}>Delete</Text>
                       </TouchableOpacity>
@@ -244,6 +266,46 @@ export default function ScheduleScreen() {
                 <Text style={s.modalBtnPrimaryText}>Add Event</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+      {/* Edit modal */}
+      <Modal visible={!!edit} transparent animationType="slide" onRequestClose={() => setEdit(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modal}>
+            <Text style={s.modalTitle}>✏️ Edit Event</Text>
+            {edit && (
+              <>
+                <TextInput style={s.input} placeholder="Event title" placeholderTextColor="rgba(240,240,245,0.35)" value={edit.title} onChangeText={t => setEdit(p => p && ({ ...p, title: t }))} />
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 3 }}>
+                    <Text style={s.label}>Date</Text>
+                    <TextInput style={s.input} placeholder="2026-11-05" placeholderTextColor="rgba(240,240,245,0.35)" value={edit.date} onChangeText={t => setEdit(p => p && ({ ...p, date: t }))} keyboardType="numbers-and-punctuation" />
+                  </View>
+                  <View style={{ flex: 2 }}>
+                    <Text style={s.label}>Time</Text>
+                    <TextInput style={s.input} placeholder="16:30" placeholderTextColor="rgba(240,240,245,0.35)" value={edit.time} onChangeText={t => setEdit(p => p && ({ ...p, time: t }))} keyboardType="numbers-and-punctuation" />
+                  </View>
+                </View>
+                <Text style={s.label}>Notes</Text>
+                <TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Optional" placeholderTextColor="rgba(240,240,245,0.35)" value={edit.notes} onChangeText={t => setEdit(p => p && ({ ...p, notes: t }))} />
+                <Text style={s.label}>Color</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  {EVENT_COLORS.map(c => (
+                    <TouchableOpacity key={c} onPress={() => setEdit(p => p && ({ ...p, color: c }))}
+                      style={[s.colorDot, { backgroundColor: c, borderWidth: edit.color === c ? 3 : 0, borderColor: '#fff' }]} />
+                  ))}
+                </View>
+                <View style={s.modalBtns}>
+                  <TouchableOpacity style={[s.modalBtn, s.modalBtnGhost]} onPress={() => setEdit(null)}>
+                    <Text style={s.modalBtnGhostText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.modalBtn, s.modalBtnPrimary, { opacity: !edit.title.trim() || updateEvent.isPending ? 0.5 : 1 }]} onPress={saveEdit} disabled={!edit.title.trim() || updateEvent.isPending}>
+                    <Text style={s.modalBtnPrimaryText}>{updateEvent.isPending ? 'Saving…' : 'Save'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>

@@ -79,6 +79,32 @@ Without this, the Android app still works, but Settings → Notifications says "
 Phone: Settings → Notifications on this phone → **Send a test**. Website: Settings → **Server delivery test**.
 If a phone stops getting pushes after the app is uninstalled, the server forgets it automatically.
 
+## 3b. Updating the phone app
+
+There are two ways to get a change onto phones:
+
+**Over-the-air update (most changes, about 2 minutes, no reinstall).** For changes to screens,
+wording, colours or app logic. In PowerShell:
+
+```
+cd C:\Users\Devops\family-hub
+git pull
+pnpm install
+cd packages\mobile
+pnpm update:preview        # phones with the preview (APK) build
+```
+
+Phones download it in the background and use it the **next time the app is opened**.
+Updates only reach builds that have expo-updates (from the 1 November 2026 build onwards).
+
+**New build (when native parts change).** Needed when a package with native code is added or
+upgraded (camera, notifications, Firebase…), when `app.json` or `app.config.js` changes, or for
+a new app icon. Before building, raise `"version"` in `packages/mobile/app.json` (for example
+1.0.0 → 1.1.0), so older installs don't receive updates they can't run. Then
+`eas build -p android --profile preview` and reinstall.
+
+If unsure, ask, or do a new build: a build always works; an update for the wrong version is skipped.
+
 ## 4. Backups and restore
 
 - Neon keeps point-in-time history for a limited window that depends on your plan — check it in the Neon console and note it here: **____ days**.

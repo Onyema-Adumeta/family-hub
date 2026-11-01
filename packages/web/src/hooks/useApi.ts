@@ -107,6 +107,18 @@ export function useCreateEvent() {
     onError:   () => toast('Failed to add event', 'error'),
   });
 }
+export function useUpdateEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/events/${id}`, data).then(r => r.data),
+    onSuccess: (ev: any) => {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['briefing'] });
+      toast(ev?.googleUpdated === false ? 'Saved here — Google Calendar could not be updated' : 'Event updated', ev?.googleUpdated === false ? 'info' : 'success');
+    },
+    onError: (e: any) => toast(e?.response?.data?.error || 'Failed to update event', 'error'),
+  });
+}
 export function useDeleteEvent() {
   const qc = useQueryClient();
   return useMutation({

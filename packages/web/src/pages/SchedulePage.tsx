@@ -1,6 +1,6 @@
 ﻿import EventImport from '../components/EventImport';
 import { useState, useEffect } from 'react';
-import { useEvents, useMembers, useCreateEvent, useDeleteEvent } from '../hooks/useApi';
+import { useEvents, useMembers, useCreateEvent, useDeleteEvent, useUpdateEvent } from '../hooks/useApi';
 import { api } from '../lib/api';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -151,6 +151,9 @@ export default function SchedulePage() {
   const createEvent = useCreateEvent();
   const [showImport, setShowImport] = useState(false);
   const deleteEvent = useDeleteEvent();
+  const updateEvent = useUpdateEvent();
+  // When set, the add form is editing this event instead of creating one.
+  const [editing, setEditing] = useState<{ id: string; date: string } | null>(null);
   const isMobile    = useIsMobile();
 
   const today = new Date();
@@ -228,8 +231,32 @@ export default function SchedulePage() {
     }
   }
 
+  const blankForm = { title: '', emoji: '📅', time: '', assignedToId: '', notes: '', color: '#6366F1' };
+
+  function startEdit(ev: any) {
+    setForm({ title: ev.title || '', emoji: cleanEmoji(ev.emoji), time: ev.time || '', assignedToId: ev.assignedToId || '', notes: ev.notes || '', color: ev.color || '#6366F1' });
+    setEditing({ id: ev.id, date: parseEventDate(ev.date) });
+    setDetailEvent(null);
+    setShowAdd(true);
+  }
+
+  function closeForm() {
+    setShowAdd(false);
+    setEditing(null);
+    setForm(blankForm);
+  }
+
   async function handleCreate() {
     if (!form.title.trim()) return;
+    if (editing) {
+      await updateEvent.mutateAsync({ id: editing.id, data: {
+        title: form.title.trim(), emoji: form.emoji, date: editing.date,
+        time: form.time || null, assignedToId: form.assignedToId || null,
+        notes: form.notes || null, color: form.color,
+      } });
+      closeForm();
+      return;
+    }
     await createEvent.mutateAsync({
       title: form.title.trim(), emoji: form.emoji, date: selectedDate,
       time: form.time || undefined, assignedToId: form.assignedToId || undefined,
@@ -442,6 +469,7 @@ export default function SchedulePage() {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setDetailEvent(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)', cursor: 'pointer' }}>Close</button>
+                <button onClick={() => startEdit(ev)} style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', color: '#A78BFA', cursor: 'pointer' }}>✏️ Edit</button>
                 <button onClick={() => { handleDelete(ev.id); setDetailEvent(null); }} style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#F87171', cursor: 'pointer' }}>Delete</button>
               </div>
             </div>
@@ -451,14 +479,21 @@ export default function SchedulePage() {
 
       {/* Add event modal */}
       {showAdd && (
-        <div onClick={() => setShowAdd(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 300, backdropFilter: 'blur(4px)', animation: 'fadeIn 0.15s ease' }}>
+        <div onClick={closeForm} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 300, backdropFilter: 'blur(4px)', animation: 'fadeIn 0.15s ease' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 500, background: 'var(--surface, #1a1625)', borderRadius: '24px 24px 0 0', border: '1.5px solid rgba(255,255,255,0.1)', borderBottom: 'none', padding: '24px 20px 40px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -16px 60px rgba(0,0,0,0.6)', animation: 'slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)', margin: '0 auto 20px' }} />
             <div style={{ marginBottom: 18 }}>
-              <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 4 }}>➕ New Event</div>
-              <div style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#A78BFA', border: '1px solid rgba(99,102,241,0.3)' }}>
-                {formatDateLabel(selectedDate, todayStr)}
-              </div>
+              <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 4 }}>{editing ? '✏️ Edit Event' : '➕ New Event'}</div>
+              {editing ? (
+                <label style={{ display: 'block', marginTop: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>DATE</span>
+                  <input className="input" type="date" value={editing.date} onChange={e => e.target.value && setEditing({ ...editing, date: e.target.value })} style={{ width: '100%' }} />
+                </label>
+              ) : (
+                <div style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#A78BFA', border: '1px solid rgba(99,102,241,0.3)' }}>
+                  {formatDateLabel(selectedDate, todayStr)}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
@@ -505,9 +540,9 @@ export default function SchedulePage() {
                 <textarea className="input" placeholder="Add notes..." rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical', width: '100%' }} />
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                <button style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)', cursor: 'pointer' }} onClick={() => setShowAdd(false)}>Cancel</button>
-                <button style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 16px rgba(99,102,241,0.4)', opacity: (!form.title.trim() || createEvent.isPending) ? 0.5 : 1 }} onClick={handleCreate} disabled={!form.title.trim() || createEvent.isPending}>
-                  {createEvent.isPending ? 'Saving...' : '+ Add Event'}
+                <button style={{ flex: 1, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)', cursor: 'pointer' }} onClick={closeForm}>Cancel</button>
+                <button style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 800, background: 'var(--primary)', border: 'none', color: '#fff', cursor: 'pointer', boxShadow: '0 4px 16px rgba(99,102,241,0.4)', opacity: (!form.title.trim() || createEvent.isPending || updateEvent.isPending) ? 0.5 : 1 }} onClick={handleCreate} disabled={!form.title.trim() || createEvent.isPending || updateEvent.isPending}>
+                  {createEvent.isPending || updateEvent.isPending ? 'Saving...' : editing ? 'Save changes' : '+ Add Event'}
                 </button>
               </div>
             </div>

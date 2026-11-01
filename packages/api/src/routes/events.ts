@@ -120,6 +120,8 @@ router.get('/sync', async (req: AuthRequest, res) => {
   }
 });
 
+import { googleBody, ymdOf } from '../services/googleCalendar';
+
 // POST /api/events — create and optionally push to Google Calendar
 router.post('/', async (req: AuthRequest, res) => {
   try {
@@ -145,16 +147,7 @@ router.post('/', async (req: AuthRequest, res) => {
       if (cal) {
         const gEvent = await cal.events.insert({
           calendarId: 'primary',
-          requestBody: {
-            summary:     req.body.title,
-            description: req.body.notes || undefined,
-            start: req.body.time
-              ? { dateTime: req.body.date + 'T' + req.body.time + ':00', timeZone: 'America/Vancouver' }
-              : { date: req.body.date },
-            end: req.body.time
-              ? { dateTime: req.body.date + 'T' + req.body.time + ':00', timeZone: 'America/Vancouver' }
-              : { date: req.body.date },
-          },
+          requestBody: googleBody({ title: body.title.trim(), date: body.date, time: body.time || null, notes: body.notes || null }),
         });
         await prisma.event.update({
           where: { id: event.id },
@@ -168,6 +161,72 @@ router.post('/', async (req: AuthRequest, res) => {
     broadcast(req.familyId!, { type: 'event:created', event });
     res.json(event);
   } catch (e: any) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/events/:id — edit an event (and its Google Calendar copy, if it has one)
+router.patch('/:id', async (req: AuthRequest, res) => {
+  try {
+    const existing = await prisma.event.findFirst({ where: { id: req.params.id, familyId: req.familyId } });
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
+    const b = req.body || {};
+    const data: any = {};
+    if (b.title !== undefined) {
+      if (typeof b.title !== 'string' || !b.title.trim() || b.title.length > 200) return res.status(400).json({ error: 'Give the event a title' });
+      data.title = b.title.trim();
+    }
+    if (b.date !== undefined) {
+      if (typeof b.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || isNaN(Date.parse(b.date))) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      data.date = new Date(b.date + 'T12:00:00');
+    }
+    if (b.time !== undefined) {
+      if (b.time === null || b.time === '') data.time = null;
+      else if (typeof b.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(b.time)) data.time = b.time;
+      else return res.status(400).json({ error: 'time must be HH:MM' });
+    }
+    if (b.assignedToId !== undefined) {
+      if (b.assignedToId === null || b.assignedToId === '') data.assignedToId = null;
+      else if (typeof b.assignedToId === 'string' && (await memberInFamily(b.assignedToId, req.familyId!))) data.assignedToId = b.assignedToId;
+      else return res.status(400).json({ error: 'Invalid member' });
+    }
+    for (const [k, max] of [['emoji', 16], ['color', 20], ['notes', 2000]] as const) {
+      if (b[k] === undefined) continue;
+      if (b[k] === null || b[k] === '') { if (k !== 'emoji') data[k] = null; continue; }
+      if (typeof b[k] !== 'string' || b[k].length > max) return res.status(400).json({ error: `Invalid ${k}` });
+      data[k] = b[k];
+    }
+    if (!Object.keys(data).length) return res.status(400).json({ error: 'Nothing to change' });
+
+    const event = await prisma.event.update({
+      where: { id: existing.id },
+      data,
+      include: { assignedTo: { select: { id: true, name: true, emoji: true, color: true } } },
+    });
+
+    // Keep the Google Calendar copy in step. The edit is saved either way.
+    let googleUpdated: boolean | null = null;
+    if (existing.googleEventId) {
+      try {
+        const cal = await getCalendarClient(req.familyId!);
+        if (cal) {
+          await cal.events.patch({
+            calendarId: 'primary',
+            eventId: existing.googleEventId,
+            requestBody: googleBody({ title: event.title, date: ymdOf(event.date), time: event.time, notes: event.notes }),
+          });
+          googleUpdated = true;
+        }
+      } catch (calErr: any) {
+        console.error('Failed to update Google Calendar event:', calErr?.message || calErr);
+        googleUpdated = false;
+      }
+    }
+
+    broadcast(req.familyId!, { type: 'event:updated', event });
+    res.json({ ...event, googleUpdated });
+  } catch (e) {
+    console.error('event update failed', e);
+    res.status(500).json({ error: 'Could not save the event' });
+  }
 });
 
 // DELETE /api/events/:id — delete from app and Google Calendar
