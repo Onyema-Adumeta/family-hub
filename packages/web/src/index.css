@@ -1,7 +1,9 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  /* Typography: Nunito for everything, Fredoka One only for the Kinroost wordmark. */
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-brand: 'Fredoka One', 'Nunito', system-ui, sans-serif;
   --primary: #7C6FF7;
   --primary-light: rgba(124,111,247,0.15);
   --primary-dark: #5B52D4;
@@ -69,7 +71,7 @@
 
 html, body, #root {
   height: 100%;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -144,7 +146,7 @@ select option { background-color: var(--select-bg); color: var(--text); }
 /* Calm home: one accent, restrained surfaces, readable status labels. */
 .calm-dashboard { --bg-card:#171c25; --bg-secondary:#202733; --bg-tertiary:#263140; --border:#313b49; --text-primary:#edf1f7; --text:#edf1f7; --text-secondary:#bac4d1; --text-muted:#a3afbf; --primary:#8bb6e6; color:var(--text-primary); }
 [data-theme="light"] .calm-dashboard { --bg-card:#ffffff; --bg-secondary:#f3f5f8; --bg-tertiary:#e8edf3; --border:#d5dce5; --text-primary:#1e2938; --text:#1e2938; --text-secondary:#475569; --text-muted:#526173; --primary:#355f88; }
-.calm-dashboard h2 {font-size:17px;font-weight:650;}
+.calm-dashboard h2 {font-size:17px;font-weight:700;}
 .calm-dashboard .card {background:var(--bg-card)!important;box-shadow:none!important;border:1px solid var(--border)!important;border-radius:14px!important;}
 .calm-dashboard .btn {box-shadow:none;transform:none;border-radius:9px;font-weight:600;}
 .calm-dashboard .btn-ghost {background:transparent;color:var(--text-primary);border:1px solid var(--border);}
@@ -153,7 +155,7 @@ select option { background-color: var(--select-bg); color: var(--text); }
 .calm-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0;}
 .calm-stats>div {padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card);}
 .calm-stats span {font-size:12px;color:var(--text-secondary);display:block;}
-.calm-stats strong {font-size:27px;font-weight:650;display:block;margin-top:4px;}
+.calm-stats strong {font-size:27px;font-weight:700;display:block;margin-top:4px;}
 .calm-section-heading {display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;}
 .calm-task {width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;padding:14px 0;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text-primary);}
 .calm-task strong {font-weight:600;font-size:14px;}
@@ -176,3 +178,7 @@ select option { background-color: var(--select-bg); color: var(--text); }
 :root,[data-theme="dark"] {--bg:#11161e;--text:#edf1f7;--text-primary:#edf1f7;--text-secondary:#bac4d1;--text-muted:#9ba8b9;}
 [data-theme="light"] {--bg:#f4f6f8;--text:#1e2938;--text-primary:#1e2938;--text-secondary:#475569;--text-muted:#526173;}
 .calm-dashboard progress {accent-color:#8295ac;}
+
+/* The Kinroost wordmark */
+.brand { font-family: var(--font-brand); font-weight: 400; letter-spacing: 0.3px; }
+.brand-gradient { display: inline-block; background: linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

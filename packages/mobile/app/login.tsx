@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, TextInput, FONTS } from './lib/typography';
 import { router, Link } from 'expo-router';
 import { api } from './lib/api';
 import { useAuthStore } from './store/auth';
@@ -87,7 +88,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  logo: { fontSize: 36, fontWeight: '900', color: '#A78BFA', textAlign: 'center', marginBottom: 6 },
+  logo: { fontSize: 36, fontFamily: FONTS.brand, color: '#A78BFA', textAlign: 'center', marginBottom: 6 },
   subtitle: { fontSize: 14, color: 'rgba(240,240,245,0.5)', textAlign: 'center', fontWeight: '700', marginBottom: 32 },
   form: { gap: 8 },
   tabs: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', marginBottom: 6 },

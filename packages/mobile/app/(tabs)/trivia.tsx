@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { Text } from '../lib/typography';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 import { useSocket } from '../hooks/useSocket';

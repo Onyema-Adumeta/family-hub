@@ -179,7 +179,7 @@ function NavSection({ label, items, highlight, onNav }: { label: string; items: 
   return (
     <div style={{ marginBottom: 4 }}>
       <div style={{
-        fontSize: 9, fontWeight: 900, color: 'var(--text-muted)',
+        fontSize: 10, fontWeight: 900, color: 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: 1.2,
         padding: '10px 10px 4px',
       }}>{label}</div>
@@ -363,7 +363,7 @@ export default function Layout() {
           background: 'linear-gradient(135deg, #0f1729 0%, #131c35 100%)', flexShrink: 0, zIndex: 10,
         }}>
           <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Kinroost</div>
             <div style={{ fontWeight: 900, fontSize: 14 }}>{family?.name || 'My Family'}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -430,7 +430,7 @@ export default function Layout() {
             padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0,
           }}>
             <div>
-              <div style={{ fontSize: 9, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Menu</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Menu</div>
               <div style={{ fontWeight: 900, fontSize: 14 }}>{member?.name || 'You'}</div>
             </div>
             <button onClick={() => setSidebarOpen(false)} style={{

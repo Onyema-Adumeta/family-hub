@@ -146,7 +146,7 @@ function Stat({ n, label, suffix }: { n: number; label: string; suffix?: string 
 export default function LandingPage() {
   const words = ['The', 'whole', 'family,', 'in', 'one', 'place.'];
   return (
-    <div style={{ minHeight: '100vh', background: '#0F0B1A', color: '#F0F0F5', fontFamily: 'system-ui, -apple-system, sans-serif', overflowX: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: '#0F0B1A', color: '#F0F0F5', overflowX: 'hidden' }}>
       <style>{`
         @keyframes fhMesh{0%{transform:translate(0,0) scale(1)}33%{transform:translate(4%,-3%) scale(1.08)}66%{transform:translate(-3%,4%) scale(1.04)}100%{transform:translate(0,0) scale(1)}}
         @keyframes fhFloat{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:.85}90%{opacity:.85}100%{transform:translateY(-120vh) rotate(220deg);opacity:0}}
@@ -186,7 +186,7 @@ export default function LandingPage() {
 
       {/* Nav */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 3 }}>
-        <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: 0.5 }}>👨‍👩‍👧 Kinroost</div>
+        <div className="brand" style={{ fontSize: 22 }}>👨‍👩‍👧 Kinroost</div>
         <Link to="/login" style={{ color: '#A78BFA', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>Family Log In →</Link>
       </header>
 

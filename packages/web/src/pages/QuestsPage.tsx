@@ -134,7 +134,7 @@ export default function QuestsPage() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900 }}>🗡️ Quests</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 800 }}>🗡️ Quests</h1>
         {isParent && (
           <button onClick={() => setShowAdd(true)} className="btn btn-primary" style={{ fontSize: 13 }}>
             + New Quest

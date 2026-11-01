@@ -42,7 +42,7 @@ export default function JoinPage() {
 
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🎉</div>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div className="brand brand-gradient" style={{ fontSize: 32 }}>
             Join your family!
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>Kids and grown-ups join here. A parent can make another adult a parent in Settings.</p>

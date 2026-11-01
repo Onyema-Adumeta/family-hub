@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Alert, RefreshControl } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, Modal, Alert, RefreshControl } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../lib/api';

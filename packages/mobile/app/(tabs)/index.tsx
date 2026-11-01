@@ -1,4 +1,5 @@
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import { ScrollView, View, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
+import { Text } from '../lib/typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';

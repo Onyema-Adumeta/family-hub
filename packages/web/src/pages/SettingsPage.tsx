@@ -203,7 +203,7 @@ export default function SettingsPage() {
 
   return (
     <div style={{ padding: '16px 16px 80px', maxWidth: 540, margin: '0 auto' }}>
-     <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 16px' }}>⚙️ Settings</h1>
+     <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 16px' }}>⚙️ Settings</h1>
      {isParent && <DashboardLinks manage />}
      <BrowserNotifications />
      {isParent && <ChoreReview />}
@@ -224,7 +224,7 @@ export default function SettingsPage() {
           🔗 FAMILY INVITE
         </div>
         <div style={{
-          fontFamily: 'monospace', fontSize: 28, fontWeight: 900,
+          fontSize: 28, fontWeight: 900, fontVariantNumeric: 'tabular-nums',
           color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: 12,
           textAlign: 'center',
         }}>{inviteCode}</div>

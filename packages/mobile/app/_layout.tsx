@@ -6,6 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from './store/auth';
 import { api } from './lib/api';
 import { familySocket } from './lib/socket';
+import { useFonts } from 'expo-font';
+import { FONT_FILES, setFontsLoaded } from './lib/typography';
 
 // Boot WebSocket on app load
 const token = useAuthStore.getState().token;
@@ -25,6 +27,10 @@ export default function RootLayout() {
   // home screen loads first, its requests go out signed-out, and the 401s sign
   // the person out on every cold start.
   const [ready, setReady] = useState(false);
+  // Nunito (and the Fredoka One wordmark). If loading fails, the system font is used.
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
+  const fontsDone = fontsLoaded || !!fontError;
+  setFontsLoaded(fontsLoaded && !fontError);
 
   useEffect(() => {
     // Restore the saved sign-in, then renew it (sign-ins last 14 days).
@@ -48,7 +54,7 @@ export default function RootLayout() {
     }
   }, [token, ready]);
 
-  if (!ready) {
+  if (!ready || !fontsDone) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0f0f13', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color="#6366F1" />

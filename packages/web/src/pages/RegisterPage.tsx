@@ -41,7 +41,7 @@ export default function RegisterPage() {
 
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>🏠</div>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, background: 'linear-gradient(135deg,#F59E0B,#F472B6,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div className="brand brand-gradient" style={{ fontSize: 32 }}>
             Create your family
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, marginTop: 6 }}>You'll get a family code to share. Everyone signs in with their own password or PIN.</p>

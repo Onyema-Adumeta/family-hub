@@ -22,7 +22,7 @@ export const openWeb = (path: string) => Linking.openURL(WEB_URL + path);
 export const ui = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   content: { padding: 16, paddingTop: 56, paddingBottom: 40 },
-  h1: { fontSize: 22, fontWeight: '900', color: C.text, marginBottom: 12 },
+  h1: { fontSize: 24, fontWeight: '800', color: C.text, marginBottom: 12 },
   card: { backgroundColor: C.card, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 12 },
   cardTitle: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 6 },
   text: { color: C.text, fontSize: 14, fontWeight: '600' },

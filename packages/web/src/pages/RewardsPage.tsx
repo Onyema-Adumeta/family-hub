@@ -61,7 +61,7 @@ export default function RewardsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>🏆 Rewards</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>🏆 Rewards</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>Earn stars, redeem rewards</p>
         </div>
         {isParent && (

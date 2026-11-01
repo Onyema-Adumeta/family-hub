@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Image, Linking } from 'react-native';
+import { View, TouchableOpacity, Image, Linking } from 'react-native';
+import { Text } from '../lib/typography';
 import { useApprovals, useReviewChore } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { ask } from '../store/prompt';

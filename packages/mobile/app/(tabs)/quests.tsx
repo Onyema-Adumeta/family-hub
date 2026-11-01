@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, Modal,
-  TextInput, StyleSheet, SafeAreaView, Alert,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, Modal, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import { useQuests, useCreateQuest, useDeleteQuest, useCompleteQuest, useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 import { api } from '../lib/api';

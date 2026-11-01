@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { Modal, View, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import { usePromptStore } from '../store/prompt';
 import { C, ui } from '../lib/theme';
 

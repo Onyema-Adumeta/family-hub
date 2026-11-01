@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, TextInput } from './lib/typography';
 import { router, Link, useLocalSearchParams } from 'expo-router';
 import { api } from './lib/api';
 import { useAuthStore } from './store/auth';

@@ -216,7 +216,7 @@ export default function TripDetailPage() {
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>✈️ {trip.title}</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>✈️ {trip.title}</h1>
           {trip.destination && <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>📍 {trip.destination}</p>}
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {toDateInputValue(trip.startDate)} → {toDateInputValue(trip.endDate)}

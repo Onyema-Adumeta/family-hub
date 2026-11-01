@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Modal, View, Text, TouchableOpacity, Animated } from 'react-native';
+import { Modal, View, TouchableOpacity, Animated } from 'react-native';
+import { Text } from '../lib/typography';
 import { useCelebrations } from '../store/celebrations';
 import { useAuthStore } from '../store/auth';
 import { C, ui } from '../lib/theme';

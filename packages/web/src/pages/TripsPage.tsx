@@ -106,7 +106,7 @@ export default function TripsPage() {
     <div style={{ padding: '16px 16px 80px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>✈️ Trips</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>✈️ Trips</h1>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>{trips.length} planned</p>
         </div>
         <button onClick={() => setShowAdd(true)} style={{ padding: '9px 18px', background: 'var(--primary)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>+ New Trip</button>

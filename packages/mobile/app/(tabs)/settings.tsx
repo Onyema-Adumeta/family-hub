@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, ScrollView, TextInput, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator, Platform, Switch, Share,
-} from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Platform, Switch, Share } from 'react-native';
+import { Text, TextInput } from '../lib/typography';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';

@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '../lib/typography';
 import { useMembers } from '../hooks/useApi';
 import { useAuthStore } from '../store/auth';
 

@@ -199,7 +199,7 @@ export default function ChatPage() {
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexShrink: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>Family Chat</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Family Chat</h1>
           <div style={{ display: 'flex', gap: 8 }}>
             {pinnedMsg && (
               <button onClick={() => setShowPinned(v => !v)} style={{

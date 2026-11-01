@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../lib/typography';
 import ConsentGate from '../components/ConsentGate';
 import PromptHost from '../components/PromptHost';
 import CelebrationHost from '../components/CelebrationHost';

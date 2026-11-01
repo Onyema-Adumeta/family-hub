@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { Text } from '../lib/typography';
 import { useRouter } from 'expo-router';
 
 const GAMES = [
