@@ -39,7 +39,9 @@ export default function PromptHost() {
           ) : (
             <>
               <TextInput
-                style={[ui.input, { marginTop: 14 }]}
+                style={[ui.input, { marginTop: 14 }, shown.multiline && { minHeight: 110, textAlignVertical: 'top' }]}
+                multiline={shown.multiline}
+                maxLength={shown.maxLength}
                 value={value}
                 onChangeText={setValue}
                 placeholder={shown.placeholder}
@@ -47,7 +49,7 @@ export default function PromptHost() {
                 keyboardType={shown.numeric ? 'decimal-pad' : 'default'}
                 secureTextEntry={shown.secure}
                 autoFocus
-                onSubmitEditing={() => close(value)}
+                onSubmitEditing={shown.multiline ? undefined : () => close(value)}
               />
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                 <TouchableOpacity style={[ui.ghost, { flex: 1 }]} onPress={() => close(null)}>

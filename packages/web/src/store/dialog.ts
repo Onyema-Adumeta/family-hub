@@ -8,7 +8,9 @@ import { create } from 'zustand';
 export type Field = {
   name: string;
   label: string;
-  type?: 'text' | 'password' | 'email' | 'number';
+  type?: 'text' | 'password' | 'email' | 'number' | 'textarea';
+  /** Longest allowed text. */
+  maxLength?: number;
   defaultValue?: string;
   placeholder?: string;
   hint?: string;

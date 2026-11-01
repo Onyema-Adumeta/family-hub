@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import { useCelebrations } from '../store/celebrations';
 
 // ── Helper: simple toast without importing context (avoids circular deps) ────
-function toast(msg: string, type: 'success' | 'error' | 'info' = 'success') {
+export function toast(msg: string, type: 'success' | 'error' | 'info' = 'success') {
   const el = document.createElement('div');
   const colors: Record<string, string> = {
     success: '#4ADE80', error: '#F87171', info: '#60A5FA',

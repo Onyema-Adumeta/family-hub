@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import BetaApplyForm from '../components/BetaApplyForm';
 
-const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/175ebRK9gB1s3Srt4Ju9RjR_3LFKaDdRy4mdT_Jn6nYI/viewform';
 
 const FEATURES = [
   { icon: '✅', title: 'Chores & Tasks', body: 'Assign, track, and complete household tasks with deadlines, priorities, and star rewards.' },
@@ -220,9 +220,9 @@ export default function LandingPage() {
               Kinroost replaces scattered apps, group chats, and sticky notes with one intelligent hub — chores, meals, schedules, rewards, chat, and more. Built for real families.
             </p>
             <div className="fh-rise" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', animationDelay: '1s' }}>
-              <a className="fh-cta" href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
+              <a className="fh-cta" href="#apply"
                 style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 16, padding: '14px 32px', borderRadius: 14, boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-                Request Access
+                Apply for the beta
               </a>
               <Link to="/login"
                 style={{ background: 'rgba(255,255,255,0.06)', color: '#F0F0F5', textDecoration: 'none', fontWeight: 700, fontSize: 16, padding: '14px 32px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -264,16 +264,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section style={{ textAlign: 'center', padding: '64px 24px' }}>
+      {/* Apply for the beta */}
+      <section id="apply" style={{ textAlign: 'center', padding: '64px 24px', scrollMarginTop: 20 }}>
         <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 16 }}>Want Kinroost for your family?</h2>
-        <p style={{ color: 'rgba(240,240,245,0.65)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6 }}>
-          Kinroost is invite-only for now. Tell me a little about your family and I'll set you up.
+        <p style={{ color: 'rgba(240,240,245,0.65)', maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6 }}>
+          Kinroost is a free, invite-only beta for now. Tell us a little about your family and we'll be in touch.
         </p>
-        <a className="fh-cta" href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer"
-          style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 17, padding: '16px 40px', borderRadius: 14, boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-          Request Access
-        </a>
+        <BetaApplyForm />
       </section>
 
       <footer style={{ textAlign: 'center', padding: '32px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', color: 'rgba(240,240,245,0.4)', fontSize: 13 }}>

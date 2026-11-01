@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useRef } from 'react';
+﻿import { sendFeedback } from '../lib/feedback';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import ConsentGate from './ConsentGate';
 import CelebrationOverlay from './CelebrationOverlay';
@@ -348,6 +349,11 @@ export default function Layout() {
             <NavSection label="More"   items={NAV_ADVANCED}  />
           </nav>
           <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+            <button onClick={() => { sendFeedback(); }} style={{
+              width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer', marginBottom: 8,
+              background: 'transparent', border: '1.5px solid var(--border)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 800,
+            }}>💬 Send feedback</button>
             <button onClick={() => { logout(); navigate('/login'); }} style={{
               width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer',
               background: 'transparent', border: '1.5px solid rgba(248,113,113,0.25)',
@@ -468,6 +474,11 @@ export default function Layout() {
             <NavSection label="More"   items={NAV_ADVANCED}  onNav={() => setSidebarOpen(false)} />
           </div>
           <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+            <button onClick={() => { setSidebarOpen(false); sendFeedback(); }} style={{
+              width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer', marginBottom: 8,
+              background: 'transparent', border: '1.5px solid var(--border)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 800,
+            }}>💬 Send feedback</button>
             <button onClick={() => { logout(); navigate('/login'); }} style={{
               width: '100%', padding: '9px', borderRadius: 10, cursor: 'pointer',
               background: 'transparent', border: '1.5px solid rgba(248,113,113,0.25)',

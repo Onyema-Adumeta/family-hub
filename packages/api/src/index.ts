@@ -1,3 +1,4 @@
+import { feedbackRoutes, betaRoutes } from './routes/feedback';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -154,6 +155,8 @@ app.use('/api/family',        authMiddleware, familyRoutes);
 app.use('/api/insights',      authMiddleware, insightsRoutes);
 app.use('/api/goals',         authMiddleware, goalsRoutes);
 app.use('/api/bank',          authMiddleware, bankRoutes);
+app.use('/api/feedback',      feedbackRoutes);           // signs in inside the router
+app.use('/api/beta-applications', betaRoutes);          // public: landing page
 
 // â”€â”€ Health check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/health', (_req, res) => res.json({ ok: true }));
