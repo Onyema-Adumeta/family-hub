@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/auth';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Defaults to the live server so every build and over-the-air update works.
+// For local development, set EXPO_PUBLIC_API_URL (and EXPO_PUBLIC_WS_URL) in packages/mobile/.env.
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://family-hubapi-production.up.railway.app/api';
 
 export const api = axios.create({ baseURL: API_URL });
 
